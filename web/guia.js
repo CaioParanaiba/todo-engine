@@ -68,7 +68,9 @@ const RYODAN = [['Chrollo','crown','O líder: rouba a técnica dos outros.'],['F
   ['Nobunaga','bullet','Um corte só, se você entrar no alcance.'],['Uvogin','horn','Força bruta: só cai com treino.'],['Shalnark','antenna','Controla tudo por antenas.'],
   ['Shizuku','vacuum','Aspira qualquer coisa e esquece o resto.'],['Kortopi','copy','Copia tudo, mas a cópia some.'],['Franklin','bullet','Rajada sem fim de exercícios.'],
   ['Phinks','wing','Cada giro do braço bate mais forte.'],['Pakunoda','spider','Lê as memórias: sabe o que você não estudou.'],['Bonolenov','cat','O som da batalha.']];
-const W = {passo:0, nome:'', nick:'', av:'logo', tags:{}, disc:[], ini:'', fim:'', p1:40, p2:60, err:''};
+const W = {passo:0, nome:'', nick:'', av:'logo', tags:{}, habs:[], cfOn:false, cfH:'', cfM:3, disc:[], ini:'', fim:'', p1:40, p2:60, err:''};
+const slug = n => 'h-' + (norm(n).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 20) || 'habito');
+const HANDLE = /^[A-Za-z0-9_.-]{3,24}$/;
 const tagPadrao = k => { const T = HJx.TAGS[k]; return !T ? '' : T.ctx[0] ? '@' + T.ctx[0] : T.proj[0] ? '+' + T.proj[0] : ''; };
 const limpaTag = (k, v) => { const pre = TIPOS.find(t => t.k === k).pre; v = String(v||'').trim().toLowerCase().replace(/\s+/g, ''); if(!v) return ''; if(v[0] !== '@' && v[0] !== '+') v = pre + v; return v.length > 1 ? v : ''; };
 const iso = d => d.toISOString().slice(0,10);
@@ -82,9 +84,11 @@ function iniciaW(){
   const [ini, fim] = j.semestre ? [j.semestre.ini, j.semestre.fim] : semestrePadrao();
   Object.assign(W, {passo:0, nome: j.nome && j.nome !== 'Hunter' ? j.nome : '', nick: j.nick || '', av: UI.avatar || 'logo', ini, fim, err:''});
   for(const t of TIPOS) if(!t.fixo) W.tags[t.k] = tagPadrao(t.k);
+  W.habs = (j.habitos && j.habitos.length ? j.habitos.map(h => h.n) : ['Treino de digitação', 'Leitura (20 min)']);
+  W.cfOn = !!(j.cf && j.cf.handle); W.cfH = (j.cf && j.cf.handle) || ''; W.cfM = (j.cf && j.cf.meta) || 3;
   W.disc = (j.disciplinas && j.disciplinas.length ? j.disciplinas : [{d:'', n:''}, {d:'', n:''}]).map(d => ({...d, n1: d.n1 || meio(ini, fim, .45), n2: d.n2 || meio(ini, fim, .95)}));
 }
-const PASSOS = ['Quem é você', 'Como o jogo funciona', 'Tipos de tarefa', 'Disciplinas', 'Pronto'];
+const PASSOS = ['Quem é você', 'Como o jogo funciona', 'Tipos de tarefa', 'Hábitos', 'Disciplinas', 'Pronto'];
 function passoHTML(){
   const p = W.passo;
   if(p === 0) return `<h3>Bem-vindo à Associação Hunter</h3>
@@ -114,7 +118,18 @@ function passoHTML(){
       ${t.fixo ? `<span class="fixo">${t.fixo}</span>` : `<input id="wz-tag-${t.k}" value="${esc(tag)}" aria-label="Tag de ${t.n}" maxlength="24">`}
       <code>exemplo: ${esc(t.ex.replace('{tag}', tag || ''))}</code></div>`; }).join('')}</div>
     <p style="font-size:13px">Bônus: <b>×1,5</b> se concluir até o prazo (<span class="mono">due:</span>), ×1,5 na missão da semana e ×1,5 no chefão em fúria.</p>`;
-  if(p === 3) return `<h3>Disciplinas do semestre</h3>
+  if(p === 3) return `<h3>Hábitos</h3>
+    <p>Hábitos são o que você quer fazer <b>todo dia</b>. Eles aparecem sozinhos na Lista a cada manhã, você marca à mão quando fizer, e cada um vale ${5} XP e conta para o Ten. Um heatmap mostra a sua constância.</p>
+    <div class="wz-disc">${W.habs.map((h,i) => `<div class="wz-row" style="grid-template-columns:minmax(0,1fr) 34px"><label>Hábito ${i + 1}<input id="wz-h-${i}" value="${esc(h)}" placeholder="ex.: Treino de digitação" maxlength="40"></label><button type="button" class="wz-x" data-wzhdel="${i}" aria-label="remover hábito">✕</button></div>`).join('')}</div>
+    <div><button type="button" class="btn" data-wzhadd>+ hábito</button></div>
+    <div class="wz-card" style="gap:10px">
+      <b>${ic('tra')} Codeforces</b>
+      <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font:14px var(--f-ui);color:var(--ink)"><input type="checkbox" id="wz-cf"${W.cfOn ? ' checked' : ''}> Quero contar os problemas do Codeforces</label>
+      <div class="wz-f"><label>Handle do Codeforces<input id="wz-cfh" value="${esc(W.cfH)}" placeholder="ex.: tourist" maxlength="24"${W.cfOn ? '' : ' disabled'}></label>
+        <label>Meta por dia<input id="wz-cfm" inputmode="numeric" value="${W.cfM}"${W.cfOn ? '' : ' disabled'}></label></div>
+      <span>Ele não se marca à mão: o jogo consulta o Codeforces e conta os problemas <b>aceitos</b> no dia (+5 XP cada, até 6). Bater a meta dá +10 e um heatmap só dele.</span>
+    </div>`;
+  if(p === 4) return `<h3>Disciplinas do semestre</h3>
     <p>Cada disciplina vira um chefão do Genei Ryodan. Por enquanto, toda matéria tem duas avaliações: <b>N1</b> e <b>N2</b>. Depois você pode detalhar (provas, listas, trabalhos) no arquivo <span class="mono">avaliacoes.txt</span>.</p>
     <div class="wz-f" style="grid-template-columns:repeat(4,minmax(0,1fr))">
       <label>Início do semestre<input type="date" id="wz-ini" value="${W.ini}"></label>
@@ -132,7 +147,7 @@ function passoHTML(){
     <div><button type="button" class="btn" data-wzadd>+ disciplina</button></div>
     <p style="font-size:13px">A sigla vira a tag da disciplina: <span class="mono">+fac.SIGLA</span>. Não sabe a data da prova ainda? Deixe a sugerida e ajuste quando souber.</p>`;
   return `<h3>Tudo pronto, ${esc(W.nome.split(' ')[0] || 'Hunter')}</h3>
-    <p>Você começa no andar 1, com a paleta Simples e ${W.disc.filter(d => d.d).length} chefões pela frente. Anote as tarefas na <b>Lista</b>, conclua, e veja a Arena subir.</p>
+    <p>Você começa no andar 1, com a paleta Simples, ${W.disc.filter(d => d.d).length} chefões pela frente e ${W.habs.filter(Boolean).length + (W.cfOn ? 1 : 0)} hábitos por dia. Anote as tarefas na <b>Lista</b>, conclua, e veja a Arena subir.</p>
     <p>Quer um tour rápido? Ele mostra o que cada bloco de cada aba quer dizer. Dá para rever a qualquer hora pelo botão <b>? tutorial</b>.</p>`;
 }
 function coleta(){
@@ -140,6 +155,10 @@ function coleta(){
   if(W.passo === 0){ W.nome = (v('wz-nome')||'').trim(); W.nick = (v('wz-nick')||'').trim().toLowerCase(); }
   if(W.passo === 2) for(const t of TIPOS) if(!t.fixo) W.tags[t.k] = limpaTag(t.k, v('wz-tag-' + t.k));
   if(W.passo === 3){
+    W.habs = W.habs.map((h,i) => (v('wz-h-' + i) || '').trim());
+    const cf = document.getElementById('wz-cf'); W.cfOn = !!(cf && cf.checked); W.cfH = (v('wz-cfh') || '').trim(); W.cfM = parseInt(v('wz-cfm')) || 0;
+  }
+  if(W.passo === 4){
     W.ini = v('wz-ini') || W.ini; W.fim = v('wz-fim') || W.fim; W.p1 = +v('wz-p1') || 0; W.p2 = +v('wz-p2') || 0;
     W.disc = W.disc.map((d,i) => ({d:(v('wz-d-'+i)||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,''), n:(v('wz-n-'+i)||'').trim(), n1:v('wz-n1-'+i)||d.n1, n2:v('wz-n2-'+i)||d.n2}));
   }
@@ -156,6 +175,12 @@ function valida(){
     if(vs.some(x => /^\+fac\./.test(x))) return '+fac. é reservado para as disciplinas.';
   }
   if(W.passo === 3){
+    const hs = W.habs.filter(Boolean);
+    if(new Set(hs.map(slug)).size !== hs.length) return 'Há dois hábitos com o mesmo nome.';
+    if(W.cfOn && !HANDLE.test(W.cfH)) return 'Escreva o seu handle do Codeforces (3 a 24 letras, números, _ . -).';
+    if(W.cfOn && !(W.cfM >= 1 && W.cfM <= 6)) return 'A meta do Codeforces vai de 1 a 6 problemas por dia.';
+  }
+  if(W.passo === 4){
     const ds = W.disc.filter(d => d.d);
     if(!ds.length) return 'Cadastre pelo menos uma disciplina (a sigla basta).';
     if(new Set(ds.map(d => d.d)).size !== ds.length) return 'Há duas disciplinas com a mesma sigla.';
@@ -191,7 +216,7 @@ function desenhaW(){
 function abreW(){ iniciaW(); desenhaW(); }
 async function salvaW(tour){
   const jogador = {configurado:true, nome:W.nome, nick:W.nick, tags:W.tags, semestre:{ini:W.ini, fim:W.fim},
-    disciplinas:W.disc.filter(d => d.d)};
+    disciplinas:W.disc.filter(d => d.d), habitos:W.habs.filter(Boolean).map(n => ({id:slug(n), n})), cf: W.cfOn ? {handle:W.cfH, meta:W.cfM} : null};
   try { await post('/api/config', {jogador, avaliacoes: avaliacoesTxt()}); await recarrega(); }
   catch(e){ W.err = 'Não salvou: ' + e.message; desenhaW(); return; }
   UI.avatar = W.av; EST.tour = tour ? {} : Object.fromEntries(['l','b','b2','d2','bk','ms','sys'].map(k => [k,1])); salvaUI();
@@ -206,6 +231,9 @@ document.addEventListener('click', e => {
   const av = q('[data-wzav]'); if(av){ coleta(); W.av = av.dataset.wzav; desenhaW(); return; }
   if(q('[data-wzadd]')){ coleta(); const n = W.disc.length; W.disc.push({d:'', n:'', n1:meio(W.ini, W.fim, .45), n2:meio(W.ini, W.fim, .95)}); desenhaW(); const i = document.getElementById('wz-d-' + n); if(i) i.focus(); return; }
   const dl = q('[data-wzdel]'); if(dl){ coleta(); W.disc.splice(+dl.dataset.wzdel, 1); if(!W.disc.length) W.disc.push({d:'', n:'', n1:meio(W.ini, W.fim, .45), n2:meio(W.ini, W.fim, .95)}); desenhaW(); return; }
+  if(q('[data-wzhadd]')){ coleta(); W.habs.push(''); desenhaW(); const i = document.getElementById('wz-h-' + (W.habs.length - 1)); if(i) i.focus(); return; }
+  const hd = q('[data-wzhdel]'); if(hd){ coleta(); W.habs.splice(+hd.dataset.wzhdel, 1); desenhaW(); return; }
+  if(e.target.id === 'wz-cf'){ ['wz-cfh','wz-cfm'].forEach(id => document.getElementById(id).disabled = !e.target.checked); if(e.target.checked) document.getElementById('wz-cfh').focus(); return; }
   const fim = q('[data-wzfim]'); if(fim){ salvaW(fim.dataset.wzfim === '1'); return; }
 });
 document.addEventListener('keydown', e => {
@@ -224,7 +252,8 @@ const TOURS = {
      ['#l-groups','Suas tarefas','Separadas por prazo. O quadrado conclui; o número verde é o XP que ela dá agora. Passe o mouse para <b>adiar</b>, subir a <b>prioridade</b>, <b>editar</b> ou <b>remover</b>. Errou? O aviso embaixo tem "desfazer".'],
      ['#l-golpes','Rende mais agora','As 3 tarefas que mais valem neste momento: prazo perto, missão, fúria, prioridade.', 1],
      ['#l-bosses','Chefões','A barra vermelha é a <b>vida</b> do chefão, e ela só cai com nota. Clique para abrir o quadro e registrar notas.', 1],
-     ['#l-cal','Calendário do Ten','Verde é dia ativo, roxo é dia salvo pelo Zetsu.', 1],
+     ['#l-hab','Hábitos de hoje','Os hábitos aparecem sozinhos todo dia. Marque à mão quando fizer. O <b>Codeforces</b> não se marca: o jogo conta os problemas aceitos no seu handle. Para mudar a lista, use a aba <b>Regras</b>.', 1],
+     ['#l-heat','Constância','Três heatmaps, um quadrado por dia: o <b>Ten</b> (dia ativo ou salvo pelo Zetsu), os <b>hábitos</b> (quanto mais cheio, mais hábitos feitos) e o <b>Codeforces</b> (problemas no dia; a cor forte é a meta batida).', 1],
      ['#l-vale','Quanto vale','O XP de cada tipo e as tags que marcam cada um. Os bônus de ×1,5 se multiplicam.', 1]],
   b:[['#b-tower','A torre','Seu andar na Arena Celestial e a <b>projeção</b> de onde você chega no fim do semestre, no ritmo atual. No topo (251) abre o Torneio contra a Guarda Real.'],
      ['#b-sheet','Ficha e hexágono de Nen','Quanto você treinou cada tipo de Nen. O hexágono mostra o equilíbrio: o lado mais curto vira a missão da semana.'],
@@ -246,7 +275,8 @@ const TOURS = {
   ms:[['#ms-root .cats','Seções da loja','Aparência (fotos, cores, efeitos), mundo pixel, prêmios reais e feitiços.'],
       ['#ms-root .lay7 > div:first-child','Itens','Compre com Jenny. Os itens comprados ficam seus para sempre e podem ser equipados a qualquer hora.'],
       ['#ms-root .side7','Carteira','Quanto você tem, de onde veio e o que está usando agora.']],
-  sys:[['#sys-root','Regras','Tudo o que o jogo considera, num lugar só. A fonte de verdade é o motor.js.']],
+  sys:[['#cfg','Seu jogo','Mude o básico sem refazer nada: nome, nickname, <b>hábitos</b> (adicionar ou remover), o <b>Codeforces</b> e o nome das tags. Clique em salvar.'],
+       ['#sys-root > .card:nth-child(2)','Regras','Daqui para baixo, tudo o que o jogo considera. A fonte de verdade é o motor.js.']],
 };
 let TR = null;
 function tutorial(aba){
@@ -303,6 +333,60 @@ tab = t => {
   abaReal(t);
   if(CTX && !(EST.tour || {})[cur] && TOURS[cur]) setTimeout(() => { if(!TR) tutorial(cur); }, 300);
 };
+/* ---------- aba Regras: "Seu jogo" (nome, nickname, hábitos, Codeforces, tags) ---------- */
+let CF2 = null;   // rascunho; null = sem edição em andamento
+function rascunhoCfg(){
+  const j = CTX.JOG;
+  return CF2 || (CF2 = {nome:j.nome || '', nick:j.nick || '', habs:(j.habitos || []).map(h => h.n), cfOn:!!(j.cf && j.cf.handle), cfH:(j.cf && j.cf.handle) || '', cfM:(j.cf && j.cf.meta) || 3,
+    tags:Object.fromEntries(TIPOS.filter(t => !t.fixo).map(t => [t.k, (j.tags && j.tags[t.k]) || tagPadrao(t.k)])), err:'', novo:''});
+}
+function cfgHTML(){
+  const c = rascunhoCfg();
+  return `<div class="card wz" id="cfg" style="box-shadow:none;border-radius:14px"><h2><span class="c">~/</span>seu jogo · mudanças básicas</h2>
+    <div class="wz-body" style="padding:4px 0 0">
+      <div class="wz-f"><label>Nome<input data-cfg="nome" value="${esc(c.nome)}" maxlength="40"></label><label>Nickname<input data-cfg="nick" value="${esc(c.nick)}" maxlength="20"></label></div>
+      <label>Hábitos (aparecem todo dia na Lista, marcados à mão)</label>
+      <div class="wz-disc">${c.habs.map((h,i) => `<div class="wz-row" style="grid-template-columns:minmax(0,1fr) 34px"><input data-cfgh="${i}" value="${esc(h)}" aria-label="Hábito ${i + 1}" maxlength="40"><button type="button" class="wz-x" data-cfghdel="${i}" aria-label="remover hábito">✕</button></div>`).join('')}
+        <div class="wz-row" style="grid-template-columns:minmax(0,1fr) auto"><input id="cfg-novo" value="${esc(c.novo)}" placeholder="novo hábito, ex.: 30 min de exercício" maxlength="40"><button type="button" class="btn" data-cfghadd>+ adicionar</button></div></div>
+      <div class="wz-f" style="grid-template-columns:auto minmax(0,1fr) 120px;align-items:end">
+        <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font:14px var(--f-ui);color:var(--ink);padding-bottom:9px"><input type="checkbox" data-cfg="cfOn"${c.cfOn ? ' checked' : ''}> Codeforces</label>
+        <label>Handle<input data-cfg="cfH" value="${esc(c.cfH)}" maxlength="24"${c.cfOn ? '' : ' disabled'}></label>
+        <label>Meta/dia<input data-cfg="cfM" inputmode="numeric" value="${c.cfM}"${c.cfOn ? '' : ' disabled'}></label></div>
+      <label>Tags (o nome muda; o significado de cada tipo continua o mesmo)</label>
+      <div class="wz-f" style="grid-template-columns:repeat(4,minmax(0,1fr))">${TIPOS.filter(t => !t.fixo).map(t => `<label style="color:${NC(t.c)}">${t.n}<input data-cfgt="${t.k}" value="${esc(c.tags[t.k])}" maxlength="24"></label>`).join('')}</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn v" data-cfgsave>salvar</button><button type="button" class="btn" data-cfgreset>descartar</button>
+        <span class="sub" style="color:var(--red)" role="alert">${esc(c.err)}</span><span class="sub" style="margin-left:auto">Disciplinas e semestre: <span class="mono">avaliacoes.txt</span>.</span></div>
+    </div></div>`;
+}
+const rSys0 = RENDER.sys;
+RENDER.sys = S => { rSys0(S); document.getElementById('sys-root').insertAdjacentHTML('afterbegin', cfgHTML()); };
+document.addEventListener('input', e => {
+  if(!CF2) return; const t = e.target, d = t.dataset;
+  if(d.cfg) CF2[d.cfg] = t.type === 'checkbox' ? t.checked : t.value;
+  if(d.cfgh !== undefined) CF2.habs[+d.cfgh] = t.value;
+  if(d.cfgt) CF2.tags[d.cfgt] = t.value;
+  if(t.id === 'cfg-novo') CF2.novo = t.value;
+  if(d.cfg === 'cfOn') render();
+});
+document.addEventListener('click', async e => {
+  const q = s => e.target.closest(s);
+  if(q('[data-cfghadd]')){ const c = rascunhoCfg(), n = c.novo.trim(); if(n){ c.habs.push(n); c.novo = ''; } render(); const i = document.getElementById('cfg-novo'); if(i) i.focus(); return; }
+  const hd = q('[data-cfghdel]'); if(hd){ rascunhoCfg().habs.splice(+hd.dataset.cfghdel, 1); render(); return; }
+  if(q('[data-cfgreset]')){ CF2 = null; render(); return; }
+  if(!q('[data-cfgsave]')) return;
+  const c = rascunhoCfg(), habs = c.habs.map(h => h.trim()).filter(Boolean), tags = {};
+  for(const k in c.tags) tags[k] = limpaTag(k, c.tags[k]);
+  const vs = Object.values(tags), nick = c.nick.trim().toLowerCase(), meta = parseInt(c.cfM) || 0;
+  c.err = !c.nome.trim() ? 'Escreva o seu nome.' : !/^[a-z0-9_]{2,20}$/.test(nick) ? 'O nickname precisa de 2 a 20 letras, números ou _.'
+    : new Set(habs.map(slug)).size !== habs.length ? 'Há dois hábitos com o mesmo nome.'
+    : c.cfOn && !HANDLE.test(c.cfH.trim()) ? 'Handle do Codeforces inválido.' : c.cfOn && !(meta >= 1 && meta <= 6) ? 'A meta do Codeforces vai de 1 a 6.'
+    : vs.some(x => !x) || new Set(vs).size !== vs.length ? 'Cada tag precisa de um nome diferente.' : '';
+  if(c.err){ render(); return; }
+  const jogador = {...CTX.JOG, nome:c.nome.trim(), nick, tags, habitos:habs.map(n => ({id:slug(n), n})), cf: c.cfOn ? {handle:c.cfH.trim(), meta} : null};
+  try { await post('/api/config', {jogador}); await recarrega(); } catch(err){ c.err = 'Não salvou: ' + err.message; render(); return; }
+  CF2 = null; render(); toast('Salvo <small>os hábitos novos aparecem na Lista</small>');
+});
+
 window.HJ_GUIA = {abreW, tutorial};
 if(CTX) tab(cur);   // os dados podem ter chegado antes deste script (no modo demonstração chegam): reaplica a aba com o guia
 })();

@@ -1029,6 +1029,26 @@ ul{list-style:none;margin:0;padding:0}
 .bk .det:has(p.cron){max-height:calc(100vh - 100px);overflow:auto}
 
 /* ================= Lista (tela inicial do template) ================= */
+.l-const{margin-top:16px}
+.l-hm{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px 14px;align-items:start}
+.l-hm .nm{font:600 12px var(--f-mono);color:var(--ink);padding-top:2px} .l-hm .nm small{display:block;font:11px var(--f-mono);color:var(--soft);margin-top:2px}
+.l-hg{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);grid-auto-columns:12px;gap:3px;overflow-x:auto;padding:2px}
+.l-hg i{border-radius:3px;background:var(--track)}
+.l-hg i.h1{background:color-mix(in srgb,var(--c) 30%,var(--track))} .l-hg i.h2{background:color-mix(in srgb,var(--c) 55%,var(--track))}
+.l-hg i.h3{background:color-mix(in srgb,var(--c) 80%,var(--track))} .l-hg i.h4{background:var(--c)}
+.l-hg i.z{background:color-mix(in srgb,var(--aura) 45%,var(--track))} .l-hg i.fut{background:none;outline:1px dashed var(--hair);outline-offset:-1px}
+.l-hg i.hj{outline:2px solid var(--ink);outline-offset:0}
+.l-hl{grid-column:2;display:flex;gap:4px;align-items:center;font:10.5px var(--f-mono);color:var(--faint);margin-top:-8px}
+.l-hl i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.l-hb{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--hair)}
+.l-hb:first-child{border-top:0;padding-top:0}
+.l-hb .t{font-size:13.5px;overflow-wrap:anywhere} .l-hb .t small{display:block;font:11px var(--f-mono);color:var(--soft)}
+.l-hb.ok .t{color:var(--faint);text-decoration:line-through} .l-hb.ok .t small{text-decoration:none}
+.l-hb.ok .l-ck{background:var(--c);border-color:var(--c)}
+.l-slots{display:flex;gap:3px;align-items:center} .l-slots i{width:12px;height:12px;border-radius:3px;border:1.5px solid var(--n2)} .l-slots i.on{background:var(--n2)}
+.l-slots i.bn{border-style:dashed;opacity:.7} .l-slots .sep{width:6px}
+.l-auto{grid-column:1/-1;font:11px var(--f-mono);color:var(--faint);margin-top:-3px}
+
 .l-hud{display:grid;grid-template-columns:minmax(0,1.9fr) repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
 .l-hud .card{display:flex;flex-direction:column;justify-content:center;gap:4px}
 .l-me{flex-direction:row!important;align-items:center;gap:14px!important}
@@ -1168,12 +1188,12 @@ details.l-grp summary{cursor:pointer;list-style:none} details.l-grp summary::-we
           <div class="l-prev" id="l-prev"></div>
         </form>
         <div class="l-groups" id="l-groups"></div>
+        <div class="card l-const" id="l-heatc"><h2><span class="c">~/</span>constância · últimas 20 semanas</h2><div id="l-heat"></div></div>
       </div>
       <aside class="l-side">
         <div class="card"><h2><span class="c">~/</span>rende mais agora</h2><div id="l-golpes"></div></div>
         <div class="card"><h2><span class="c">~/</span>chefões · vida = nota que falta<button class="go" data-go="b2" style="margin-left:auto">quadro →</button></h2><div id="l-bosses"></div></div>
-        <div class="card"><h2><span class="c">~/</span>Ten · últimas 5 semanas</h2><div class="l-cal" id="l-cal"></div>
-          <div class="l-leg"><span><i style="background:var(--grn)"></i>ativo</span><span><i style="background:color-mix(in srgb,var(--aura) 55%,transparent)"></i>Zetsu</span><span><i style="background:var(--track)"></i>vazio</span></div></div>
+        <div class="card" id="l-habc"><h2><span class="c">~/</span>hábitos de hoje<button class="go" data-go="sys" style="margin-left:auto">editar →</button></h2><div id="l-hab"></div></div>
         <div class="card"><h2><span class="c">~/</span>quanto vale</h2><table class="l-vale"><tbody id="l-vale"></tbody></table></div>
       </aside>
     </div>
@@ -1680,7 +1700,6 @@ function rL(S){
     ['Atrasadas', 'late', ab.filter(t => !rec(t) && t.due && t.due < HOJE)],
     ['Hoje', '', ab.filter(t => !rec(t) && (t.due === HOJE || t.prova === HOJE))],
     ['Próximos 7 dias', '', ab.filter(t => !rec(t) && t.prova !== HOJE && em(t, 7))],
-    ['Rotina de hoje', '', ab.filter(rec)],
     ['Sem prazo e depois', '', ab.filter(t => !rec(t) && t.prova !== HOJE && (!t.due || dias(HOJE, t.due) > 7))],
   ].filter(g => g[2].length);
   const xpDe2 = new Map(S.xs.map(o => [o.t.raw, o.x]));
@@ -1691,11 +1710,40 @@ function rL(S){
   const ed = document.getElementById('l-ed'); if(ed){ ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); }
   document.getElementById('l-golpes').innerHTML = S.golpes.slice(0,3).map(g => `<div class="l-g"><b>${esc(g.t.txt)}</b><small>${[discOf(g.t), g.t.due ? dueTxt(g.t.due) : '', g.fury ? 'fúria ×1,5' : '', g.bonus ? 'missão ×1,5' : ''].filter(Boolean).join(' · ')}</small><span class="l-xp">+${g.x}</span></div>`).join('') || '<p class="sub" style="margin:0">Nada aberto.</p>';
   document.getElementById('l-bosses').innerHTML = S.bs.map(b => `<button class="l-boss${b.dead ? ' dead' : ''}" data-go="b2" data-bsel="${b.d}"><span class="sig">${esc(b.d)}</span><span class="hp"><i style="width:${pct(b.rest,b.tot)}%"></i></span><span class="st${b.fury ? ' fury' : ''}">${b.dead ? 'DERROTADO' : b.fury ? 'FÚRIA' : Math.round(pct(b.rest,b.tot)) + '%'}</span><span class="nm">${esc(b.n)}${b.need != null && !b.dead ? ` · precisa de ${nf(Math.max(0,b.need))} no resto` : ''}</span></button>`).join('') || '<p class="sub" style="margin:0">Nenhuma disciplina cadastrada. Cadastre na aba Chefões.</p>';
-  const ini = addD(HOJE, -dow(HOJE) - 28); let h = SEM3.map(d => `<span class="h">${d[0].toUpperCase()}</span>`).join('');
-  for(let i = 0; i < 35; i++){ const d = addD(ini, i), st = S.ten.st[d]; h += `<span class="${d > HOJE ? 'fut' : st === 'on' ? 'on' : st === 'z' ? 'z' : ''}${d === HOJE ? ' hj' : ''}" title="${ddmm(d)}"></span>`; }
-  document.getElementById('l-cal').innerHTML = h;
+  habitosL(S);
   document.getElementById('l-vale').innerHTML = [['ent',5,25],['est',0,15],['fac',2,15],['tre',1,10],['vid',3,10],['hab',4,5]].map(([k,c,x]) => `<tr><td><span class="d" style="--c:${NC(c)}"></span>${LTIPOS.find(t => t.k === k).n} <span style="color:var(--faint)">${k === 'fac' ? '+fac.SIGLA' : k === 'vid' ? 'sem tag' : esc(tagDe(k))}</span></td><td>${x}</td></tr>`).join('')
     + '<tr class="x"><td>no prazo · missão · fúria</td><td>×1,5 cada</td></tr>';
+}
+
+/* ---------- hábitos: marcados à mão (recorrentes rec:h-…); o Codeforces só pela API, nunca à mão ---------- */
+const isCF = t => (t.rec || '').startsWith('cf');
+function habitosL(S){
+  const J = CTX.JOG, cf = J.cf && J.cf.handle ? J.cf : null, meta = (cf && cf.meta) || 3;
+  const habs = S.rot.filter(t => !isCF(t)), cfT = S.rot.find(isCF);
+  let h = '';
+  if(cf || cfT){ const n = S.cfHoje, ok = n >= meta || (cfT && cfT.ok);
+    h += `<div class="l-hb${ok ? ' ok' : ''}" style="--c:${NC(1)}"><span class="av" style="--c:${NC(1)};--s:22px">${ic('tra')}</span>
+      <span class="t">Codeforces${cf ? ` <small>${esc(cf.handle)} · ${n} hoje · meta ${meta}</small>` : ''}</span>
+      <span class="l-slots" title="${n} problema(s) hoje">${Array.from({length:meta}, (_,i) => `<i class="${n > i ? 'on' : ''}"></i>`).join('')}<span class="sep"></span>${[0,1,2].map(i => `<i class="bn${n > meta + i ? ' on' : ''}"></i>`).join('')}</span>
+      <span class="l-auto">automático: conta os problemas aceitos no dia (+5 cada, até 6) · bater a meta dá +10</span></div>`; }
+  h += habs.map(t => `<div class="l-hb${t.ok ? ' ok' : ''}" style="--c:${NC(4)}" data-ln="${t.n}"><button class="l-ck" style="--c:${NC(4)}" data-l="${t.ok ? 'reopen' : 'done'}" aria-label="${t.ok ? 'desmarcar' : 'marcar'}: ${esc(t.txt)}">${t.ok ? '✓' : ''}</button>
+      <span class="t">${esc(t.txt)}</span><span class="l-xp">+${xpDe({...t, done:HOJE})}</span></div>`).join('');
+  document.getElementById('l-hab').innerHTML = h || `<p class="sub" style="margin:0">Nenhum hábito. Adicione na aba Regras (digitação, leitura, exercício…) ou ligue o Codeforces.</p>`;
+  /* heatmaps: 20 semanas, uma coluna por semana (seg → dom) */
+  const ini = addD(HOJE, -dow(HOJE) - 7*19), DIAS = Array.from({length:140}, (_,i) => addD(ini, i));
+  const grade = (cor, nivel, tt) => `<div class="l-hg" style="--c:${cor}">${DIAS.map(d => d > HOJE ? '<i class="fut"></i>' : `<i class="${nivel(d)}${d === HOJE ? ' hj' : ''}" title="${ddmm(d)} · ${tt(d)}"></i>`).join('')}</div>`;
+  const nh = Math.max(1, (J.habitos || []).length || new Set(D.feitas.filter(t => isRec(t) && !isCF(t)).map(t => (t.rec||'').split(':')[0])).size);
+  const hd = {}; for(const t of D.feitas) if(isRec(t) && !isCF(t) && t.done) hd[t.done] = (hd[t.done]||0) + 1;
+  const cfd = (D.cf && D.cf.por_dia) || {};
+  const lv = r => r <= 0 ? '' : r < .34 ? 'h1' : r < .67 ? 'h2' : r < 1 ? 'h3' : 'h4';
+  const leg = cor => `<div class="l-hl">menos ${['','h1','h2','h3','h4'].map(c => `<i style="background:${c ? `color-mix(in srgb,${cor} ${({h1:30,h2:55,h3:80,h4:100})[c]}%,var(--track))` : 'var(--track)'}"></i>`).join('')} mais</div>`;
+  let H = `<div class="l-hm">
+    <span class="nm">Ten<small>${S.ten.cur} dias · recorde ${S.ten.max}</small></span>${grade('var(--grn)', d => S.ten.st[d] === 'on' ? 'h4' : S.ten.st[d] === 'z' ? 'z' : '', d => S.ten.st[d] === 'on' ? 'ativo' : S.ten.st[d] === 'z' ? 'Zetsu' : 'vazio')}
+    <span class="nm">Hábitos<small>${nh} por dia</small></span>${grade(NC(4), d => lv((hd[d]||0)/nh), d => `${hd[d]||0} de ${nh}`)}`;
+  if(J.cf && J.cf.handle) H += `<span class="nm">Codeforces<small>${esc(J.cf.handle)} · meta ${meta}</small></span>${grade(NC(1), d => { const n = cfd[d]||0; return !n ? '' : n < meta ? (n < meta/2 ? 'h1' : 'h2') : n === meta ? 'h3' : 'h4'; }, d => `${cfd[d]||0} problema(s)`)}`;
+  H += `</div>${leg('var(--soft)')}`;
+  if(!(J.cf && J.cf.handle)) H += `<p class="sub" style="margin:10px 0 0">Faz Codeforces? Ligue em <button class="go" data-go="sys">Regras →</button> com o seu handle e ganhe o heatmap e o XP automáticos.</p>`;
+  document.getElementById('l-heat').innerHTML = H;
 }
 function toastUndo(html){ document.querySelectorAll('.toast').forEach(t => t.remove()); const to = document.createElement('div'); to.className = 'toast'; to.innerHTML = html + '<button class="l-undo" data-lundo>desfazer</button>'; document.body.appendChild(to); setTimeout(() => to.remove(), 6000); }
 async function acaoL(fn, msg){ try { await fn(); await recarrega(); render(); if(msg) toastUndo(msg); } catch(err){ toast('Não deu: ' + esc(err.message)); } }

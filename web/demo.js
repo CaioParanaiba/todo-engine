@@ -52,7 +52,8 @@ for(let k = -45; k <= -1; k++){
   if(k < -14 && rnd() < .14) continue;                        // alguns dias sem nada no começo; as últimas 2 semanas seguidas (Ten)
   const n = 1 + Math.floor(rnd() * 4);
   for(let i = 0; i < n; i++) done.push(`x ${D(k)} ${D(k-2)} ${POOL[Math.floor(rnd() * POOL.length)]}`);
-  if(rnd() < .7) done.push(`x ${D(k)} ${D(k)} Treino de digitação +rotina rec:digi:${D(k)}`);
+  if(rnd() < .75) done.push(`x ${D(k)} ${D(k)} Treino de digitação +rotina rec:h-a:${D(k)}`);
+  if(rnd() < .5) done.push(`x ${D(k)} ${D(k)} Leitura (20 min) +rotina rec:h-b:${D(k)}`);
   if(rnd() < .6) done.push(`x ${D(k)} ${D(k)} Codeforces 3 questões +rotina rec:cf:${D(k)}`);
 }
 const cfDia = {}; for(let k = -40; k <= 0; k++) if(rnd() < .6) cfDia[D(k)] = 1 + Math.floor(rnd() * 5);
@@ -68,12 +69,13 @@ let todo = [
   `${D(-1)} Ler 20 páginas do livro de algoritmos @estudo`,
   `${D(-3)} Renovar a carteirinha do RU due:${D(9)}`,
   `(A) ${HOJE} Codeforces 3 questões +rotina rec:cf:${HOJE}`,
-  `(B) ${HOJE} Treino de digitação +rotina rec:digi:${HOJE}`,
+  `(B) ${HOJE} Treino de digitação +rotina rec:h-a:${HOJE}`,
+  `${HOJE} Leitura (20 min) +rotina rec:h-b:${HOJE}`,
   `x ${HOJE} ${D(-2)} Leitura: arquivos e streams em Java +fac.POO @estudo`,
   `x ${HOJE} ${D(-1)} Exercícios de séries de Taylor +fac.CALC2 @estudo`,
   '',
 ];
-let jogador = {configurado:false, tags:{}};   // começa sem configurar: a página abre o assistente da primeira entrada
+let jogador = {configurado:false, tags:{}, habitos:[{id:'h-a', n:'Treino de digitação'}, {id:'h-b', n:'Leitura (20 min)'}], cf:{handle:'exemplo', meta:3}};   // começa sem configurar: a página abre o assistente da primeira entrada
 let notas = NOTAS, ajustes = '', estado = {spent:2500, own:['pal-simples','pal-gon'], equip:{theme:'simples'}, bought:{}, resg:[]};
 const narradas = [{no:'100', tipo:'semana', periodo:'semana passada', titulo:'O primeiro andar de verdade', texto:'Exemplo de carta narrada (com IA, opcional).', cronica:'Quem disse que a Arena se sobe de uma vez? Gon subiu de degrau em degrau, uma lista de cada vez.', escrita:D(-2), ic:'scroll'}];
 const undo = [];
@@ -93,6 +95,10 @@ function transformar(l, a, v){
   throw new Error('ação desconhecida');
 }
 function rota(url, body){
+  if(url === '/api/jogo'){
+    const meta = jogador.cf && jogador.cf.meta || 3, i = todo.findIndex(l => !DONE_RE.test(l) && l.includes(`rec:cf:${HOJE}`));
+    if(i >= 0 && (cfDia[HOJE] || 0) >= meta) todo[i] = `x ${HOJE} ` + todo[i].replace(PRI, '');
+  }
   if(url === '/api/jogo') return {ok:true, hoje:HOJE, todo, done, avaliacoes:AVALIACOES, notas, ajustes, estado, cf:{por_dia:cfDia}, avatares:Object.keys(window.HJ_AV || {}), narradas, jogador};
   if(url === '/api/act'){
     const i = todo.indexOf(body.raw); if(i < 0) throw new Error('a linha mudou no todo.txt; recarregue');
@@ -105,12 +111,21 @@ function rota(url, body){
     return {ok:true}; }
   if(url === '/api/config'){
     /* o assistente mandou o jogador e o avaliacoes.txt: as tarefas de exemplo passam a usar as disciplinas e as tags dele */
-    const j = body.jogador || {}, novas = (j.disciplinas || []).map(d => d.d), velhas = ['CALC2','ED1','BD','POO','ARQ'];
+    const j = body.jogador || {}, antigos = (jogador.habitos || []).map(h => h.id), novas = (j.disciplinas || []).map(d => d.d), velhas = ['CALC2','ED1','BD','POO','ARQ'];
     const troca = {'@entrega': j.tags && j.tags.ent, '@estudo': j.tags && j.tags.est, '+treino': j.tags && j.tags.tre, '+rotina': j.tags && j.tags.hab};
     const ajusta = l => l.replace(/\+fac\.(\w+)/g, (m, d) => { const i = velhas.indexOf(d); return i >= 0 && novas.length ? '+fac.' + novas[i % novas.length] : m; })
       .replace(/(^|\s)(@entrega|@estudo|\+treino|\+rotina)(?=\s|$)/g, (m, sp, tg) => sp + (troca[tg] || tg));
-    todo = todo.map(ajusta); done.splice(0, done.length, ...done.map(ajusta));
-    jogador = JSON.parse(JSON.stringify(j)); AVALIACOES = String(body.avaliacoes || ''); notas = '';
+    /* hábitos: o histórico de exemplo segue a ordem (o 1º antigo vira o 1º novo); os de hoje são recriados */
+    const habs = j.habitos || [], hab = (j.tags && j.tags.hab) || '+rotina';
+    const trocaH = l => l.replace(/^(x \S+ \S+ )(.*?) \S+ rec:([\w-]+):(\S+)$/, (m, pre, txt, id, d) => { if(id.startsWith('cf')) return m; const k = antigos.indexOf(id); const h = habs[k]; return h ? `${pre}${h.n} ${hab} rec:${h.id}:${d}` : ''; });
+    todo = todo.map(ajusta); done.splice(0, done.length, ...done.map(ajusta).map(trocaH).filter(Boolean));
+    const feitosHoje = new Set(todo.filter(l => DONE_RE.test(l)).map(l => (l.match(/rec:([\w-]+):/) || [])[1]).filter(Boolean));
+    todo = todo.filter(l => !/rec:h-[\w-]+:/.test(l) || !l.includes(HOJE));
+    for(const h of habs) todo.splice(todo.length - 1, 0, (feitosHoje.has(h.id) ? `x ${HOJE} ` : '') + `${HOJE} ${h.n} ${hab} rec:${h.id}:${HOJE}`);
+    if(!(j.cf && j.cf.handle)) todo = todo.filter(l => DONE_RE.test(l) || !l.includes(`rec:cf:${HOJE}`));
+    else if(!todo.some(l => l.includes(`rec:cf:${HOJE}`))) todo.splice(todo.length - 1, 0, `(A) ${HOJE} Codeforces ${j.cf.meta} questões ${hab} rec:cf:${HOJE}`);
+    jogador = JSON.parse(JSON.stringify(j));
+    if(body.avaliacoes != null){ AVALIACOES = String(body.avaliacoes); notas = ''; }
     return {ok:true};
   }
   if(url === '/api/jogo/nota'){ notas += `\n${HOJE} | ${body.disc} | ${body.aval} | ${String(body.nota).replace('.', ',')}${body.parcial ? ' | parcial' : ''}`; return {ok:true}; }

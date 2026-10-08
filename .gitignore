@@ -3,3 +3,7 @@ dados/
 *.txt.tmp
 __pycache__/
 .DS_Store
+# imagens de personagens (direitos dos autores): não vão para o repositório público; o host distribui
+web/a/
+# gerado por ferramentas/standalone.py (embute as imagens)
+docs/prototipo.html

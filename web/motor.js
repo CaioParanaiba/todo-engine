@@ -94,7 +94,7 @@ const COS = [
   {id:'px-ms-papel', cat:'px', n:'Masadora · Papel', d:'Pele da loja pixel.', p:1500, need:'px-unlock', skin:['p3b','papel'], sw:['#EFE6D2','#D8C7A3','#FFFBF1','#B4521E','#2B1D14']},
 ];
 /* fotos de perfil: cada imagem de jogo/avatares/ vira um item da loja. Preço padrão 1.000 J; estas são grátis. */
-const AV_GRATIS = ['logo'];
+const AV_GRATIS = ['logo','hunter-x-hunter-logo-png-image','killua-png'];
 const avNome = f => f.replace(/-png(-d)?$/,'').replace(/^\d+-\d+_/,'').replace(/-png-image$/,'').replace(/[-_]+/g,' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
 /* tema completo = pacote: comprar o tema dá cada peça (paleta, textura, efeitos) para usar e misturar separado */
 function expandeOwn(own){ for(const it of COS) if(it.parts && own.has(it.id)) it.parts.forEach(p => own.add(p)); return own; }

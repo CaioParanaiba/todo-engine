@@ -13,7 +13,7 @@ let semente = 7;
 const rnd = () => (semente = (semente * 16807) % 2147483647) / 2147483647;
 
 /* plano de avaliação de exemplo: 5 disciplinas = 5 chefões do Genei Ryodan */
-const AVALIACOES = `# Exemplo (modo demonstração). Formato no cabeçalho do avaliacoes.txt de verdade.
+let AVALIACOES = `# Exemplo (modo demonstração). Formato no cabeçalho do avaliacoes.txt de verdade.
 temporada | Demo | ${D(-60)} | ${D(70)} | ${D(120)}
 
 [CALC2] Uvogin | bullet | Força bruta, como uma lista de integrais.
@@ -73,6 +73,7 @@ let todo = [
   `x ${HOJE} ${D(-1)} Exercícios de séries de Taylor +fac.CALC2 @estudo`,
   '',
 ];
+let jogador = {configurado:false, tags:{}};   // começa sem configurar: a página abre o assistente da primeira entrada
 let notas = NOTAS, ajustes = '', estado = {spent:2500, own:['pal-simples','pal-gon'], equip:{theme:'simples'}, bought:{}, resg:[]};
 const narradas = [{no:'100', tipo:'semana', periodo:'semana passada', titulo:'O primeiro andar de verdade', texto:'Exemplo de carta narrada (com IA, opcional).', cronica:'Quem disse que a Arena se sobe de uma vez? Gon subiu de degrau em degrau, uma lista de cada vez.', escrita:D(-2), ic:'scroll'}];
 const undo = [];
@@ -92,8 +93,7 @@ function transformar(l, a, v){
   throw new Error('ação desconhecida');
 }
 function rota(url, body){
-  if(url === '/api/jogo') return {ok:true, hoje:HOJE, todo, done, avaliacoes:AVALIACOES, notas, ajustes, estado, cf:{por_dia:cfDia}, avatares:[], narradas,
-    jogador:{nome:'Gon (exemplo)', tags:{}}};
+  if(url === '/api/jogo') return {ok:true, hoje:HOJE, todo, done, avaliacoes:AVALIACOES, notas, ajustes, estado, cf:{por_dia:cfDia}, avatares:Object.keys(window.HJ_AV || {}), narradas, jogador};
   if(url === '/api/act'){
     const i = todo.indexOf(body.raw); if(i < 0) throw new Error('a linha mudou no todo.txt; recarregue');
     if(body.action === 'delete'){ const antes = todo.splice(i, 1)[0]; undo.push({from:antes, to:null}); return {ok:true}; }
@@ -103,6 +103,16 @@ function rota(url, body){
   if(url === '/api/undo'){ const op = undo.pop(); if(!op) throw new Error('nada para desfazer');
     if(op.to === null) todo.splice(todo.length - 1, 0, op.from); else { const i = todo.indexOf(op.to); if(i < 0) throw new Error('a linha mudou'); if(op.from === null) todo.splice(i, 1); else todo[i] = op.from; }
     return {ok:true}; }
+  if(url === '/api/config'){
+    /* o assistente mandou o jogador e o avaliacoes.txt: as tarefas de exemplo passam a usar as disciplinas e as tags dele */
+    const j = body.jogador || {}, novas = (j.disciplinas || []).map(d => d.d), velhas = ['CALC2','ED1','BD','POO','ARQ'];
+    const troca = {'@entrega': j.tags && j.tags.ent, '@estudo': j.tags && j.tags.est, '+treino': j.tags && j.tags.tre, '+rotina': j.tags && j.tags.hab};
+    const ajusta = l => l.replace(/\+fac\.(\w+)/g, (m, d) => { const i = velhas.indexOf(d); return i >= 0 && novas.length ? '+fac.' + novas[i % novas.length] : m; })
+      .replace(/(^|\s)(@entrega|@estudo|\+treino|\+rotina)(?=\s|$)/g, (m, sp, tg) => sp + (troca[tg] || tg));
+    todo = todo.map(ajusta); done.splice(0, done.length, ...done.map(ajusta));
+    jogador = JSON.parse(JSON.stringify(j)); AVALIACOES = String(body.avaliacoes || ''); notas = '';
+    return {ok:true};
+  }
   if(url === '/api/jogo/nota'){ notas += `\n${HOJE} | ${body.disc} | ${body.aval} | ${String(body.nota).replace('.', ',')}${body.parcial ? ' | parcial' : ''}`; return {ok:true}; }
   if(url === '/api/jogo/estado'){ estado = JSON.parse(JSON.stringify(body.estado)); return {ok:true}; }
   if(url === '/api/jogo/ajuste'){ ajustes += `\n${HOJE} 12:00 | pendente | ${body.texto}`; return {ok:true}; }

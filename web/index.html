@@ -1235,6 +1235,7 @@ const UI = {bsel:'', bk:'slot', bksel:'001', page:0, sel:'001', mapsel:'', px:'m
 try { UI.fxOff = localStorage.getItem('hj-fxoff') === '1'; } catch(e){}
 const PXSKINS = {map:[['dia','Dia'],['tarde','Tarde'],['noite','Noite']], p1:[['lilas','Lilás'],['gameboy','Game Boy'],['noite','Noite']], p3:[['couro','Couro'],['joy','Joystation'],['noite','Noite']], p3b:[['madeira','Madeira'],['neon','Neon'],['papel','Papel']]};
 const THEMES = [['simples','Simples'],['painel','Painel'],['leorio','Leorio'],['claro','Claro'],['gon','Gon'],['biscuit','Biscuit'],['kurapika','Kurapika'],['netero','Netero'],['killua','Killua'],['hisoka','Hisoka'],['meruem','Meruem']];
+const avSrc = f => (window.HJ_AV && window.HJ_AV[f]) || 'a/' + f + '.png';   // no protótipo de arquivo único as fotos vêm embutidas
 const LOGO = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%231D2027' stroke='%23CDB384' stroke-width='3'/%3E%3Cpath d='M32 9l6 15 16 1-12 10 4 16-14-9-14 9 4-16-12-10 16-1z' fill='none' stroke='%23CDB384' stroke-width='2.5' stroke-linejoin='round'/%3E%3Ctext x='32' y='40' text-anchor='middle' font-family='Arial Black,Arial' font-weight='900' font-size='15' fill='%23E2E5EB'%3EH%3C/text%3E%3C/svg%3E";   // emblema do template (as fotos de perfil ficam em a/, servidas pelo servidor)
 const discOf = t => HJx.discOf(t, CTX);
 const andar = xp => HJx.andar(xp, R.dif), custo = n => HJx.custo(n, R.dif), xpAte = n => HJx.xpAte(n, R.dif);
@@ -1282,7 +1283,7 @@ const ic = n => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`
 const NC = i => `var(--n${i+1})`;
 const avNen = (i,s) => `<span class="av" style="--c:${NC(i)}${s?';--s:'+s+'px':''}" title="${esc(NEN[i].n)}">${ic(NEN[i].k)}</span>`;
 const avTask = (t,s) => avNen(nenDe(t), s);
-const avMe = s => (UI.avatar === 'logo' || !CTX.AVATARES.includes(UI.avatar)) ? `<span class="av me logo"${s?` style="--s:${s}px"`:''}><img src="${LOGO}" alt=""></span>` : `<span class="av me pic" style="background-image:url(a/${UI.avatar}.png)${s?';--s:'+s+'px':''}"></span>`;
+const avMe = s => (UI.avatar === 'logo' || !CTX.AVATARES.includes(UI.avatar)) ? `<span class="av me logo"${s?` style="--s:${s}px"`:''}><img src="${LOGO}" alt=""></span>` : `<span class="av me pic" style="background-image:url(${avSrc(UI.avatar)})${s?';--s:'+s+'px':''}"></span>`;
 const plate = () => `<span class="plate"><img src="${LOGO}" alt="Associação Hunter"></span>`;
 const avB = (b,s) => `<span class="av bs${b.st==='dead'?' dead':b.st==='hurt'?' hurt':''}"${s?` style="--s:${s}px"`:''} title="${b.n} · ${b.d}">${ic(b.ic)}</span>`;
 const avG = (g,s) => `<span class="av guard"${s?` style="--s:${s}px"`:''} title="${g.n}: ${g.r}">${ic(g.ic)}</span>`;
@@ -1377,10 +1378,10 @@ function rB2(S){
         <h4>tarefas pendentes (${b.open.length})</h4>${b.open.length ? b.open.map(t => `<button class="tk" data-hit="${t.n}">${avTask(t,22)}<span class="t">${esc(t.txt)}</span><span class="v" style="color:var(--volt)">+${xpDe({...t,done:HOJE})}</span></button>`).join('') : '<p class="sub">nada pendente</p>'}
         <div class="drop">${ic('card')} preparação completa antes da data: 1 feitiço à escolha</div></div></div>`).join('');
   document.getElementById('b2-inbox').innerHTML = `<h2><span class="c">~/</span>caixa de entrada · plano de ensino</h2>
-    <label class="sub" for="inbox-txt">Escreva a mudança como falaria. O Claude das 12h/18h lê, ajusta as avaliações e responde aqui.</label>
+    <label class="sub" for="inbox-txt">Anote mudanças do plano de ensino (data, peso, avaliação nova). Ficam em ajustes.txt: aplique no avaliacoes.txt ou peça a uma IA (veja IA.md).</label>
     <textarea id="inbox-txt" placeholder="ex.: ARQ1: a P2 virou dois trabalhos de 15"></textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span class="sub mono">grava em ajustes.txt</span><button class="btn v" data-inbox>enviar</button></div>
-    <div class="log">${INBOX.slice().reverse().map(m => `<div class="${m.st==='ok'?'':'p'}"><small>${m.d} · ${m.st==='ok'?'aplicado':'aguardando o Claude'}</small>${esc(m.t)}${m.r?`<small>→ ${esc(m.r)}</small>`:''}</div>`).join('')}</div>`;
+    <div class="log">${INBOX.slice().reverse().map(m => `<div class="${m.st==='ok'?'':'p'}"><small>${m.d} · ${m.st==='ok'?'aplicado':'pendente'}</small>${esc(m.t)}${m.r?`<small>→ ${esc(m.r)}</small>`:''}</div>`).join('')}</div>`;
   document.getElementById('b2-leg').innerHTML = `<h2><span class="c">~/</span>como ler</h2><p style="margin:0;font-size:13.5px">A barra é a <b>vida</b> do chefão e só cai com nota: cada avaliação tira peso × nota. Passou da linha verde (média 6), ele cai. As tarefas enchem a <b>preparação</b> e dão XP. Preparação completa antes da data vale um feitiço, seja qual for a nota.</p>${SIM.size||Object.keys(NOTAS).length?'<button class="reset" data-reset style="margin-top:10px">desfazer simulação</button>':''}`;
 }
 /* ---------- D2 ---------- */
@@ -1461,7 +1462,7 @@ function equipa(it){
   UI.anim = 'calma';
 }
 function pvHTML(it){
-  if(it.cat === 'avatar') return `<div class="pv av8" style="${palStyle(UI.theme)}"><span class="plate" style="width:76px;height:76px;background:${it.eq.avatar === 'logo' ? '#F6F3EC' : 'transparent'};box-shadow:none"><img src="${it.eq.avatar === 'logo' ? LOGO : 'a/' + it.eq.avatar + '.png'}" alt="" style="width:100%"></span></div>`;
+  if(it.cat === 'avatar') return `<div class="pv av8" style="${palStyle(UI.theme)}"><span class="plate" style="width:76px;height:76px;background:${it.eq.avatar === 'logo' ? '#F6F3EC' : 'transparent'};box-shadow:none"><img src="${it.eq.avatar === 'logo' ? LOGO : avSrc(it.eq.avatar)}" alt="" style="width:100%"></span></div>`;
   if(it.sw) return `<div class="pv sw">${it.sw.map(c => `<i style="background:${c}"></i>`).join('')}</div>`;
   if(it.lend) return `<div class="pv leg">?</div>`;
   const pal = it.eq?.theme || UI.theme, fx = it.fx ? [it.fx] : (it.fxs || []);
@@ -1798,7 +1799,7 @@ document.addEventListener('click', async e => {
     toast(`${spell(ef).n} usado <small>${msg}</small>`); render(); return; }
   const fo = q('[data-fxoff]'); if(fo){ UI.fxOff = fo.dataset.fxoff === '1'; try { localStorage.setItem('hj-fxoff', UI.fxOff ? '1' : '0'); } catch(err){} render(); return; }
   if(q('[data-inbox]')){ const el = document.getElementById('inbox-txt'), t = el.value.trim(); if(!t){ toast('Escreva a mudança primeiro'); return; }
-    try { await post('/api/jogo/ajuste', {texto:t}); await recarrega(); toast('Enviado <small>o Claude das 12h/18h vai ler</small>'); render(); } catch(err){ toast('Não enviou: ' + esc(err.message)); } return; }
+    try { await post('/api/jogo/ajuste', {texto:t}); await recarrega(); toast('Anotado <small>em ajustes.txt</small>'); render(); } catch(err){ toast('Não enviou: ' + esc(err.message)); } return; }
   const nb = q('[data-nota]');
   if(nb){
     const v = HJx.numBR(document.getElementById(nb.dataset.in).value || '');
@@ -1830,4 +1831,5 @@ recarrega().then(() => tab((location.hash||'').slice(1))).catch(err => {
   document.getElementById('v-l').innerHTML = `<div class="card" style="max-width:620px"><h2><span class="c">~/</span>jogo indisponível</h2><p>Não consegui ler os dados (${esc(err.message)}). Abra pelo servidor do jogo: rode <span class="mono">python3 servidor.py</span> e abra o endereço que ele mostrar.</p></div>`;
 });
 </script>
+<script src="guia.js"></script>
 </body></html>

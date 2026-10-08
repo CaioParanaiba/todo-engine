@@ -118,14 +118,15 @@ function rota(url, body){
     /* hábitos: o histórico de exemplo segue a ordem (o 1º antigo vira o 1º novo); os de hoje são recriados */
     const habs = j.habitos || [], hab = (j.tags && j.tags.hab) || '+rotina';
     const trocaH = l => l.replace(/^(x \S+ \S+ )(.*?) \S+ rec:([\w-]+):(\S+)$/, (m, pre, txt, id, d) => { if(id.startsWith('cf')) return m; const k = antigos.indexOf(id); const h = habs[k]; return h ? `${pre}${h.n} ${hab} rec:${h.id}:${d}` : ''; });
-    todo = todo.map(ajusta); done.splice(0, done.length, ...done.map(ajusta).map(trocaH).filter(Boolean));
+    const primeira = !jogador.configurado;   // só na primeira configuração as tarefas de exemplo trocam de disciplina
+    todo = todo.map(l => primeira ? ajusta(l) : l); done.splice(0, done.length, ...done.map(l => primeira ? ajusta(l) : l).map(trocaH).filter(Boolean));
     const feitosHoje = new Set(todo.filter(l => DONE_RE.test(l)).map(l => (l.match(/rec:([\w-]+):/) || [])[1]).filter(Boolean));
     todo = todo.filter(l => !/rec:h-[\w-]+:/.test(l) || !l.includes(HOJE));
     for(const h of habs) todo.splice(todo.length - 1, 0, (feitosHoje.has(h.id) ? `x ${HOJE} ` : '') + `${HOJE} ${h.n} ${hab} rec:${h.id}:${HOJE}`);
     if(!(j.cf && j.cf.handle)) todo = todo.filter(l => DONE_RE.test(l) || !l.includes(`rec:cf:${HOJE}`));
     else if(!todo.some(l => l.includes(`rec:cf:${HOJE}`))) todo.splice(todo.length - 1, 0, `(A) ${HOJE} Codeforces ${j.cf.meta} questões ${hab} rec:cf:${HOJE}`);
+    if(body.avaliacoes != null){ AVALIACOES = String(body.avaliacoes); if(primeira) notas = ''; }
     jogador = JSON.parse(JSON.stringify(j));
-    if(body.avaliacoes != null){ AVALIACOES = String(body.avaliacoes); notas = ''; }
     return {ok:true};
   }
   if(url === '/api/jogo/nota'){ notas += `\n${HOJE} | ${body.disc} | ${body.aval} | ${String(body.nota).replace('.', ',')}${body.parcial ? ' | parcial' : ''}`; return {ok:true}; }

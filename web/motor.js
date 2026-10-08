@@ -192,7 +192,7 @@ function carregar(api){
   const hoje = api.hoje || new Date().toISOString().slice(0,10);
   return {D:{feitas, abertas, cf:api.cf||null}, HOJE:hoje, TEMP: av.temp || {nome:'Temporada', ini:addD(hoje,-60), fim:addD(hoje,60), volta:addD(hoje,120)},
     BOSSES: av.bosses, AVAL: av.aval, NOTAS: nt.NOTAS, PARC: nt.PARC, NDATA: nt.NDATA, INBOX: parseAjustes(api.ajustes), EST: est, AVATARES: api.avatares||[],
-    NARRADAS: Array.isArray(api.narradas) ? api.narradas : [], JOG: Object.assign({nome:'Hunter'}, api.jogador||{}), dif:'normal'};
+    NARRADAS: Array.isArray(api.narradas) ? api.narradas : [], JOG: Object.assign({nome:'Hunter'}, api.jogador||{}), AV_TXT: String(api.avaliacoes||''), dif:'normal'};
 }
 
 /* ---------- regras ---------- */

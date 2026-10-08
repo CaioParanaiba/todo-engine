@@ -68,9 +68,27 @@ const RYODAN = [['Chrollo','crown','O líder: rouba a técnica dos outros.'],['F
   ['Nobunaga','bullet','Um corte só, se você entrar no alcance.'],['Uvogin','horn','Força bruta: só cai com treino.'],['Shalnark','antenna','Controla tudo por antenas.'],
   ['Shizuku','vacuum','Aspira qualquer coisa e esquece o resto.'],['Kortopi','copy','Copia tudo, mas a cópia some.'],['Franklin','bullet','Rajada sem fim de exercícios.'],
   ['Phinks','wing','Cada giro do braço bate mais forte.'],['Pakunoda','spider','Lê as memórias: sabe o que você não estudou.'],['Bonolenov','cat','O som da batalha.']];
-const W = {passo:0, nome:'', nick:'', av:'logo', tags:{}, habs:[], cfOn:false, cfH:'', cfM:3, disc:[], ini:'', fim:'', p1:40, p2:60, err:''};
+const W = {editar:false, passo:0, nome:'', nick:'', av:'logo', tags:{}, habs:[], cfOn:false, cfH:'', cfM:3, disc:[], ini:'', fim:'', p1:40, p2:60, err:''};
 const slug = n => 'h-' + (norm(n).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 20) || 'habito');
 const HANDLE = /^[A-Za-z0-9_.-]{3,24}$/;
+function chefaoDe(d, i){
+  const b = (BOSSES || []).find(b => b.d === d.d);
+  if(b && W.editar) return [b.n, b.ic, b.why];
+  const usados = new Set((W.editar ? BOSSES : []).map(b => b.n)), livres = RYODAN.filter(r => !usados.has(r[0]));
+  const novos = W.disc.slice(0, i + 1).filter(x => !(W.editar && (BOSSES || []).some(b => b.d === x.d))).length - 1;
+  return livres[Math.max(0, novos) % livres.length] || RYODAN[i % RYODAN.length];
+}
+/* blocos do avaliacoes.txt por disciplina: do "# comentário" logo acima do [SIGLA] até o próximo bloco */
+function blocos(txt){
+  const L = String(txt||'').split('\n'), out = {}; let cur = null, buf = [];
+  const fecha = () => { if(cur) out[cur] = buf.join('\n'); };
+  for(let i = 0; i < L.length; i++){
+    const m = L[i].trim().match(/^\[(\w+)\]/);
+    if(m){ let k = buf.length; while(k > 0 && buf[k-1].trim().startsWith('#')) k--; const com = cur ? buf.splice(k) : []; fecha(); cur = m[1].toUpperCase(); buf = com.concat(L[i]); continue; }
+    if(cur) buf.push(L[i]);
+  }
+  fecha(); return out;
+}
 const tagPadrao = k => { const T = HJx.TAGS[k]; return !T ? '' : T.ctx[0] ? '@' + T.ctx[0] : T.proj[0] ? '+' + T.proj[0] : ''; };
 const limpaTag = (k, v) => { const pre = TIPOS.find(t => t.k === k).pre; v = String(v||'').trim().toLowerCase().replace(/\s+/g, ''); if(!v) return ''; if(v[0] !== '@' && v[0] !== '+') v = pre + v; return v.length > 1 ? v : ''; };
 const iso = d => d.toISOString().slice(0,10);
@@ -88,9 +106,10 @@ function iniciaW(){
   W.cfOn = !!(j.cf && j.cf.handle); W.cfH = (j.cf && j.cf.handle) || ''; W.cfM = (j.cf && j.cf.meta) || 3;
   W.disc = (j.disciplinas && j.disciplinas.length ? j.disciplinas : [{d:'', n:''}, {d:'', n:''}]).map(d => ({...d, n1: d.n1 || meio(ini, fim, .45), n2: d.n2 || meio(ini, fim, .95)}));
 }
-const PASSOS = ['Quem é você', 'Como o jogo funciona', 'Tipos de tarefa', 'Hábitos', 'Disciplinas', 'Pronto'];
+const PASSOS_1 = ['Quem é você', 'Como o jogo funciona', 'Tipos de tarefa', 'Hábitos', 'Disciplinas', 'Pronto'];
+let PASSOS = PASSOS_1;
 function passoHTML(){
-  const p = W.passo;
+  const p = W.editar ? 4 : W.passo;
   if(p === 0) return `<h3>Bem-vindo à Associação Hunter</h3>
     <p>O Hunter.todo transforma a sua lista de tarefas num jogo. Você continua anotando e concluindo tarefas; o jogo calcula o resto: andares, chefões, sequência de dias e moedas para a loja.</p>
     <div class="wz-f">
@@ -137,13 +156,14 @@ function passoHTML(){
       <label>Peso da N1<input id="wz-p1" inputmode="numeric" value="${W.p1}"></label>
       <label>Peso da N2<input id="wz-p2" inputmode="numeric" value="${W.p2}"></label>
     </div>
-    <div class="wz-disc">${W.disc.map((d,i) => { const r = RYODAN[i % RYODAN.length]; return `<div class="wz-row">
-      <label>Sigla<input id="wz-d-${i}" value="${esc(d.d)}" placeholder="CALC2" maxlength="8"></label>
+    <div class="wz-disc">${W.disc.map((d,i) => { const r = chefaoDe(d, i); return `<div class="wz-row">
+      <label>Sigla<input id="wz-d-${i}" value="${esc(d.d)}" placeholder="CALC2" maxlength="8"${d.det ? ' readonly title="disciplina com plano detalhado: a sigla fica"' : ''}></label>
       <label>Nome<input id="wz-n-${i}" value="${esc(d.n)}" placeholder="Cálculo II" maxlength="50"></label>
-      <label>Data da N1<input type="date" id="wz-n1-${i}" value="${d.n1}"></label>
-      <label>Data da N2<input type="date" id="wz-n2-${i}" value="${d.n2}"></label>
+      ${d.det ? `<span class="sub" style="grid-column:span 2;align-self:center">plano detalhado (${d.det} avaliações): datas e pesos ficam no <span class="mono">avaliacoes.txt</span></span>`
+        : `<label>Data da N1<input type="date" id="wz-n1-${i}" value="${d.n1}"></label>
+      <label>Data da N2<input type="date" id="wz-n2-${i}" value="${d.n2}"></label>`}
       <button type="button" class="wz-x" data-wzdel="${i}" title="remover" aria-label="remover disciplina">✕</button>
-      <span class="boss">chefão: ${r[0]} · ${r[2]}</span></div>`; }).join('')}</div>
+      <span class="boss">chefão: ${r[0]} · ${esc(r[2])}${d.notas ? ` · <b style="color:var(--amb)">${d.notas} nota(s) registrada(s)</b>` : ''}</span></div>`; }).join('')}</div>
     <div><button type="button" class="btn" data-wzadd>+ disciplina</button></div>
     <p style="font-size:13px">A sigla vira a tag da disciplina: <span class="mono">+fac.SIGLA</span>. Não sabe a data da prova ainda? Deixe a sugerida e ajuste quando souber.</p>`;
   return `<h3>Tudo pronto, ${esc(W.nome.split(' ')[0] || 'Hunter')}</h3>
@@ -152,41 +172,42 @@ function passoHTML(){
 }
 function coleta(){
   const v = id => { const e = document.getElementById(id); return e ? e.value : null; };
-  if(W.passo === 0){ W.nome = (v('wz-nome')||'').trim(); W.nick = (v('wz-nick')||'').trim().toLowerCase(); }
-  if(W.passo === 2) for(const t of TIPOS) if(!t.fixo) W.tags[t.k] = limpaTag(t.k, v('wz-tag-' + t.k));
-  if(W.passo === 3){
+  if(W.editar){}
+  else if(W.passo === 0){ W.nome = (v('wz-nome')||'').trim(); W.nick = (v('wz-nick')||'').trim().toLowerCase(); }
+  if(!W.editar && W.passo === 2) for(const t of TIPOS) if(!t.fixo) W.tags[t.k] = limpaTag(t.k, v('wz-tag-' + t.k));
+  if(!W.editar && W.passo === 3){
     W.habs = W.habs.map((h,i) => (v('wz-h-' + i) || '').trim());
     const cf = document.getElementById('wz-cf'); W.cfOn = !!(cf && cf.checked); W.cfH = (v('wz-cfh') || '').trim(); W.cfM = parseInt(v('wz-cfm')) || 0;
   }
-  if(W.passo === 4){
+  if(W.passo === 4 || W.editar){
     W.ini = v('wz-ini') || W.ini; W.fim = v('wz-fim') || W.fim; W.p1 = +v('wz-p1') || 0; W.p2 = +v('wz-p2') || 0;
-    W.disc = W.disc.map((d,i) => ({d:(v('wz-d-'+i)||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,''), n:(v('wz-n-'+i)||'').trim(), n1:v('wz-n1-'+i)||d.n1, n2:v('wz-n2-'+i)||d.n2}));
+    W.disc = W.disc.map((d,i) => ({...d, d:(v('wz-d-'+i)||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,''), n:(v('wz-n-'+i)||'').trim(), n1:v('wz-n1-'+i)||d.n1, n2:v('wz-n2-'+i)||d.n2}));
   }
 }
 function valida(){
-  if(W.passo === 0){
+  if(!W.editar && W.passo === 0){
     if(!W.nome) return 'Escreva o seu nome.';
     if(!/^[a-z0-9_]{2,20}$/.test(W.nick)) return 'O nickname precisa de 2 a 20 letras, números ou _.';
   }
-  if(W.passo === 2){
+  if(!W.editar && W.passo === 2){
     const vs = Object.values(W.tags);
     if(vs.some(x => !x)) return 'Toda tag precisa de um nome.';
     if(new Set(vs).size !== vs.length) return 'Duas tags estão com o mesmo nome.';
     if(vs.some(x => /^\+fac\./.test(x))) return '+fac. é reservado para as disciplinas.';
   }
-  if(W.passo === 3){
+  if(!W.editar && W.passo === 3){
     const hs = W.habs.filter(Boolean);
     if(new Set(hs.map(slug)).size !== hs.length) return 'Há dois hábitos com o mesmo nome.';
     if(W.cfOn && !HANDLE.test(W.cfH)) return 'Escreva o seu handle do Codeforces (3 a 24 letras, números, _ . -).';
     if(W.cfOn && !(W.cfM >= 1 && W.cfM <= 6)) return 'A meta do Codeforces vai de 1 a 6 problemas por dia.';
   }
-  if(W.passo === 4){
+  if(W.passo === 4 || W.editar){
     const ds = W.disc.filter(d => d.d);
     if(!ds.length) return 'Cadastre pelo menos uma disciplina (a sigla basta).';
     if(new Set(ds.map(d => d.d)).size !== ds.length) return 'Há duas disciplinas com a mesma sigla.';
     if(!(W.ini < W.fim)) return 'O fim do semestre precisa ser depois do início.';
     if(W.p1 + W.p2 !== 100) return `Os pesos da N1 e da N2 somam ${W.p1 + W.p2}; precisam somar 100.`;
-    if(ds.some(d => !(d.n1 < d.n2))) return 'Em cada disciplina, a N2 vem depois da N1.';
+    if(ds.some(d => !d.det && !(d.n1 < d.n2))) return 'Em cada disciplina, a N2 vem depois da N1.';
   }
   return '';
 }
@@ -198,25 +219,39 @@ function avaliacoesTxt(){
     '# chave | nome da avaliação | peso | data | palavra-chave (opcional) | contínua (opcional)',
     '# Os pesos de cada disciplina somam 100. "?" no peso ou na data = estimado.',
     '', `temporada | ${W.ini.slice(0,4)}-${W.ini.slice(5,7) <= '06' ? 1 : 2} | ${W.ini} | ${W.fim} | ${iso(volta)}`];
-  W.disc.filter(d => d.d).forEach((d,i) => { const r = RYODAN[i % RYODAN.length];
-    L.push('', `# ${d.d}${d.n ? ' · ' + d.n : ''}`, `[${d.d}] ${r[0]} | ${r[1]} | ${r[2]}`, `N1 | N1 | ${W.p1} | ${d.n1}`, `N2 | N2 | ${W.p2} | ${d.n2}`); });
+  W.disc.filter(d => d.d).forEach((d,i) => { const r = chefaoDe(d, i);
+    if(d.det && d.bloco) L.push('', d.bloco.trim());                // plano detalhado: o bloco do arquivo, sem mexer
+    else L.push('', `# ${d.d}${d.n ? ' · ' + d.n : ''}`, `[${d.d}] ${r[0]} | ${r[1]} | ${r[2]}`, `N1 | N1 | ${W.p1} | ${d.n1}`, `N2 | N2 | ${W.p2} | ${d.n2}`); });
   return L.join('\n') + '\n';
 }
 function desenhaW(){
   let bg = document.getElementById('wz'); if(!bg){ bg = document.createElement('div'); bg.id = 'wz'; bg.className = 'wz-bg'; document.body.appendChild(bg); }
-  const ult = W.passo === PASSOS.length - 1;
+  const ult = W.passo === PASSOS.length - 1 && !W.editar;
   bg.innerHTML = `<div class="wz" role="dialog" aria-modal="true" aria-labelledby="wz-t">
     <div class="wz-top"><img src="${LOGO}" alt=""><div><h2 id="wz-t">Licença Hunter</h2><p>Passo ${W.passo + 1} de ${PASSOS.length} · ${PASSOS[W.passo]}</p></div>
       <div class="wz-steps" aria-hidden="true">${PASSOS.map((_,i) => `<i class="${i <= W.passo ? 'on' : ''}"></i>`).join('')}</div></div>
-    <div class="wz-body">${passoHTML()}</div>
+    <div class="wz-body">${W.editar ? passoHTML().replace(/<p>Cada disciplina vira um chefão do Genei Ryodan\..*?<\/p>/s, '<p>Adicione, renomeie ou remova disciplinas e ajuste as datas da N1 e da N2. As notas já registradas continuam valendo enquanto a sigla for a mesma; disciplinas com plano detalhado ficam como estão no arquivo.</p>') : passoHTML()}</div>
     <div class="wz-foot"><button type="button" class="btn" data-wznav="-1"${W.passo ? '' : ' hidden'}>← voltar</button><span class="err" role="alert">${esc(W.err)}</span>
-      <span style="display:flex;gap:8px;margin-left:auto">${ult ? '<button type="button" class="btn" data-wzfim="0">começar sem tutorial</button><button type="button" class="btn v" data-wzfim="1">começar e ver o tutorial</button>' : '<button type="button" class="btn v" data-wznav="1">próximo →</button>'}</span></div></div>`;
+      <span style="display:flex;gap:8px;margin-left:auto">${W.editar ? '<button type="button" class="btn" data-wzsair>cancelar</button><button type="button" class="btn v" data-wzdisc>salvar disciplinas</button>' : ult ? '<button type="button" class="btn" data-wzfim="0">começar sem tutorial</button><button type="button" class="btn v" data-wzfim="1">começar e ver o tutorial</button>' : '<button type="button" class="btn v" data-wznav="1">próximo →</button>'}</span></div></div>`;
   const f = bg.querySelector('.wz-body input'); if(f && W.passo !== 1) f.focus();
 }
-function abreW(){ iniciaW(); desenhaW(); }
+function abreW(){ W.editar = false; PASSOS = PASSOS_1; iniciaW(); desenhaW(); }
+function abreDisciplinas(){
+  iniciaW(); W.editar = true; PASSOS = ['Disciplinas']; W.passo = 0;
+  const BL = blocos(CTX.AV_TXT), simples = a => a.length === 2 && a.some(x => x.k === 'N1') && a.some(x => x.k === 'N2');
+  W.ini = TEMP.ini; W.fim = TEMP.fim;
+  const s0 = BOSSES.find(b => simples(AVAL[b.d] || []));
+  if(s0){ W.p1 = AVAL[s0.d].find(x => x.k === 'N1').w; W.p2 = AVAL[s0.d].find(x => x.k === 'N2').w; }
+  W.disc = BOSSES.map(b => { const a = AVAL[b.d] || [], j = (CTX.JOG.disciplinas || []).find(x => x.d === b.d) || {};
+    const notas = Object.keys(NOTAS).concat(Object.keys(PARC)).filter(k => k.startsWith(b.d + ':')).length;
+    return simples(a) ? {d:b.d, n:j.n || '', n1:a.find(x => x.k === 'N1').dt, n2:a.find(x => x.k === 'N2').dt, notas}
+      : {d:b.d, n:j.n || '', n1:'', n2:'', det:a.length, bloco:BL[b.d] || '', notas}; });
+  if(!W.disc.length) W.disc.push({d:'', n:'', n1:meio(W.ini, W.fim, .45), n2:meio(W.ini, W.fim, .95)});
+  desenhaW();
+}
 async function salvaW(tour){
   const jogador = {configurado:true, nome:W.nome, nick:W.nick, tags:W.tags, semestre:{ini:W.ini, fim:W.fim},
-    disciplinas:W.disc.filter(d => d.d), habitos:W.habs.filter(Boolean).map(n => ({id:slug(n), n})), cf: W.cfOn ? {handle:W.cfH, meta:W.cfM} : null};
+    disciplinas:W.disc.filter(d => d.d).map(d => ({d:d.d, n:d.n, n1:d.n1, n2:d.n2})), habitos:W.habs.filter(Boolean).map(n => ({id:slug(n), n})), cf: W.cfOn ? {handle:W.cfH, meta:W.cfM} : null};
   try { await post('/api/config', {jogador, avaliacoes: avaliacoesTxt()}); await recarrega(); }
   catch(e){ W.err = 'Não salvou: ' + e.message; desenhaW(); return; }
   UI.avatar = W.av; EST.tour = tour ? {} : Object.fromEntries(['l','b','b2','d2','bk','ms','sys'].map(k => [k,1])); salvaUI();
@@ -234,6 +269,15 @@ document.addEventListener('click', e => {
   if(q('[data-wzhadd]')){ coleta(); W.habs.push(''); desenhaW(); const i = document.getElementById('wz-h-' + (W.habs.length - 1)); if(i) i.focus(); return; }
   const hd = q('[data-wzhdel]'); if(hd){ coleta(); W.habs.splice(+hd.dataset.wzhdel, 1); desenhaW(); return; }
   if(e.target.id === 'wz-cf'){ ['wz-cfh','wz-cfm'].forEach(id => document.getElementById(id).disabled = !e.target.checked); if(e.target.checked) document.getElementById('wz-cfh').focus(); return; }
+  if(q('[data-wzsair]')){ document.getElementById('wz').remove(); W.editar = false; return; }
+  if(q('[data-wzdisc]')){ coleta(); W.err = valida(); if(W.err){ desenhaW(); return; }
+    const perdidas = BOSSES.filter(b => !W.disc.some(d => d.d === b.d) && Object.keys(NOTAS).concat(Object.keys(PARC)).some(k => k.startsWith(b.d + ':')));
+    if(perdidas.length && !W.confirma){ W.confirma = 1; W.err = `${perdidas.map(b => b.d).join(', ')} tem nota registrada e vai sair do jogo. Clique em salvar de novo para confirmar.`; desenhaW(); return; }
+    W.confirma = 0;
+    const jogador = {...CTX.JOG, semestre:{ini:W.ini, fim:W.fim}, disciplinas:W.disc.filter(d => d.d).map(d => ({d:d.d, n:d.n}))};
+    post('/api/config', {jogador, avaliacoes: avaliacoesTxt()}).then(recarrega).then(() => { document.getElementById('wz').remove(); W.editar = false; render(); toast('Disciplinas salvas'); })
+      .catch(err => { W.err = 'Não salvou: ' + err.message; desenhaW(); });
+    return; }
   const fim = q('[data-wzfim]'); if(fim){ salvaW(fim.dataset.wzfim === '1'); return; }
 });
 document.addEventListener('keydown', e => {
@@ -355,7 +399,7 @@ function cfgHTML(){
       <label>Tags (o nome muda; o significado de cada tipo continua o mesmo)</label>
       <div class="wz-f" style="grid-template-columns:repeat(4,minmax(0,1fr))">${TIPOS.filter(t => !t.fixo).map(t => `<label style="color:${NC(t.c)}">${t.n}<input data-cfgt="${t.k}" value="${esc(c.tags[t.k])}" maxlength="24"></label>`).join('')}</div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn v" data-cfgsave>salvar</button><button type="button" class="btn" data-cfgreset>descartar</button>
-        <span class="sub" style="color:var(--red)" role="alert">${esc(c.err)}</span><span class="sub" style="margin-left:auto">Disciplinas e semestre: <span class="mono">avaliacoes.txt</span>.</span></div>
+        <span class="sub" style="color:var(--red)" role="alert">${esc(c.err)}</span><button type="button" class="btn" data-wzdiscabre style="margin-left:auto">editar disciplinas e datas</button></div>
     </div></div>`;
 }
 const rSys0 = RENDER.sys;
@@ -372,6 +416,7 @@ document.addEventListener('click', async e => {
   const q = s => e.target.closest(s);
   if(q('[data-cfghadd]')){ const c = rascunhoCfg(), n = c.novo.trim(); if(n){ c.habs.push(n); c.novo = ''; } render(); const i = document.getElementById('cfg-novo'); if(i) i.focus(); return; }
   const hd = q('[data-cfghdel]'); if(hd){ rascunhoCfg().habs.splice(+hd.dataset.cfghdel, 1); render(); return; }
+  if(q('[data-wzdiscabre]')){ abreDisciplinas(); return; }
   if(q('[data-cfgreset]')){ CF2 = null; render(); return; }
   if(!q('[data-cfgsave]')) return;
   const c = rascunhoCfg(), habs = c.habs.map(h => h.trim()).filter(Boolean), tags = {};
@@ -387,6 +432,8 @@ document.addEventListener('click', async e => {
   CF2 = null; render(); toast('Salvo <small>os hábitos novos aparecem na Lista</small>');
 });
 
-window.HJ_GUIA = {abreW, tutorial};
+const rB2_0 = RENDER.b2;
+RENDER.b2 = S => { rB2_0(S); const h = document.querySelector('#b2-inbox h2'); if(h) h.insertAdjacentHTML('afterend', '<p style="margin:0 0 10px"><button type="button" class="btn v" data-wzdiscabre>editar disciplinas e datas</button></p>'); };
+window.HJ_GUIA = {abreW, abreDisciplinas, tutorial};
 if(CTX) tab(cur);   // os dados podem ter chegado antes deste script (no modo demonstração chegam): reaplica a aba com o guia
 })();

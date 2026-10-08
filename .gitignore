@@ -1,0 +1,5 @@
+# dados do jogador nunca entram no repositório (ficam em ~/.hunter-todo/)
+dados/
+*.txt.tmp
+__pycache__/
+.DS_Store

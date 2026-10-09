@@ -10,6 +10,7 @@ Serve a página do jogo (web/) em http://127.0.0.1:PORTA/ e grava os dados do jo
   avaliacoes.txt, notas.txt plano de avaliação das disciplinas e notas lançadas
   estado.json               loja, carteira, o que está equipado e os prêmios reais do jogador
   ajustes.txt, narradas.json caixa de entrada e cartas narradas (opcionais)
+  conquistas.json           conquistas criadas pela IA (200 em diante) e o que foi resgatado
   planos/                   planos de ensino (PDF, HTML...) que a IA lê
   avatares/*.png            fotos de perfil extras
   cf.json                   cache do Codeforces (problemas aceitos por dia e os marcados à mão)
@@ -32,6 +33,9 @@ Rotas (as mesmas que web/demo.js simula no modo demonstração):
   POST /api/ia/config {agente?, cartas?}  liga a IA (claude | codex | gemini) ou volta ao copiar e colar (chat)
   POST /api/ia/rodar {pedido, anexo?, leve?} roda o agente com o pedido da página → {id}; GET /api/ia/rodar?id= até ficar pronto
   POST /api/ia/plano {nome, base64}       guarda um plano de ensino em planos/
+  POST /api/conquistas {acao, ...}        conquistas da IA: criar {itens} | resgatar {no, como, j|k} | descartar {no}
+  GET  /api/atualizacao[?agora]           versão instalada e as mais novas publicadas no GitHub (confere a cada 6 h; ?agora = na hora)
+  POST /api/atualizar {}                  baixa a versão nova (git pull ou ZIP do GitHub) e reinicia o servidor
 
 Todo dia o servidor cria as recorrentes de hoje (um hábito por linha, rec:ID:DATA, e a do Codeforces se houver handle),
 tira as que ficaram abertas de dias anteriores e conclui sozinho a do Codeforces quando a meta do dia é batida. Se a meta foi
@@ -44,6 +48,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -57,8 +62,8 @@ from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSAO = "0.4.2"
-VERSAO_NOME = "atualização da IA"   # nome da série 0.4 (aparece em Configurações → servidor)
+VERSAO = "0.5"
+VERSAO_NOME = "atualização das conquistas"   # nome da série 0.5 (aparece em Configurações → servidor)
 REPO = Path(__file__).resolve().parent
 WEB = REPO / "web"
 DADOS = Path()   # definido em main()
@@ -637,12 +642,14 @@ def api_jogo_get():
     j = jogador()
     cf = cf_leitura(j)
     narradas = ler_json("narradas.json", [])
+    conquistas = ler_json("conquistas.json", [])
     estado = ler_json("estado.json", {})
     with lock:
         todo, done = ler(), ler_txt("done.txt").split("\n")
     return {"ok": True, "hoje": hoje().isoformat(), "todo": todo, "done": done, "avaliacoes": ler_txt("avaliacoes.txt"),
             "notas": ler_txt("notas.txt"), "ajustes": ler_txt("ajustes.txt"), "estado": estado if isinstance(estado, dict) else {},
             "cf": cf, "avatares": avatares(), "narradas": narradas if isinstance(narradas, list) else [], "jogador": j,
+            "conquistas": conquistas if isinstance(conquistas, list) else [],
             "servidor": {"versao": VERSAO, "nome": VERSAO_NOME, "sistema": sistema(), "auto": auto_ligado(), "fundo": EXEC["fundo"], "dados": str(DADOS)}}
 
 
@@ -734,7 +741,7 @@ def api_jogo_estado(d):
     if not isinstance(e, dict):
         raise Erro("estado inválido")
     ok = {"spent": (int, float), "cofreUsado": (int, float), "own": list, "resg": list, "bought": dict, "usados": dict, "usos": list,
-          "equip": dict, "tour": dict, "premios": list, "cofreMes": (int, float)}
+          "equip": dict, "tour": dict, "premios": list, "cofreMes": (int, float), "visto": str}
     for k, v in e.items():
         if k not in ok or not isinstance(v, ok[k]):
             raise Erro(f"campo inválido no estado: {k}")
@@ -749,6 +756,172 @@ def api_jogo_estado(d):
         raise Erro("estado grande demais", 413)
     with lock:
         gravar_txt("estado.json", corpo + "\n")
+    return {"ok": True}
+
+
+CONQ_REGRAS = {"contagem", "sequencia", "nota", "constancia", "semana"}
+CONQ_MAX = 5   # abertas (não resgatadas) ao mesmo tempo; o mesmo número do motor.js
+CONQ_RANKS = {"D", "C", "B", "A"}
+
+
+def conq_item(p):
+    """Confere o formato de uma conquista criada pela IA (as regras de verdade e o rank são calculados pelo motor.js)."""
+    if not isinstance(p, dict) or p.get("regra") not in CONQ_REGRAS:
+        raise Erro("conquista com regra desconhecida")
+    c = {"regra": p["regra"]}
+    for k in ("n", "xp"):
+        if k in p:
+            if not isinstance(p[k], int) or not 1 <= p[k] <= 5000:
+                raise Erro(f"número inválido na conquista: {k}")
+            c[k] = p[k]
+    for k in ("media", "nota"):
+        if k in p:
+            if not isinstance(p[k], (int, float)) or not 0 < p[k] <= 10:
+                raise Erro(f"nota inválida na conquista: {k}")
+            c[k] = p[k]
+    for k, rx in (("palavra", r"^[^|\n]{2,30}$"), ("disc", r"^[A-Z0-9]{1,8}$"), ("tipo", r"^(ent|est|fac|tre|vid)$"), ("hab", r"^[\w-]{1,30}$"), ("aval", r"^[A-Za-z0-9]{1,8}$")):
+        if p.get(k):
+            if not isinstance(p[k], str) or not re.match(rx, p[k]):
+                raise Erro(f"campo inválido na conquista: {k}")
+            c[k] = p[k]
+    if p.get("prazo") is True:
+        c["prazo"] = True
+    nome, texto = " ".join(str(p.get("nome", "")).split()), " ".join(str(p.get("texto", "")).split())
+    if not 1 <= len(nome) <= 60 or len(texto) > 400:
+        raise Erro("a conquista precisa de nome (até 60 letras) e texto de até 400")
+    if p.get("rk") not in CONQ_RANKS:
+        raise Erro("rank inválido")
+    return {**c, "nome": nome, "texto": texto, "ic": p.get("ic") if p.get("ic") in ICONES else "card", "rk": p["rk"],
+            "temporada": str(p.get("temporada", ""))[:40]}
+
+
+def api_conquistas(d):
+    """Conquistas criadas pela IA (aba Book): {acao: criar, itens} · {acao: resgatar, no, como: jenny|feitico, j?, k?} · {acao: descartar, no}.
+    Ficam em conquistas.json, numeradas de 200 em diante (o número de uma descartada não volta)."""
+    acao = d.get("acao")
+    with lock:
+        lista = ler_json("conquistas.json", [])
+        lista = [x for x in lista if isinstance(x, dict)] if isinstance(lista, list) else []
+        abertas = [x for x in lista if not x.get("resgate") and not x.get("descartada")]
+        if acao == "criar":
+            itens = d.get("itens")
+            if not isinstance(itens, list) or not 1 <= len(itens) <= CONQ_MAX:
+                raise Erro("nenhuma conquista para criar")
+            if len(abertas) + len(itens) > CONQ_MAX:
+                raise Erro(f"no máximo {CONQ_MAX} conquistas da IA abertas: conquiste ou descarte alguma antes")
+            prox = max([int(x["no"]) for x in lista if str(x.get("no", "")).isdigit()] + [199]) + 1
+            novas = []
+            for i, p in enumerate(itens):
+                novas.append({"no": str(prox + i), **conq_item(p), "criada": hoje().isoformat()})
+            gravar_json("conquistas.json", lista + novas)
+            return {"ok": True, "nos": [c["no"] for c in novas]}
+        c = next((x for x in lista if x.get("no") == str(d.get("no", ""))), None)
+        if not c:
+            raise Erro("conquista não encontrada", 404)
+        if c.get("resgate"):
+            raise Erro("essa conquista já foi resgatada")
+        if acao == "descartar":
+            c["descartada"] = hoje().isoformat()
+        elif acao == "resgatar":
+            como = d.get("como")
+            if como == "jenny" and isinstance(d.get("j"), int) and 0 < d["j"] <= 20000:
+                c["resgate"] = {"como": "jenny", "j": d["j"], "em": hoje().isoformat()}
+            elif como == "feitico" and isinstance(d.get("k"), str) and re.match(r"^[a-z]{2,10}$", d["k"]):
+                c["resgate"] = {"como": "feitico", "k": d["k"], "em": hoje().isoformat()}
+            else:
+                raise Erro("recompensa inválida")
+        else:
+            raise Erro("ação desconhecida")
+        gravar_json("conquistas.json", lista)
+    return {"ok": True}
+
+
+# ---------- atualização: confere no GitHub se há versão nova e, se o jogador pedir, atualiza ----------
+GITHUB = "https://github.com/CaioParanaiba/todo-engine"
+RAW = os.environ.get("HUNTER_RAW") or "https://raw.githubusercontent.com/CaioParanaiba/todo-engine/main/"   # HUNTER_RAW: outro endereço, para testar
+ATUAL = {"quando": 0.0, "remota": None, "erro": ""}
+atual_lock = threading.Lock()
+
+
+def vtupla(v):
+    return tuple(int(x) for x in re.findall(r"\d+", str(v))[:3]) or (0,)
+
+
+def novidades_de(texto):
+    """A lista de versões do web/novidades.js: o JSON entre /*NOVIDADES*/ e /*FIM*/."""
+    i, j = texto.find("/*NOVIDADES*/"), texto.find("/*FIM*/")
+    lista = json.loads(texto[i + len("/*NOVIDADES*/"):j]) if 0 <= i < j else []
+    return [x for x in lista if isinstance(x, dict) and x.get("versao")]
+
+
+def confere_github(forcar=False):
+    """Lê o novidades.js da versão publicada, no máximo uma vez a cada 6 horas (ou na hora, se o jogador pedir)."""
+    with atual_lock:
+        if not forcar and time.time() - ATUAL["quando"] < 6 * 3600:
+            return
+        try:
+            with urllib.request.urlopen(urllib.request.Request(RAW + "web/novidades.js", headers={"User-Agent": "hunter-todo/" + VERSAO}), timeout=8) as r:
+                ATUAL.update(remota=novidades_de(r.read(400_000).decode("utf-8")), erro="")
+        except urllib.error.HTTPError as e:   # 404: a versão publicada ainda não tem o novidades.js (é anterior à 0.5)
+            ATUAL.update(remota=[], erro="" if e.code == 404 else "o GitHub não respondeu direito")
+        except (OSError, ValueError) as e:
+            ATUAL["erro"] = "não consegui falar com o GitHub (sem internet?)"
+            log("conferir atualização:", repr(e))
+        ATUAL["quando"] = time.time()
+
+
+def metodo_atualizar():
+    return "git" if (REPO / ".git").is_dir() and shutil.which("git") else "zip"
+
+
+def api_atualizacao_get(forcar):
+    confere_github(forcar)
+    novas = [x for x in (ATUAL["remota"] or []) if vtupla(x["versao"]) > vtupla(VERSAO)]
+    return {"ok": True, "versao": VERSAO, "nome": VERSAO_NOME, "novas": novas, "erro": ATUAL["erro"], "metodo": metodo_atualizar(),
+            "conferido": time.strftime("%Y-%m-%d %H:%M", time.localtime(ATUAL["quando"])) if ATUAL["quando"] else ""}
+
+
+def baixa_zip():
+    """Sem git: baixa o ZIP da versão publicada e copia os arquivos por cima do código (os dados ficam em outra pasta)."""
+    with urllib.request.urlopen(urllib.request.Request(GITHUB + "/archive/refs/heads/main.zip", headers={"User-Agent": "hunter-todo/" + VERSAO}), timeout=60) as r:
+        corpo = r.read(60_000_000)
+    with zipfile.ZipFile(BytesIO(corpo)) as z:
+        nomes = [n for n in z.namelist() if not n.endswith("/")]
+        raiz = nomes[0].split("/", 1)[0] + "/" if nomes else ""
+        if "servidor.py" not in {n[len(raiz):] for n in nomes}:
+            raise Erro("o arquivo baixado não é o jogo")
+        for n in nomes:
+            rel = Path(n[len(raiz):])
+            if not n.startswith(raiz) or rel.is_absolute() or ".." in rel.parts:
+                continue
+            destino = REPO / rel
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            tmp = destino.with_name(destino.name + ".novo")
+            tmp.write_bytes(z.read(n))
+            os.replace(tmp, destino)
+
+
+def api_atualizar(_):
+    if ia_lock.locked():
+        raise Erro("a IA está trabalhando num pedido: espere terminar e tente de novo")
+    if metodo_atualizar() == "git":
+        try:
+            r = subprocess.run(["git", "-C", str(REPO), "pull", "--ff-only"], capture_output=True, text=True, timeout=120)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise Erro(f"o git não rodou ({e})")
+        if r.returncode != 0:
+            ult = (r.stderr or r.stdout).strip().splitlines()
+            raise Erro("o git não conseguiu atualizar" + (f" ({ult[-1]})" if ult else "") + ". Rode o instalador de novo.")
+    else:
+        try:
+            baixa_zip()
+        except (OSError, zipfile.BadZipFile) as e:
+            raise Erro(f"não consegui baixar a versão nova ({e})")
+    log("jogo atualizado pela página: reiniciando")
+    def reinicia():
+        EXEC["recarregar"] = True
+        EXEC["srv"].shutdown()
+    threading.Timer(1.0, reinicia).start()
     return {"ok": True}
 
 
@@ -1079,12 +1252,14 @@ def api_autostart(d):
 
 ROTAS = {"/api/act": api_act, "/api/add": api_add, "/api/undo": api_undo, "/api/config": api_config, "/api/ontem": api_ontem, "/api/denovo": api_denovo, "/api/autostart": api_autostart,
          "/api/jogo/nota": api_jogo_nota, "/api/jogo/planos": api_jogo_planos, "/api/jogo/narrada": api_jogo_narrada, "/api/jogo/ajuste": api_jogo_ajuste, "/api/jogo/estado": api_jogo_estado,
-         "/api/cf/mao": api_cf_mao, "/api/ia/config": api_ia_config, "/api/ia/rodar": api_ia_rodar, "/api/ia/plano": api_ia_plano}
-LIMITE = {"/api/ia/rodar": 300000, "/api/ia/plano": 21_000_000, "/api/jogo/narrada": 40000, "/api/config": 90000, "/api/jogo/estado": 65536, "/api/jogo/planos": 130000}
+         "/api/cf/mao": api_cf_mao, "/api/ia/config": api_ia_config, "/api/ia/rodar": api_ia_rodar, "/api/ia/plano": api_ia_plano,
+         "/api/conquistas": api_conquistas, "/api/atualizar": api_atualizar}
+LIMITE = {"/api/conquistas": 20000, "/api/ia/rodar": 300000, "/api/ia/plano": 21_000_000, "/api/jogo/narrada": 40000, "/api/config": 90000, "/api/jogo/estado": 65536, "/api/jogo/planos": 130000}
 ESTATICOS = {"/": ("index.html", "text/html; charset=utf-8"), "/index.html": ("index.html", "text/html; charset=utf-8"),
              "/motor.js": ("motor.js", "text/javascript; charset=utf-8"), "/guia.js": ("guia.js", "text/javascript; charset=utf-8"),
              "/demo.js": ("demo.js", "text/javascript; charset=utf-8"), "/chefes.js": ("chefes.js", "text/javascript; charset=utf-8"),
-             "/ia.js": ("ia.js", "text/javascript; charset=utf-8")}
+             "/ia.js": ("ia.js", "text/javascript; charset=utf-8"), "/conquistas.js": ("conquistas.js", "text/javascript; charset=utf-8"),
+             "/novidades.js": ("novidades.js", "text/javascript; charset=utf-8")}
 
 
 class H(BaseHTTPRequestHandler):
@@ -1145,6 +1320,8 @@ class H(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             return self.wfile.write(corpo)
+        if caminho == "/api/atualizacao":
+            return self._json(200, api_atualizacao_get("agora" in urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)))
         if caminho in ("/api/ia", "/api/ia/rodar"):
             q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
             try:

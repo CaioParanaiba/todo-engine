@@ -16,6 +16,14 @@ if (-not $py) {
 if (Test-Path (Join-Path $pasta '.git')) {
   Write-Host "Atualizando o jogo em $pasta"
   git -C $pasta pull --ff-only
+} elseif (Test-Path (Join-Path $pasta 'servidor.py')) {
+  Write-Host "Atualizando o jogo em $pasta (sem git: baixando a versão nova por cima; seus dados ficam em outra pasta)"
+  $zip = Join-Path $env:TEMP 'todo-engine.zip'
+  $tmp = Join-Path $env:TEMP 'todo-engine-zip'
+  Invoke-WebRequest "$repo/archive/refs/heads/main.zip" -OutFile $zip
+  Expand-Archive $zip $tmp -Force
+  Copy-Item (Join-Path $tmp 'todo-engine-main\*') $pasta -Recurse -Force
+  Remove-Item $zip, $tmp -Recurse -Force
 } elseif (Test-Path $pasta) {
   Write-Host "A pasta $pasta já existe e não é o jogo. Escolha outra com `$env:HUNTER_PASTA."
   return

@@ -377,6 +377,7 @@ ul{list-style:none;margin:0;padding:0}
 
 /* ================= Sistema e regras ================= */
 .sys{display:grid;gap:18px}
+#cfg-root > .wz{max-width:none;margin:0}   /* Configurações: os cards na largura toda, como o do backup */
 .sys h2.h{font:700 20px var(--f-hud);margin:8px 0 0}
 .decided{display:flex;flex-wrap:wrap;gap:8px}
 .chip{border:1px solid color-mix(in srgb,var(--grn) 50%,var(--hair));background:color-mix(in srgb,var(--grn) 8%,var(--panel));border-radius:99px;padding:5px 12px;font-size:13px}
@@ -734,7 +735,7 @@ a.btn{display:inline-block;text-decoration:none}
 .bk .det .face{aspect-ratio:5/7;max-width:200px;margin:0 auto 12px;border-radius:14px;display:grid;place-items:center;font-size:84px;color:var(--amb);
   border:1.5px solid color-mix(in srgb,var(--amb) 60%,var(--hair));background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--amb) 18%,transparent),transparent 65%),var(--panel2)}
 .bk .det h3{margin:0;font:700 20px var(--f-hud)} .bk .det p{margin:6px 0 0;font-size:14px}
-.prog{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.prog{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px}
 
 /* ---------- Masadora limpa ---------- */
 .ms{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 300px;gap:16px;align-items:start}
@@ -1264,6 +1265,8 @@ details.l-grp summary{cursor:pointer;list-style:none} details.l-grp summary::-we
 
   <section id="v-cfg" hidden>
     <div id="gnav-cfg"></div><div class="sys" id="cfg-root"></div></section>
+  <section id="v-nv" hidden>
+    <div id="gnav-nv"></div><div class="sys" id="nv-root"></div></section>
   <section id="v-sys" hidden>
     <div id="gnav-sys"></div><div class="sys" id="sys-root"></div></section>
 </div>
@@ -1301,7 +1304,7 @@ function sync(api){
   avisoVersao();
 }
 /* a página vem do disco a cada pedido, mas o servidor em segundo plano pode estar com o código antigo (atualizou sem reiniciar) */
-const VERSAO_PAGINA = '0.4.2';
+const VERSAO_PAGINA = '0.5';
 function avisoVersao(){
   const v = CTX && CTX.SRV && CTX.SRV.versao, el = document.getElementById('aviso-versao');
   if(!v || v === VERSAO_PAGINA){ if(el) el.remove(); return; }
@@ -1389,7 +1392,7 @@ function avList(b, where, withField){
     ${a.cont && a.parts.length ? `<span class="prt">${a.parts.map((p,i) => `<span>${a.k}${i+1}: ${nf(p)}</span>`).join('')}</span>` : ''}
     ${withField && a.cont ? `<span class="nf"><label class="sub" for="n-${b.d}-${a.k}-${where}">parcial</label><input id="n-${b.d}-${a.k}-${where}" placeholder="8 ou 4/5" title="de 0 a 10, ou em pontos: 4/5 = 4 de 5"><button data-nota="${b.d}:${a.k}" data-in="n-${b.d}-${a.k}-${where}" data-cont="1">+ parcial</button></span>` : withField && a.nota == null && a.dt <= HOJE ? `<span class="nf"><label class="sub" for="n-${b.d}-${a.k}-${where}">nota</label><input id="n-${b.d}-${a.k}-${where}" placeholder="7,5 ou 4/5" title="de 0 a 10, ou em pontos: 4/5 = 4 de 5"><button data-nota="${b.d}:${a.k}" data-in="n-${b.d}-${a.k}-${where}">registrar</button></span>` : ''}</div>`).join('');
 }
-const OG = {slot:'conquista', claude:'narrada com IA'};
+const OG = {slot:'conquista', claude:'narrada com IA', ia:'criada pela IA'};
 const PXCLS = {map:'map8', p1:'c8', p3:'gi', p3b:'shop8'};
 function rPX(S){
   const k = UI.px;
@@ -1481,11 +1484,12 @@ function usoHTML(S, s){
   return vira + `<button class="btn v" style="margin-top:12px" data-usar="${base}">usar agora</button>`;
 }
 function rBK(S){
-  const C = cartas(S), narr = C.filter(c => c.o === 'claude');
-  document.getElementById('bk-prog').innerHTML = [['conquistas',`${C.filter(c=>c.o==='slot'&&c.on).length}/${C.filter(c=>c.o==='slot').length}`,'regras fixas: gerais e quatro por disciplina'],['narradas',`${narr.length}`,'semanais, mensais, semestrais e anuais'],['feitiços',`${invN(S)}`,`expiram em ${ddmm(TEMP.volta)} (volta às aulas)`]]
+  const C = cartas(S), narr = C.filter(c => c.o === 'claude'), cia = C.filter(c => c.o === 'ia');
+  document.getElementById('bk-prog').innerHTML = [['conquistas',`${C.filter(c=>c.o==='slot'&&c.on).length}/${C.filter(c=>c.o==='slot').length}`,'regras fixas: gerais e quatro por disciplina'],['da IA',`${cia.filter(c=>c.on).length}/${cia.length}`,'desafios propostos pela IA, conferidos pelo jogo'],['narradas',`${narr.length}`,'semanais, mensais, semestrais e anuais'],['feitiços',`${invN(S)}`,`expiram em ${ddmm(TEMP.volta)} (volta às aulas)`]]
     .map(([s,b,m]) => `<div class="k"><span>${s}</span><b>${b}</b><small>${m}</small></div>`).join('');
-  document.getElementById('bk-tabs').innerHTML = [['slot','Conquistas 000–099'],['claude','Narradas'],['feit','Feitiços']].map(([k,n]) => `<button data-bk="${k}" aria-pressed="${UI.bk===k}">${n}</button>`).join('');
+  document.getElementById('bk-tabs').innerHTML = [['slot','Conquistas 000–099'],['ia','Conquistas da IA · 200+'],['claude','Narradas'],['feit','Feitiços']].map(([k,n]) => `<button data-bk="${k}" aria-pressed="${UI.bk===k}">${n}</button>`).join('');
   const carta = c => `<button class="gc claude" data-bksel="${esc(c.no)}" aria-pressed="${UI.bksel===c.no}"><span class="no">${esc(c.periodo||'')}</span><span class="rk">${c.rk}</span><span class="big">${ic(c.ic)}</span><div><div class="og">${({semana:'semanal',mes:'mensal',semestre:'semestral',ano:'anual'})[c.tipo]||'narrada'}</div><div class="gn">${esc(c.n)}</div></div></button>`;
+  if(UI.bk === 'ia' && window.HJ_CONQ){ window.HJ_CONQ.book(S, cia); return; }
   let items;
   if(UI.bk === 'feit') items = SPELLS.map(s => { const q = S.inv[s.k]||0; return `<button class="gc sp" data-bksel="F:${s.k}" aria-pressed="${UI.bksel==='F:'+s.k}" style="${q?'':'opacity:.55'}"><span class="no">×${q}</span><span class="big">${ic(s.ic)}</span><div><div class="og">feitiço</div><div class="gn">${s.n}</div></div></button>`; }).join('');
   else if(UI.bk === 'claude') items = TIERS.map(([t,n,d]) => { const cs = narr.filter(c => c.tipo === t).sort((p,q) => String(q.periodo).localeCompare(String(p.periodo)));
@@ -1560,7 +1564,7 @@ function rMS(S){
     <div class="lay7"><div>${main}</div>
       <div class="side7">
         <div class="card"><h2><span class="c">~/</span>carteira</h2><div class="wal7">${fmt(S.jenny)} J<small>disponível</small></div>
-          <div class="flow4" style="display:grid;gap:4px;font:12.5px var(--f-mono);color:var(--soft);margin:10px 0"><div style="display:flex;justify-content:space-between"><span>XP × 10</span><b style="color:var(--ink)">+${fmt(S.total*10)}</b></div><div style="display:flex;justify-content:space-between"><span>bônus de notas</span><b style="color:var(--ink)">+${fmt(S.bonusNotas)}</b></div><div style="display:flex;justify-content:space-between"><span>gasto</span><b style="color:var(--ink)">−${fmt(SPENT)}</b></div></div></div>
+          <div class="flow4" style="display:grid;gap:4px;font:12.5px var(--f-mono);color:var(--soft);margin:10px 0"><div style="display:flex;justify-content:space-between"><span>XP × 10</span><b style="color:var(--ink)">+${fmt(S.total*10)}</b></div><div style="display:flex;justify-content:space-between"><span>bônus de notas</span><b style="color:var(--ink)">+${fmt(S.bonusNotas)}</b></div>${S.conqJ ? `<div style="display:flex;justify-content:space-between"><span>conquistas da IA</span><b style="color:var(--ink)">+${fmt(S.conqJ)}</b></div>` : ''}<div style="display:flex;justify-content:space-between"><span>gasto</span><b style="color:var(--ink)">−${fmt(SPENT)}</b></div></div></div>
         <div class="card"><h2><span class="c">~/</span>cofre do mês</h2><div class="wal7" style="font-size:22px">R$ ${fmt(cofreTotal() - COFRE_USADO)}<small>R$ ${fmt(HJx.cofreMes(EST))} por mês, acumula · usado R$ ${fmt(COFRE_USADO)}</small></div><div class="cofre"><b style="width:${pct(cofreTotal()-COFRE_USADO, cofreTotal())}%"></b></div></div>
         <div class="card"><h2><span class="c">~/</span>usando agora</h2><div class="eqlist">${eqs.map(([a,b]) => `<div><span>${a}</span><span>${esc(b)}</span></div>`).join('')}</div></div>
         ${RESG.length ? `<div class="card"><h2><span class="c">~/</span>resgatados</h2><ul class="got">${RESG.map(r => `<li style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;font-size:13px"><span>${esc(r)}</span><span class="sub">${ddmm(HOJE)}</span></li>`).join('')}</ul></div>` : ''}
@@ -1722,7 +1726,7 @@ function rCfg(S){
 /* ---------- Regras (o que o jogo considera) ---------- */
 function rSys(S){
   document.getElementById('sys-root').innerHTML = `
-    <div class="card"><h2><span class="c">~/</span>decidido</h2><div class="decided">${[['XP','por tipo · rotina metade · ×1,5 no prazo'],['Ten','com Zetsu'],['torre','normal, zera por semestre'],['atributos','Nen + missão do mais fraco'],['cartas','conquistas + narradas'],['topo','Guarda Real'],['chefão','um por disciplina; vida = nota'],['tarefas','XP + preparação (bônus = feitiço)'],['ligação','tarefa → avaliação: av:, prova:, palavras-chave ou a próxima depois do prazo'],['jenny','XP × 10 + bônus por nota ≥ 6'],['plano','editar no chefão, à mão ou colando da IA'],['fúria','×1,5, só isso'],['nota aguardando','fica até você preencher'],['contínuas','várias notas parciais viram uma média'],['feitiços','loja, preparação, missão; expiram na volta às aulas'],['média','6']].map(([b,t]) => `<span class="chip"><b>${b}</b>${t}</span>`).join('')}</div></div>
+    <div class="card"><h2><span class="c">~/</span>decidido</h2><div class="decided">${[['XP','por tipo · rotina metade · ×1,5 no prazo'],['Ten','com Zetsu'],['torre','normal, zera por semestre'],['atributos','Nen + missão do mais fraco'],['cartas','conquistas fixas + da IA + narradas'],['conquista da IA','a IA propõe, o jogo confere; Jenny ou feitiço'],['topo','Guarda Real'],['chefão','um por disciplina; vida = nota'],['tarefas','XP + preparação (bônus = feitiço)'],['ligação','tarefa → avaliação: av:, prova:, palavras-chave ou a próxima depois do prazo'],['jenny','XP × 10 + bônus por nota ≥ 6'],['plano','editar no chefão, à mão ou colando da IA'],['fúria','×1,5, só isso'],['nota aguardando','fica até você preencher'],['contínuas','várias notas parciais viram uma média'],['feitiços','loja, preparação, missão; expiram na volta às aulas'],['média','6']].map(([b,t]) => `<span class="chip"><b>${b}</b>${t}</span>`).join('')}</div></div>
     <h2 class="h">O chefão em uma frase: a nota tira vida, a tarefa prepara</h2>
     <div class="three">
       <div class="card"><h2><span class="c">~/</span>vida = nota</h2><p style="margin:0;font-size:14px">Cada disciplina tem 100 pontos, divididos pelas avaliações do plano de ensino. Cada nota tira peso × nota/10. Ao passar de 60 (média 6), o chefão cai. Derrotar o chefão é passar na matéria. Tarefa nenhuma derruba chefão sozinha.</p></div>
@@ -1991,8 +1995,8 @@ document.getElementById('l-add').addEventListener('submit', async e => {
 });
 
 /* ---------- abas e interação (página real) ---------- */
-const TABS = ['l','b','b2','d2','bk','ms','px','sys','cfg','tt'];
-const RENDER = {l:rL, b:rB, b2:rB2, d2:rD2, bk:rBK, ms:rMS, px:rPX, sys:rSys, cfg:rCfg, tt:rTT};
+const TABS = ['l','b','b2','d2','bk','ms','px','sys','cfg','tt','nv'];
+const RENDER = {l:rL, b:rB, b2:rB2, d2:rD2, bk:rBK, ms:rMS, px:rPX, sys:rSys, cfg:rCfg, tt:rTT, nv:() => {}};   // nv: novidades.js
 let cur = 'l';
 function render(){
   if(!CTX) return;
@@ -2023,7 +2027,7 @@ document.addEventListener('click', async e => {
   const ms = q('[data-mapsel]'); if(ms){ UI.mapsel = ms.dataset.mapsel; render(); return; }
   const pg = q('[data-page]'); if(pg){ UI.page = +pg.dataset.page; render(); return; }
   const cd = q('[data-card]'); if(cd){ UI.sel = cd.dataset.card; render(); return; }
-  const bk = q('[data-bk]'); if(bk){ UI.bk = bk.dataset.bk; UI.bksel = bk.dataset.bk === 'feit' ? 'F:zetsu' : bk.dataset.bk === 'claude' ? '' : '001'; render(); return; }
+  const bk = q('[data-bk]'); if(bk){ UI.bk = bk.dataset.bk; UI.bksel = bk.dataset.bk === 'feit' ? 'F:zetsu' : bk.dataset.bk === 'claude' || bk.dataset.bk === 'ia' ? '' : '001'; render(); return; }
   const bks = q('[data-bksel]'); if(bks){ UI.bksel = bks.dataset.bksel; render(); return; }
   const px = q('[data-px]'); if(px){ UI.px = px.dataset.px; if(cur !== 'px') tab('px'); else render(); return; }
   const sk = q('[data-skin]'); if(sk){ const [w,k] = sk.dataset.skin.split(':'); const it = COS.find(i => i.skin && i.skin[0] === w && i.skin[1] === k);
@@ -2097,4 +2101,6 @@ recarrega().then(() => tab((location.hash||'').slice(1))).catch(err => {
 <script src="guia.js"></script>
 <script src="chefes.js"></script>
 <script src="ia.js"></script>
+<script src="conquistas.js"></script>
+<script src="novidades.js"></script>
 </body></html>

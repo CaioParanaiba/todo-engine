@@ -80,6 +80,10 @@ let todo = [
 let jogador = {configurado:false, tags:{}, habitos:[{id:'h-a', n:'Treino de digitação'}, {id:'h-b', n:'Leitura (20 min)'}, {id:'h-c', n:'Academia', semana:2}], cf:{handle:'exemplo', meta:3}};   // começa sem configurar: a página abre o assistente da primeira entrada
 let notas = NOTAS, ajustes = '', estado = {spent:2500, own:['pal-simples','pal-gon'], equip:{theme:'simples'}, bought:{}, resg:[]};
 const narradas = [{no:'100', tipo:'semana', periodo:'semana passada', titulo:'O primeiro andar de verdade', texto:'Exemplo de carta narrada (com IA, opcional).', cronica:'Quem disse que a Arena se sobe de uma vez? Gon subiu de degrau em degrau, uma lista de cada vez.', escrita:D(-2), ic:'scroll'}];
+/* conquistas criadas pela IA (exemplo): uma cumprida esperando o resgate e uma em andamento */
+const conquistas = [
+  {no:'200', regra:'contagem', n:6, disc:'BD', tipo:'est', nome:'Caçador de tabelas', texto:'Feitan não perdoa quem esquece a normalização.', ic:'spider', rk:'C', temporada:'Temporada Demo', criada:D(-30)},
+  {no:'201', regra:'constancia', n:21, nome:'Três semanas de Ten', texto:'Vinte e um dias seguidos, sem deixar a aura apagar.', ic:'flame', rk:'B', temporada:'Temporada Demo', criada:D(-10)}];
 const undo = [];
 
 /* as mesmas ações do servidor de verdade (servidor.py) */
@@ -102,7 +106,7 @@ function rota(url, body){
     const meta = jogador.cf && jogador.cf.meta || 3, i = todo.findIndex(l => !DONE_RE.test(l) && l.includes(`rec:cf:${HOJE}`));
     if(i >= 0 && (cfDia[HOJE] || 0) >= meta) todo[i] = `x ${HOJE} ` + todo[i].replace(PRI, '');
   }
-  if(url === '/api/jogo') return {ok:true, hoje:HOJE, todo, done, avaliacoes:AVALIACOES, notas, ajustes, estado, cf:{por_dia:cfDia}, avatares:Object.keys(window.HJ_AV || {}), narradas, jogador};
+  if(url === '/api/jogo') return {ok:true, hoje:HOJE, todo, done, avaliacoes:AVALIACOES, notas, ajustes, estado, cf:{por_dia:cfDia}, avatares:Object.keys(window.HJ_AV || {}), narradas, conquistas, jogador};
   if(url === '/api/act'){
     const i = todo.indexOf(body.raw); if(i < 0) throw new Error('a linha mudou no todo.txt; recarregue');
     if(body.action === 'delete'){ const antes = todo.splice(i, 1)[0]; undo.push({from:antes, to:null}); return {ok:true}; }
@@ -141,6 +145,14 @@ function rota(url, body){
   if(url === '/api/jogo/narrada'){ const c = body.carta || {}; if(!c.titulo || !c.texto) throw new Error('a carta precisa de título e texto');
     const no = 'N-' + c.periodo, i = narradas.findIndex(x => x.no === no); const nova = {...c, no, escrita:HOJE, ic:c.ic || 'scroll'}; if(i >= 0) narradas[i] = nova; else narradas.push(nova); return {ok:true}; }
   if(url === '/api/autostart') throw new Error('no modo demonstração não há servidor');
+  if(url === '/api/conquistas'){
+    if(body.acao === 'criar'){ const prox = Math.max(199, ...conquistas.map(c => +c.no)) + 1, nos = [];
+      if(conquistas.filter(c => !c.resgate && !c.descartada).length + body.itens.length > 5) throw new Error('no máximo 5 conquistas da IA abertas: conquiste ou descarte alguma antes');
+      body.itens.forEach((it, i) => { conquistas.push({...it, no:String(prox + i), criada:HOJE}); nos.push(String(prox + i)); }); return {ok:true, nos}; }
+    const c = conquistas.find(c => c.no === body.no); if(!c) throw new Error('conquista não encontrada');
+    if(body.acao === 'descartar') c.descartada = HOJE;
+    else c.resgate = body.como === 'jenny' ? {como:'jenny', j:body.j, em:HOJE} : {como:'feitico', k:body.k, em:HOJE};
+    return {ok:true}; }
   if(url === '/api/jogo/nota'){ notas += `\n${HOJE} | ${body.disc} | ${body.aval} | ${String(body.nota).replace('.', ',')}${body.parcial ? ' | parcial' : ''}`; return {ok:true}; }
   if(url === '/api/jogo/estado'){ estado = JSON.parse(JSON.stringify(body.estado)); return {ok:true}; }
   if(url === '/api/jogo/ajuste' && body.quando){ ajustes = ajustes.split('\n').map(l => { const p = l.split('|').map(x => x.trim()); return p[0] === body.quando && p[2] === body.texto ? [p[0], body.aplicado ? 'aplicado' : 'pendente', ...p.slice(2)].join(' | ') : l; }).join('\n'); return {ok:true}; }

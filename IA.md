@@ -1,7 +1,8 @@
 # IA no Hunter.todo (opcional)
 
 O jogo funciona inteiro sem IA. Com IA, você digita menos: ela monta o plano de avaliação a partir do plano de ensino,
-aplica as mudanças da caixa de entrada, cuida das suas tarefas e escreve as cartas do Book.
+aplica as mudanças da caixa de entrada, cuida das suas tarefas, escreve as cartas do Book e propõe conquistas feitas
+para você.
 
 Há três jeitos de usar:
 
@@ -26,6 +27,9 @@ Há três jeitos de usar:
 - **Cartas do Book:** as que faltam são escritas sozinhas quando você abre o jogo (semana fechada na segunda, mês no
   dia 1, semestre no dia seguinte ao fim da temporada, ano em 1º de janeiro). As de antes de ligar a IA saem pelo
   botão *escrever cartas antigas* no Book. Dá para desligar as automáticas em Configurações.
+- **Conquistas da IA:** no Book, aba *Conquistas da IA*, o botão *propor conquistas com IA* traz até 5 desafios
+  pensados para o seu ritmo. O jogo confere cada um (e recusa o que não dá), calcula o rank e a recompensa, e você
+  aceita os que quiser. Só por clique: nunca sozinho.
 
 A IA só devolve texto e não tem permissão para gravar nada: quem confere e grava é o jogo. Os dados de cada pedido vão
 para a empresa da IA escolhida.
@@ -57,6 +61,7 @@ abaixo). Se não, use o **modo chat** (no fim): o jogador cola um pedido do jogo
 | Lançar notas que o jogador informou | Inventar data, peso, nota ou acontecimento |
 | Aplicar a caixa de entrada e marcar o lembrete como aplicado | Apagar o histórico (`done.txt`) |
 | Escrever cartas narradas no Book | Criar ou remover disciplina, hábito ou mudar o semestre: peça ao jogador para usar a aba **Configurações** |
+| Propor conquistas no formato do pedido 3 (o jogador aceita pelo Book) | Criar, marcar ou resgatar conquista: quem confere e dá a recompensa é o jogo |
 
 **O que o jogo não tem** (diga isso em vez de improvisar e não ofereça): aulas de qualquer tipo (cadastrar aula,
 grade horária, transformar anotações, áudio ou transcrição de aula em tarefas), agenda do Google, lembretes por
@@ -72,7 +77,7 @@ automação já vem no jogo, e cada computador precisa ficar igual para dar supo
 2. Explique o que passa a acontecer sozinho: as cartas do Book que faltam, ao abrir o jogo (semana na segunda, mês no
    dia 1, semestre no dia seguinte ao fim da temporada, ano em 1º/jan). Não pergunte essas datas: são regras do jogo.
 3. Explique onde ficam os botões: *ler todos os planos* em Chefões, *ler plano com IA* e *aplicar lembretes com IA* no
-   editor de cada chefão, *IA?* no formulário da Lista e *escrever cartas antigas* no Book. Os planos de ensino ficam em `~/.hunter-todo/planos/`.
+   editor de cada chefão, *IA?* no formulário da Lista, *escrever cartas antigas* e *propor conquistas com IA* no Book. Os planos de ensino ficam em `~/.hunter-todo/planos/`.
 
 O resto do modo agente (abaixo) serve para os pedidos soltos que o jogador fizer na conversa.
 
@@ -94,6 +99,7 @@ O resto do modo agente (abaixo) serve para os pedidos soltos que o jogador fizer
 | `notas.txt` | notas lançadas | acrescentar |
 | `ajustes.txt` | caixa de entrada (lembretes de mudança) | marcar como aplicado |
 | `narradas.json` | cartas do Book | acrescentar, **pela API** |
+| `conquistas.json` | conquistas criadas pela IA e o que foi resgatado | só ler: quem cria é o jogador, pelo Book |
 | `planos/` | planos de ensino (PDF, HTML...) | ler |
 | `jogador.json` | nome, tags, hábitos, disciplinas, Codeforces, formato de data, IA ligada (`ia`) | só ler |
 | `estado.json`, `cf.json` | loja, carteira; cache do Codeforces | não mexer |
@@ -255,6 +261,7 @@ jogo.** Nada é enviado sozinho, e não precisa de conta, chave de API nem progr
 |---|---|---|
 | 1. Plano de ensino → provas e trabalhos (e lembretes da caixa de entrada) | **Chefões** → *editar avaliações e notas* → *copiar pedido para a IA* | o mesmo editor (*usar estas linhas*), e você confere e salva |
 | 2. Carta narrada da semana, do mês, do semestre ou do ano | **Book** → *Narradas* → *escrever carta com IA* | o mesmo bloco (*adicionar carta*) |
+| 3. Conquistas feitas para você | **Book** → *Conquistas da IA* → *copiar pedido* | o mesmo bloco (*conferir resposta*), e você aceita as que quiser |
 
 Se o navegador não deixar copiar sozinho (acontece com a página aberta direto do arquivo), aparece uma janela com o
 texto: `Ctrl+A` e `Ctrl+C`.
@@ -263,7 +270,8 @@ texto: `Ctrl+A` e `Ctrl+C`.
 antes ou depois (o jogo lê a resposta direto). Dúvidas vão dentro do formato (linha com `#` no plano de avaliação).
 
 Com a IA ligada no jogo (Configurações → IA), os botões mandam estes mesmos pedidos para a IA de terminal, e a resposta cai no
-mesmo lugar. Os pedidos abaixo são os mesmos que o jogo monta (o código está em `web/ia.js`; ao mudar um, mude o outro). Os trechos
+mesmo lugar. Os pedidos abaixo são os mesmos que o jogo monta (o código está em `web/ia.js` e, o das conquistas, em
+`web/conquistas.js`; ao mudar um, mude o outro). Os trechos
 entre `{chaves}` o jogo preenche com os seus dados. As datas saem no formato escolhido na aba Configurações (dd/mm/aaaa ou
 mm/dd/aaaa); os exemplos abaixo estão em dd/mm/aaaa.
 
@@ -339,4 +347,43 @@ Regras:
 
 DADOS
 {período, jogador, XP, Ten, andar, tarefas concluídas, hábitos, Codeforces, notas, chefões, cartas do nível de baixo}
+```
+
+### 3. Conquistas feitas para você
+
+**Como usar:** no Book, aba *Conquistas da IA*, clique em *copiar pedido* e cole numa IA. Cole a resposta (a lista JSON)
+no mesmo bloco e clique em *conferir resposta*. O jogo confere cada proposta: recusa a que não usa uma regra conhecida,
+a que já está cumprida, a repetida e a que passa do possível. Para as outras, mostra a regra em palavras, o rank e a
+recompensa, que saem do jogo pela estimativa de dias, nunca da IA:
+
+| Rank | Estimativa | Recompensa (à escolha, ao conquistar) |
+|---|---|---|
+| D · fácil | até 7 dias | 800 J ou o feitiço Zetsu extra |
+| C · média | até 14 dias | 1.500 J ou Gyo |
+| B · difícil | até 30 dias | 3.000 J ou Ko |
+| A · muito difícil | mais de 30 dias | 6.000 J ou um feitiço à escolha |
+
+Marque as que quiser e clique em *aceitar*. Ficam no máximo 5 abertas (não resgatadas) ao mesmo tempo, numeradas de 200
+em diante, e cada uma conta a partir do dia em que foi aceita. Ao conquistar, os botões de Jenny e do feitiço aparecem
+embaixo da carta; depois de escolher, ela fica *resgatada*. Dá para descartar uma conquista aberta para liberar a vaga.
+
+```text
+Proponha {N} conquistas (desafios) para o meu jogo de tarefas (Hunter.todo, tema Hunter x Hunter), difíceis mas possíveis no meu ritmo, contadas a partir de hoje. Os dados estão no fim.
+Responda SÓ com uma lista JSON, sem texto antes ou depois e sem markdown:
+[{"regra": "...", ...campos da regra..., "nome": "...", "texto": "...", "ic": "..."}]
+
+Regras que o jogo sabe conferir (use só estas, com estes campos):
+- contagem: {"regra": "contagem", "n": 10, "palavra": "sql", "disc": "BD", "tipo": "est", "prazo": true} = n tarefas concluídas que batem com todos os filtros dados. Filtros (use pelo menos um): palavra (aparece no texto da tarefa), disc (sigla da disciplina), tipo (ent entrega, est estudo, fac faculdade, tre treino e projetos, vid vida), prazo (true = feitas até o prazo).
+- sequencia: {"regra": "sequencia", "hab": "ID", "n": 14} = o hábito em n dias seguidos (hábito semanal: n semanas seguidas com a meta da semana). hab é o id da lista de hábitos (cf = Codeforces).
+- nota: {"regra": "nota", "disc": "BD", "media": 8} = garantir media×10 pontos na disciplina; ou {"regra": "nota", "disc": "BD", "aval": "P2", "nota": 8} = tirar 8 ou mais numa avaliação que ainda não tem nota.
+- constancia: {"regra": "constancia", "n": 21} = Ten de n dias seguidos.
+- semana: {"regra": "semana", "xp": 400} = uma semana (seg a dom) com xp ou mais, até o dobro da melhor semana.
+- nome: curto e no tema (até 60 letras). texto: uma ou duas frases no tema, sem inventar fatos (até 300 letras).
+- ic: um destes ícones: int tra con esp man emi spider tower card flame moon island crown scroll.
+- Varie as regras e os alvos. Nada que já esteja cumprido ou que repita uma conquista aberta. Tem que dar para cumprir até o fim da temporada.
+- A recompensa e a dificuldade quem decide é o jogo: não fale de prêmio.
+
+DADOS
+{hoje e fim da temporada, ritmo das últimas 4 semanas, Ten, tarefas por tipo, disciplinas (pontos e avaliações sem nota),
+hábitos (frequência, vezes e maior sequência), Codeforces, palavras mais comuns nas tarefas, conquistas da IA abertas}
 ```

@@ -2,10 +2,11 @@
 
 Um jogo (tema Hunter x Hunter) em cima do [todo.txt](https://github.com/todotxt/todo.txt): você conclui tarefas e sobe a
 **Arena Celestial**, enfrenta as disciplinas como **chefões** (vida = nota), mantém o **Ten** (dias seguidos) e gasta
-**Jenny** na loja. Roda no seu computador, sem conta e sem internet (só o Codeforces, se você ligar, consulta a API).
+**Jenny** na loja. Roda no seu computador, sem conta e quase sem internet: só o Codeforces (se você ligar) e a
+conferência de versão nova (uma leitura do GitHub a cada 6 horas) saem do computador.
 Precisa apenas do Python 3.8 ou mais novo, no Linux, Windows ou Mac.
 
-> **Versão 0.3.** Testada no Linux por amigos, com foco em usabilidade. No Windows e no Mac ainda não foi testada
+> **Versão 0.5.** A 0.3 foi testada no Linux por amigos, com foco em usabilidade. No Windows e no Mac ainda não foi testada
 > (inclusive o instalador e o início automático): se algo der errado, avise. O que está planejado fica em [`docs/PENDENCIAS.md`](docs/PENDENCIAS.md).
 > O desenho do modo em grupo (placar **Torre Trick**) está em [`docs/COLETIVO.md`](docs/COLETIVO.md) e ainda não existe.
 
@@ -83,6 +84,7 @@ Tudo o que é seu fica numa pasta separada do código:
 | `jogador.json` | nome, tags, hábitos, disciplinas e Codeforces |
 | `avaliacoes.txt`, `notas.txt` | plano de avaliação das disciplinas e notas lançadas (o editor do chefão guarda a versão anterior em `.bak`) |
 | `narradas.json` | cartas narradas do Book |
+| `conquistas.json` | conquistas criadas pela IA (Book, 200 em diante) e o que você resgatou |
 | `estado.json` | loja, Jenny gasta e o que está equipado |
 | `avatares/` | coloque arquivos PNG aqui para ter mais fotos de perfil |
 | `servidor.log` | o que o servidor anotou quando roda em segundo plano |
@@ -91,8 +93,14 @@ Para fazer backup, use o botão **baixar meus dados** na aba Configurações (um
 
 ## Atualizar
 
+O jogo confere sozinho se saiu versão nova e avisa na aba **Novidades** (com um ponto amarelo no menu). Lá, o botão
+**atualizar agora** baixa a versão nova (pelo git ou, sem git, pelo ZIP do GitHub) e reinicia o jogo. A mesma aba
+explica o que mudou em cada versão.
+
+À mão também dá:
+
 - **Com git:** `git pull` dentro da pasta do jogo.
-- **Sem git:** baixe o ZIP de novo e substitua a pasta do jogo.
+- **Sem git:** rode de novo o comando da instalação rápida (ele baixa por cima) ou baixe o ZIP e substitua a pasta do jogo.
 
 Atualizar nunca mexe nos seus dados, porque eles ficam fora da pasta do código.
 
@@ -126,17 +134,20 @@ Entra um jogador de exemplo, com histórico, e nada é gravado: recarregar a pá
 - `servidor.py`: servidor local (só a biblioteca padrão do Python). Lê e grava os seus arquivos, cria os hábitos de cada dia
   e consulta o Codeforces. Só aceita conexões do próprio computador.
 - `web/index.html`: a página do jogo. `web/motor.js`: todas as regras e contas. `web/guia.js`: assistente e tutorial.
-  `web/chefes.js`: editor de avaliações e notas. `web/ia.js`: pedidos para a IA e a IA ligada. `web/demo.js`: o servidor de mentira do
+  `web/chefes.js`: editor de avaliações e notas. `web/ia.js`: pedidos para a IA e a IA ligada. `web/conquistas.js`:
+  conquistas criadas pela IA (as regras ficam no motor). `web/novidades.js`: aba Novidades, com a lista de versões que o
+  servidor lê do GitHub para avisar de versão nova (ao lançar uma, ponha-a no topo). `web/demo.js`: o servidor de mentira do
   modo demonstração (também usado no GitHub Pages).
 - **IA opcional.** O jogo funciona sem IA. Com uma IA de terminal instalada (Claude Code, Codex ou Gemini CLI), ligue-a
   em **Configurações → IA**: o jogo passa a ler os planos de ensino (pasta `~/.hunter-todo/planos/`), aplicar a caixa de entrada
-  e escrever as cartas do Book sozinho, e você confere antes de salvar. Sem ela, o jogo monta os pedidos e você cola
+  e escrever as cartas do Book sozinho, e propõe conquistas feitas para você (no Book); você confere antes de salvar. Sem ela, o jogo monta os pedidos e você cola
   numa IA de chat. Veja [`IA.md`](IA.md).
 
 ## Versões
 
 | Versão | Nome | O que trouxe |
 |---|---|---|
+| 0.5 | **atualização das conquistas** | conquistas criadas pela IA (recompensa em Jenny ou feitiço), aba Novidades com aviso de versão nova e atualizar com um clique, instalador sem git que atualiza |
 | 0.4 · 0.4.1 · 0.4.2 | **atualização da IA** | IA de terminal ligada no próprio jogo (planos de ensino, caixa de entrada, cartas do Book, tipo da tarefa), tipos ao lado do campo, Codeforces à mão, aba Configurações, pesos acima de 100%, salvar vários planos de uma vez, "fiz de novo" nos hábitos semanais |
 | 0.3 · 0.3.1 | | ligação tarefa → avaliação, Torre Trick (explicação), backup, prêmios reais, prioridade sugerida |
 | 0.2 | | hábitos semanais, editor de avaliações e notas, instalador de um comando |

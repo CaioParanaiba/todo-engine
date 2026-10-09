@@ -67,27 +67,44 @@ página vinha nova (lida do disco) e o servidor ficava velho, sem as rotas da IA
   (`POST /api/denovo`: o hábito concluído hoje no todo.txt, uma vez por dia, com desfazer). No motor, da (meta+1)ª vez
   na semana em diante vale `HAB_EXTRA` = ×2 (**a calibrar**).
 
-## Planejado para a v0.5
+**v0.5 · "atualização das conquistas"** (09/10/2026, ainda não publicada). Entraram nela:
+1. **Conquistas criadas pela IA** (Book → *Conquistas da IA*, 200 em diante, em `conquistas.json`). A IA só preenche um
+   molde da lista fechada do motor (`avaliaConq()` em `web/motor.js`): `contagem` (n tarefas com palavra, disciplina,
+   tipo e/ou no prazo), `sequencia` (hábito em n dias seguidos; semanal = n semanas com a meta; `cf` = Codeforces),
+   `nota` (pontos garantidos na disciplina ou nota de uma avaliação), `constancia` (Ten de n dias) e `semana` (XP numa
+   semana, até o dobro da melhor). Tudo conta a partir do dia em que a conquista foi aceita. O motor recusa regra
+   desconhecida, alvo inexistente, o que já está cumprido, o repetido e o impossível (semana acima do dobro da melhor,
+   nota acima de 10 no que falta).
+   - **Rank e recompensa** saem da estimativa de dias no ritmo das últimas 4 semanas (`CONQ_RK`): D até 7 dias (800 J
+     ou Zetsu extra), C até 14 (1.500 J ou Gyo), B até 30 (3.000 J ou Ko), A acima (6.000 J ou feitiço à escolha).
+     **A calibrar** com o uso. Ao conquistar, os dois botões aparecem embaixo da carta; depois, "resgatada" (a Jenny
+     entra em `ganho`, o feitiço na bolsa).
+   - **Pedido** em `web/conquistas.js` (o mesmo texto no `IA.md`, pedido 3): ritmo, Ten, tarefas por tipo, disciplinas
+     com pontos e avaliações sem nota, hábitos com frequência e maior sequência, Codeforces, as 25 palavras mais comuns
+     das tarefas (60 dias) e as conquistas abertas. Funciona com a IA ligada (*propor conquistas com IA*) e no copiar e
+     colar (*conferir resposta*). Revisão com caixas; o jogador aceita as que quiser.
+   - **Limite de 5 abertas** (não resgatadas; o servidor confere em `POST /api/conquistas`). Descartar libera a vaga, e
+     o número não volta. Cada conquista guarda a `temporada`.
+2. **Aba Novidades** (`web/novidades.js`): versão instalada, aviso de versão nova e a lista do que mudou em cada versão.
+   A lista entre `/*NOVIDADES*/` e `/*FIM*/` é JSON: o servidor lê a do GitHub (`GET /api/atualizacao`, no máximo a cada
+   6 h; `?agora` na hora; `HUNTER_RAW` troca o endereço para testar). *atualizar agora* = `POST /api/atualizar`:
+   `git pull --ff-only` ou, sem git, o ZIP do `main` copiado por cima; depois o servidor reinicia (`os.execv`) e a
+   página recarrega quando o `/api/ping` mostra a versão nova. Ponto amarelo no menu (versão nova ou novidade não vista,
+   `visto` no `estado.json`) e aviso "jogo atualizado" uma vez.
+3. **Instaladores sem git atualizam:** `instalar.sh` e `instalar.ps1` baixam por cima quando a pasta já tem o
+   `servidor.py` (antes diziam "a pasta já existe"). O `.ps1` não foi testado.
+4. **Tutoriais conferidos** com o Firefox headless, passo a passo em todas as abas (nenhum passo some). O do Book ganhou
+   três passos das conquistas da IA; a aba Novidades tem o seu; quem escolhe "começar sem tutorial" também deixa de
+   ver o de Configurações e o de Novidades.
 
-0. **Conquistas criadas pela IA** (desenho combinado com o Caio em 09/10/2026; a primeira coisa a fazer no próximo chat).
-   - **A IA só cria, nunca marca.** Ela preenche um molde que o motor confere sozinho: *contagem* ("10 tarefas com a
-     palavra sql", "8 entregas de BD no prazo"), *sequência* ("hábito leitura em 14 dias seguidos"), *nota* ("derrotar
-     GA com média 8"), *constância* ("Ten de 21 dias"). O tipo de regra vem de uma lista fechada do jogo; a IA escolhe
-     o desafio, o número, o nome e o texto no tema.
-   - **Onde:** botão "propor conquistas com IA" no Book (só por clique). O pedido leva disciplinas, hábitos, palavras
-     das tarefas e o ritmo, e pede de 3 a 5 desafios difíceis mas possíveis. O jogador **aceita as que quiser** (revisão
-     como a dos planos de ensino). As aceitas ficam em `conquistas.json` na pasta de dados e aparecem no Book numa
-     seção própria (200 em diante); o motor calcula o progresso como nas fixas.
-   - **Recompensa (decidido):** o jogador escolhe **Jenny ou um feitiço** quando conquista: os dois botões aparecem
-     embaixo da carta, no detalhe da lateral do Book; depois de escolher, a carta mostra **"resgatada"** (claimed). A
-     quantia de Jenny e o feitiço oferecido são definidos pelo jogo pela dificuldade, nunca pela IA.
-   - **Limite (a confirmar):** no máximo 5 conquistas da IA abertas (não conquistadas) ao mesmo tempo; para pedir
-     novas, conquiste ou descarte alguma.
-   - **Validade (em aberto):** decidir no fim da temporada se expiram junto com ela ou ficam para sempre. Por enquanto
-     só guardar `temporada` em cada conquista criada.
+**Ao lançar uma versão:** `VERSAO` (servidor.py) e `VERSAO_PAGINA` (web/index.html) juntos, a versão nova no topo do
+`web/novidades.js` (é ela que avisa os amigos) e a linha da tabela de versões no README.
+
+## Planejado para a v0.6
 
 1. Testar Codex e Gemini CLI com a IA ligada (e o Windows: `.cmd` do npm). Os nomes de modelo do pedido leve podem mudar.
-2. Calibrar as palavras de `TIPO_PAL` e os pesos do `sugerePri()` com o uso dos amigos.
+2. Calibrar as palavras de `TIPO_PAL`, os pesos do `sugerePri()` e o rank/recompensa das conquistas da IA (`CONQ_RK`) com o uso dos amigos.
+3. Conquistas da IA: confirmar o limite de 5 abertas e decidir a validade no fim da temporada (expiram com ela ou ficam).
 
 ## Arquivado (decidir depois, em outra temporada)
 

@@ -262,7 +262,7 @@ async function salvaW(tour){
     disciplinas:W.disc.filter(d => d.d).map(d => ({d:d.d, n:d.n, n1:d.n1, n2:d.n2})), habitos:habsJSON(W.habs, W.hf), cf: W.cfOn ? {handle:W.cfH, meta:W.cfM} : null};
   try { await post('/api/config', {jogador, avaliacoes: avaliacoesTxt()}); await recarrega(); }
   catch(e){ W.err = 'Não salvou: ' + e.message; desenhaW(); return; }
-  UI.avatar = W.av; EST.tour = tour ? {} : Object.fromEntries(['l','b','b2','d2','bk','ms','sys'].map(k => [k,1])); salvaUI();
+  UI.avatar = W.av; EST.tour = tour ? {} : Object.fromEntries(['l','b','b2','d2','bk','ms','sys','cfg','nv'].map(k => [k,1])); salvaUI();
   document.getElementById('wz').remove();
   abaReal('l');
   if(tour) setTimeout(() => tutorial('l'), 250);
@@ -324,9 +324,12 @@ const TOURS = {
       ['#d2-ladder','Escada da temporada','Os marcos do semestre e onde você está.', 1],
       ['#d2-next','Próximas avaliações','As provas que vêm aí, com a preparação de cada uma.', 1]],
   bk:[['#bk-prog','Progresso do Book','Quantas cartas você já tem. As de 000 a 099 são conquistas com regra fixa, conferidas pelo jogo: as gerais e quatro para cada disciplina (060 em diante).', 0, vai({bk:'slot', bksel:'001'})],
-      ['#bk-tabs','Três tipos de carta','<b>Conquistas</b> (troféus por regra fixa), <b>narradas</b> (a história da sua semana ou mês, escrita por IA se você usar; com a IA ligada em Configurações, sai sozinha) e <b>feitiços</b>. Só os feitiços se usam: os outros dois são coleção.'],
+      ['#bk-tabs','Quatro tipos de carta','<b>Conquistas</b> (troféus por regra fixa), <b>conquistas da IA</b> (desafios feitos para você), <b>narradas</b> (a história da sua semana ou mês, escrita por IA se você usar; com a IA ligada em Configurações, sai sozinha) e <b>feitiços</b>. Só os feitiços se usam: o resto é coleção.'],
       ['#bk-grid','Conquistas','Cada carta pede algo: dias seguidos, tarefas no prazo, uma disciplina vencida. Clique numa delas para ver a regra e quanto falta. As apagadas ainda não são suas.'],
       ['#bk-det','Detalhe da carta','A regra e o seu progresso. As conquistas se marcam sozinhas: não precisa fazer nada além de jogar.'],
+      ['#bk-grid','Conquistas da IA','Desafios propostos pela IA a partir do seu ritmo, das disciplinas e dos hábitos, numerados de 200 em diante. A IA só propõe: quem confere é o jogo, contando a partir do dia em que você aceitou. Ficam até 5 abertas ao mesmo tempo.', 0, vai({bk:'ia', bksel:''})],
+      ['#cq-novas','Pedir conquistas','Com a IA ligada, <b>propor conquistas com IA</b> traz até 5 propostas; sem ela, copie o pedido para uma IA de chat e cole a resposta. Cada proposta mostra a regra, o rank e a recompensa, calculados pelo jogo. Marque as que quiser e clique em <b>aceitar</b>.'],
+      ['#bk-det','Resgatar','Conquistou? Embaixo da carta aparecem dois botões: <b>Jenny</b> ou um <b>feitiço</b>, maiores quanto mais difícil o desafio. Depois de escolher, a carta fica <b>resgatada</b>. Desafio que não serve mais pode ser descartado para abrir vaga.'],
       ['#bk-grid','Feitiços: o que são','Cartas de efeito que você guarda na bolsa e usa quando quiser. O número em cada uma é quantas você tem.<br><b>Zetsu extra</b>: +1 folga no Ten · <b>Ko</b>: a próxima tarefa vale XP ×2 · <b>Acompanhar</b>: a próxima entrega vale ×2 · <b>Gyo</b>: você escolhe o atributo da missão da semana · <b>Ken</b>: adia um prazo em 1 dia sem perder o bônus · <b>Retorno</b>: conta a meta do Codeforces de ontem.', 0, vai({bk:'feit', bksel:'F:ko'})],
       ['#bk-grid','De onde vêm','Três jeitos: <b>comprar</b> na Masadora (1 de cada por semana), fechar a <b>preparação completa</b> de uma avaliação antes da data e cumprir a <b>missão da semana</b>. Os dois últimos dão um <b>Feitiço à escolha</b>, que vira qualquer outro na hora de usar.'],
       ['#bk-det','Como usar','Clique no feitiço e depois em <b>usar agora</b>. Alguns pedem uma escolha antes (o atributo do Gyo, a tarefa do Ken). O efeito vale a partir desse momento: o Ko dobra a próxima tarefa que você concluir. Os feitiços <b>expiram na volta às aulas</b> do próximo semestre, então não guarde demais.']],
@@ -342,6 +345,8 @@ const TOURS = {
        ['#cfg-ia','IA (opcional)','Se você tem uma IA de terminal (Claude Code, Codex, Gemini CLI), ligue aqui: o jogo passa a usá-la sozinho. Depois de ligar, o botão <b>tutorial da IA</b> mostra tudo o que ela faz.'],
        ['#cfg-srv','Servidor','O programa que guarda as suas tarefas. Ligado com o computador, você só abre o endereço do jogo.'],
        ['#cfg-root > .card:last-child','Backup','Um ZIP com todos os seus dados, para guardar ou levar para outro computador.']],
+  nv:[['#nv-hero','Sua versão','O número da versão instalada e, ao lado, se saiu uma mais nova. O jogo confere no GitHub sozinho, no máximo a cada 6 horas. Quando sai versão nova, o botão <b>atualizar agora</b> baixa e reinicia o jogo, sem mexer nos seus dados.'],
+       ['#nv-lista','O que mudou','Cada versão explicada em poucas linhas, da mais nova para a mais antiga. Depois de atualizar, o jogo avisa uma vez e o ponto amarelo na aba Novidades some quando você passa por aqui.']],
   sys:[['#sys-root > .card:first-child','Regras','Tudo o que o jogo considera: XP, Ten, torre, chefões, Jenny. A fonte de verdade é o motor.js. Nome, hábitos, IA e backup ficam em <b>Configurações</b>.']],
   /* tutorial da IA: aparece ao ligar uma IA (ou pelo botão "tutorial da IA" em Configurações); troca de aba a cada passo */
   ia:[['#cfg-ia','IA ligada','A partir de agora o jogo chama a IA sozinho. Ela <b>só devolve texto</b>: quem confere e grava é o jogo, e planos e lembretes você revisa antes de salvar.', 0, () => tab('cfg')],

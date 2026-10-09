@@ -15,6 +15,9 @@ fi
 if [ -d "$PASTA/.git" ]; then
   echo "Atualizando o jogo em $PASTA"
   git -C "$PASTA" pull --ff-only
+elif [ -f "$PASTA/servidor.py" ]; then
+  echo "Atualizando o jogo em $PASTA (sem git: baixando a versão nova por cima; seus dados ficam em outra pasta)"
+  curl -fsSL "$REPO/archive/refs/heads/main.tar.gz" | tar -xz -C "$PASTA" --strip-components=1
 elif [ -e "$PASTA" ]; then
   echo "A pasta $PASTA já existe e não é o jogo. Escolha outra: curl -fsSL .../instalar.sh | HUNTER_PASTA=~/outra-pasta sh"
   exit 1

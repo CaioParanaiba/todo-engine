@@ -242,7 +242,7 @@ function carregar(api){
   const hoje = api.hoje || new Date().toISOString().slice(0,10);
   return {D:{feitas, abertas, cf:api.cf||null}, HOJE:hoje, TEMP: av.temp || {nome:'Temporada', ini:addD(hoje,-60), fim:addD(hoje,60), volta:addD(hoje,120)},
     BOSSES: av.bosses, AVAL: av.aval, NOTAS: nt.NOTAS, PARC: nt.PARC, NDATA: nt.NDATA, INBOX: parseAjustes(api.ajustes), EST: est, AVATARES: api.avatares||[],
-    NARRADAS: Array.isArray(api.narradas) ? api.narradas : [], JOG: Object.assign({nome:'Hunter'}, api.jogador||{}), SRV: api.servidor||null, AV_TXT: String(api.avaliacoes||''), NT_TXT: String(api.notas||''), dif:'normal'};
+    NARRADAS: Array.isArray(api.narradas) ? api.narradas : [], CONQ: Array.isArray(api.conquistas) ? api.conquistas : [], JOG: Object.assign({nome:'Hunter'}, api.jogador||{}), SRV: api.servidor||null, AV_TXT: String(api.avaliacoes||''), NT_TXT: String(api.notas||''), dif:'normal'};
 }
 
 /* ---------- regras ---------- */
@@ -418,11 +418,14 @@ function estado(C){
     return {t, sc, x: Math.round(x), b, av, bonus: nenDe(t) === fraco, fury: !!(b && b.fury)};
   }).sort((a,b) => b.sc - a.sc);
   const bonusNotas = Math.round(bs.reduce((s,b) => s + b.avs.filter(a => !a.cont && a.nota >= MEDIA).reduce((q,a) => q + a.nota*a.w*5, 0), 0));
-  const ganho = total*10 + bonusNotas;
+  const resg = (C.CONQ || []).filter(c => c && c.resgate && !c.descartada);   // conquistas da IA resgatadas: Jenny ou um feitiço
+  const conqJ = resg.reduce((s, c) => s + (c.resgate.como === 'jenny' ? +c.resgate.j || 0 : 0), 0);
+  const ganho = total*10 + bonusNotas + conqJ;
   const prepBonus = bs.reduce((s,b) => s + b.avs.filter(a => a.prepOk).length, 0);
   // bolsa: comprados + preparação completa + missões − usados
   const inv = {}; for(const w in EST.bought) for(const k of EST.bought[w]) inv[k] = (inv[k]||0) + 1;
   if(prepBonus + missoes) inv.escolha = (inv.escolha||0) + prepBonus + missoes;
+  for(const c of resg) if(c.resgate.como === 'feitico' && SPELLS.some(s => s.k === c.resgate.k)) inv[c.resgate.k] = (inv[c.resgate.k]||0) + 1;
   for(const k in (EST.usados||{})) inv[k] = (inv[k]||0) - EST.usados[k];
   for(const u of F.usos) inv[u.k] = (inv[u.k]||0) - 1;
   for(const k in inv) if(inv[k] <= 0) delete inv[k];
@@ -433,7 +436,7 @@ function estado(C){
   const hab = Object.values(habDias).reduce((m,h) => h.d.size > m.max ? {max:h.d.size, nome:h.n} : m, {max:0, nome:''});
   const sem = {n: Math.floor(dias(TEMP.ini,HOJE)/7)+1, tot: Math.ceil(dias(TEMP.ini,TEMP.fim)/7)};
   return {total, a:andar(total, C.dif), attr, porDia, xpDia, set, first, ten:ten(set,first,HOJE,F.zetsu), hojeXP: xpDia[HOJE]||0, xs, n:D.feitas.length, ritmo,
-    proj: andar(Math.round(total + ritmo*Math.max(0,dias(HOJE,TEMP.fim))/7), C.dif), bs, fraco, missDias, missoes, rot, golpes, ganho, bonusNotas, jenny: ganho - (EST.spent||0),
+    proj: andar(Math.round(total + ritmo*Math.max(0,dias(HOJE,TEMP.fim))/7), C.dif), bs, fraco, missDias, missoes, rot, golpes, ganho, bonusNotas, conqJ, jenny: ganho - (EST.spent||0),
     inv, prepBonus, espera, hab, sem, cfHoje, cfXP, usos: F.usos, metaDia: Math.max(20, Math.round(ritmo/5/5)*5),
     cofre: cofreMes(EST)*(Math.floor(Math.max(0,dias(TEMP.ini,HOJE))/30)+1) - (EST.cofreUsado||0)};
 }
@@ -511,10 +514,124 @@ function cartas(C, S){
   });
   return gerais.concat(porDisc).sort((p,q) => p.no.localeCompare(q.no))
     .concat((C.NARRADAS||[]).map(c => ({no:c.no, tipo:c.tipo, periodo:c.periodo, n:c.titulo, d:c.texto, cron:c.cronica||'', escrita:c.escrita, ic:c.ic||'scroll',
-    rk:{semana:'C', mes:'B', semestre:'A', ano:'SS'}[c.tipo] || 'C', o:'claude', on:true})));
+    rk:{semana:'C', mes:'B', semestre:'A', ano:'SS'}[c.tipo] || 'C', o:'claude', on:true}))).concat(conqIA(C, S));
+}
+
+/* ---------- conquistas criadas pela IA (200 em diante, em conquistas.json) ----------
+   A IA só preenche um molde da lista fechada abaixo (o desafio, o número, o nome e o texto); quem confere é o motor, sempre
+   a partir do dia em que a conquista foi criada. A dificuldade (rank) e a recompensa saem do jogo, nunca da IA:
+     contagem   {n, palavra?, disc?, tipo?, prazo?}  n tarefas concluídas que batem com todos os filtros dados
+     sequencia  {hab, n}                             o hábito em n dias seguidos (semanal: n semanas seguidas com a meta; 'cf' = Codeforces)
+     nota       {disc, media} ou {disc, aval, nota}  pontos garantidos na disciplina ≥ media×10, ou a nota de uma avaliação
+     constancia {n}                                  Ten de n dias seguidos
+     semana     {xp}                                 uma semana (seg a dom) com xp ou mais */
+const CONQ_MAX = 5;   // conquistas da IA abertas (não resgatadas) ao mesmo tempo (a confirmar)
+// rank pela estimativa de dias até cumprir; recompensa à escolha do jogador: Jenny ou o feitiço (a calibrar)
+const CONQ_RK = [['D', 7, 800, 'zetsu', 'fácil'], ['C', 14, 1500, 'gyo', 'média'], ['B', 30, 3000, 'ko', 'difícil'], ['A', Infinity, 6000, 'escolha', 'muito difícil']]
+  .map(([rk, dias, j, f, n]) => ({rk, dias, j, f, n}));
+const conqRk = rk => CONQ_RK.find(x => x.rk === rk) || CONQ_RK[0];
+const CONQ_TIPOS = {ent:'entrega', est:'estudo', fac:'faculdade', tre:'treino e projetos', vid:'vida'};
+const CONQ_ICS = 'int tra con esp man emi spider tower card flame moon island crown scroll'.split(' ');
+const tipoDe = t => isEnt(t) ? 'ent' : isEst(t) ? 'est' : isTre(t) ? 'tre' : isFac(t) ? 'fac' : 'vid';
+const casaConq = (t, r, C) => !isRec(t) && (!r.palavra || palavra(norm(t.txt), norm(r.palavra))) && (!r.disc || discOf(t, C) === r.disc)
+  && (!r.tipo || tipoDe(t) === r.tipo) && (!r.prazo || !!(t.due && t.done <= t.due));
+/* dias em que um hábito foi feito (pelo dia do rec:, que pode ser ontem no "esqueci de marcar"); 'cf' = dias com problema aceito */
+function diasHab(C, id){
+  if(id === 'cf'){ const cf = (C.D.cf && C.D.cf.por_dia) || {}; return new Set(Object.keys(cf).filter(d => cf[d] > 0)); }
+  return new Set(C.D.feitas.filter(t => String(t.rec || '').split(':')[0] === id).map(t => String(t.rec).split(':')[1] || t.done));
+}
+const maiorSeq = (de, ate, ok) => { let m = 0, cur = 0; for(let d = de; d <= ate; d = addD(d, 1)){ cur = ok(d) ? cur + 1 : 0; m = Math.max(m, cur); } return m; };
+/* progresso de uma regra contado a partir de `de`: {at, meta, on} */
+function progConq(r, C, S, de){
+  const {HOJE} = C;
+  if(r.regra === 'contagem'){ const at = C.D.feitas.filter(t => t.done && t.done >= de && casaConq(t, r, C)).length; return {at, meta:r.n, on: at >= r.n}; }
+  if(r.regra === 'sequencia'){
+    const sem = r.hab === 'cf' ? 0 : semanalDe(C.JOG, r.hab), ds = diasHab(C, r.hab);
+    if(!sem){ const at = maiorSeq(de, HOJE, d => ds.has(d)); return {at, meta:r.n, on: at >= r.n}; }
+    let m = 0, cur = 0;   // semanal: semanas seguidas (seg a dom) com a meta cumprida
+    for(let w = addD(de, -dow(de)); w <= HOJE; w = addD(w, 7)){ let k = 0; for(let i = 0; i < 7; i++){ const d = addD(w, i); if(d >= de && ds.has(d)) k++; }
+      cur = k >= sem ? cur + 1 : addD(w, 6) >= HOJE ? cur : 0; m = Math.max(m, cur); }   // a semana em curso não quebra a sequência
+    return {at:m, meta:r.n, on: m >= r.n};
+  }
+  if(r.regra === 'constancia'){ const at = maiorSeq(de, HOJE, d => S.ten.st[d] === 'on' || S.ten.st[d] === 'z'); return {at, meta:r.n, on: at >= r.n}; }
+  if(r.regra === 'semana'){ let m = 0; for(let w = addD(de, -dow(de)); w <= HOJE; w = addD(w, 7)){ let x = 0; for(let i = 0; i < 7; i++){ const d = addD(w, i); if(d >= de) x += S.xpDia[d] || 0; } m = Math.max(m, x); }
+    return {at:m, meta:r.xp, on: m >= r.xp}; }
+  if(r.regra === 'nota'){ const b = S.bs.find(b => b.d === r.disc); if(!b) return {at:0, meta:r.media || r.nota, on:false};
+    if(r.aval){ const a = b.avs.find(a => a.k === r.aval), n = a && a.nota != null ? a.nota : 0; return {at:Math.round(n*10)/10, meta:r.nota, on: !!a && a.nota != null && a.nota >= r.nota}; }
+    return {at:Math.round(b.pts)/10, meta:r.media, on: b.pts >= r.media*10 - 1e-9}; }
+  return {at:0, meta:1, on:false};
+}
+/* a regra em palavras, escrita pelo jogo (o texto da IA é só o tema) */
+function descConq(r, C){
+  const nomeHab = id => id === 'cf' ? 'Codeforces (um problema aceito por dia)' : (((C.JOG && C.JOG.habitos) || []).find(h => h.id === id) || {n:id}).n;
+  if(r.regra === 'contagem') return `${r.n} tarefa${r.n > 1 ? 's' : ''}` + (r.tipo ? ` de ${CONQ_TIPOS[r.tipo]}` : '') + (r.disc ? ` de ${r.disc}` : '')
+    + (r.palavra ? ` com a palavra "${r.palavra}"` : '') + (r.prazo ? ', feitas até o prazo' : '') + '.';
+  if(r.regra === 'sequencia') return semanalDe(C.JOG, r.hab) ? `${nomeHab(r.hab)}: ${r.n} semanas seguidas com a meta da semana cumprida.` : `${nomeHab(r.hab)} em ${r.n} dias seguidos.`;
+  if(r.regra === 'nota') return r.aval ? `Tirar ${numTxt(r.nota)} ou mais em ${r.aval} de ${r.disc}.` : `Garantir ${numTxt(r.media*10)} pontos em ${r.disc} (média ${numTxt(r.media)}).`;
+  if(r.regra === 'constancia') return `Ten de ${r.n} dias seguidos.`;
+  if(r.regra === 'semana') return `Uma semana (seg a dom) com ${r.xp} XP ou mais.`;
+  return '';
+}
+const numTxt = x => String(Math.round(x*10)/10).replace('.', ',');
+/* confere a proposta da IA e estima a dificuldade pelo histórico das últimas 4 semanas: {r, rk, dias} ou {erro} */
+function avaliaConq(p, C, S){
+  const {HOJE} = C, int = (v, a, b) => Number.isInteger(+v) && +v >= a && +v <= b, r = {regra:p.regra};
+  const habs = ((C.JOG && C.JOG.habitos) || []).map(h => h.id).concat(C.JOG && C.JOG.cf && C.JOG.cf.handle ? ['cf'] : []);
+  if(p.regra === 'contagem'){
+    if(!int(p.n, 2, 300)) return {erro:'número de tarefas fora de 2 a 300'};
+    r.n = +p.n;
+    if(p.palavra){ r.palavra = String(p.palavra).trim().toLowerCase(); if(r.palavra.length < 2 || r.palavra.length > 30) return {erro:'palavra inválida'}; }
+    if(p.disc){ r.disc = String(p.disc).toUpperCase(); if(!C.BOSSES.some(b => b.d === r.disc)) return {erro:`disciplina ${r.disc} não existe`}; }
+    if(p.tipo){ if(!CONQ_TIPOS[p.tipo]) return {erro:`tipo ${p.tipo} não existe`}; r.tipo = p.tipo; }
+    if(p.prazo === true) r.prazo = true;
+  } else if(p.regra === 'sequencia'){
+    if(!habs.includes(p.hab)) return {erro:`hábito ${p.hab} não existe`};
+    const sem = p.hab === 'cf' ? 0 : semanalDe(C.JOG, p.hab);
+    if(!int(p.n, 3, sem ? 20 : 120)) return {erro:'sequência fora do limite'};
+    Object.assign(r, {hab:p.hab, n:+p.n});
+  } else if(p.regra === 'constancia'){
+    if(!int(p.n, 5, 120)) return {erro:'Ten fora de 5 a 120 dias'};
+    r.n = +p.n;
+  } else if(p.regra === 'semana'){
+    if(!int(p.xp, 50, 5000)) return {erro:'XP da semana fora de 50 a 5000'};
+    r.xp = +p.xp;
+  } else if(p.regra === 'nota'){
+    r.disc = String(p.disc || '').toUpperCase(); const b = S.bs.find(b => b.d === r.disc);
+    if(!b) return {erro:`disciplina ${r.disc} não existe`};
+    if(p.aval){ const a = b.avs.find(a => a.k === p.aval); if(!a) return {erro:`avaliação ${p.aval} não existe em ${r.disc}`};
+      if(a.nota != null && !a.cont) return {erro:`${p.aval} já tem nota`}; if(!(+p.nota >= 5 && +p.nota <= 10)) return {erro:'nota fora de 5 a 10'};
+      Object.assign(r, {aval:a.k, nota:+p.nota}); }
+    else { if(!(+p.media >= 6 && +p.media <= 10)) return {erro:'média fora de 6 a 10'}; r.media = Math.round(+p.media*10)/10; }
+  } else return {erro:`regra ${p.regra} não existe`};
+  if(progConq(r, C, S, HOJE).on) return {erro:'já está cumprida'};
+  // estimativa de dias para cumprir, no ritmo das últimas 4 semanas
+  const ini = addD(HOJE, -27);
+  let est;
+  if(r.regra === 'contagem'){ const k = C.D.feitas.filter(t => t.done >= ini && casaConq(t, r, C)).length; est = k ? r.n / (k/28) : r.n * 7; }
+  else if(r.regra === 'sequencia'){ const sem = r.hab !== 'cf' && semanalDe(C.JOG, r.hab), ds = diasHab(C, r.hab), base = sem ? r.n*7 : r.n;
+    const feitos = [...ds].filter(d => d >= ini).length / (sem ? 4*sem : 28);   // fração das vezes em que o hábito saiu
+    est = base * (feitos >= .85 ? 1 : feitos >= .5 ? 1.6 : 2.5); }
+  else if(r.regra === 'constancia'){ const at = Object.keys(S.ten.st).filter(d => d >= ini && S.ten.st[d] !== 'x').length / 28; est = r.n * (at >= .85 ? 1 : at >= .5 ? 1.6 : 2.5); }
+  else if(r.regra === 'semana'){ let m = 0; for(let k = 0; k < 8; k++){ let x = 0; const w = addD(HOJE, -dow(HOJE) - 7*(k+1)); for(let i = 0; i < 7; i++) x += S.xpDia[addD(w, i)] || 0; m = Math.max(m, x); }
+    const q = m ? r.xp / m : 9; if(q > 2) return {erro:`acima do dobro da sua melhor semana (${m} XP)`}; est = q <= .8 ? 7 : q <= 1 ? 14 : q <= 1.3 ? 30 : 45; }
+  else { const b = S.bs.find(b => b.d === r.disc), a = r.aval && b.avs.find(a => a.k === r.aval);
+    let need; if(a) need = r.nota; else { const rest = b.avs.filter(a => a.nota == null || a.cont).reduce((s, a) => s + a.w, 0); need = rest ? (r.media*10 - b.pts) / rest * 10 : 99; }
+    if(need > 10) return {erro:'não dá mais para chegar lá com o que falta'};
+    est = need <= 7 ? 7 : need <= 8.5 ? 14 : need <= 9.5 ? 30 : 45; }   // pela nota que falta, não pela data da prova
+  const t = CONQ_RK.find(x => est <= x.dias);
+  return {r, rk:t.rk, dias:Math.round(est)};
+}
+/* as conquistas da IA (sem as descartadas) com o progresso, no formato das cartas do Book */
+function conqIA(C, S){
+  return (C.CONQ || []).filter(c => c && !c.descartada && c.regra).map(c => {
+    const p = progConq(c, C, S, c.criada || C.HOJE), rk = conqRk(c.rk);
+    return {no:c.no, rk:rk.rk, o:'ia', rg:c.regra, n:c.nome, d:c.texto || '', regra:descConq(c, C), ic: CONQ_ICS.includes(c.ic) ? c.ic : 'card', on: p.on || !!c.resgate,
+      at:p.at, meta:p.meta, criada:c.criada, resgate:c.resgate || null, dif:rk.n, j:rk.j, f:rk.f, temporada:c.temporada || ''};
+  }).sort((p, q) => String(p.no).localeCompare(String(q.no)));
 }
 
 window.HJ = {TAGS, configura, isTre, MEDIA, DIF, COFRE_MES, ALLFX, NEN, GUARDA, SPELLS, TK, PALS, palStyle, COS, catalogo, REAIS, PREMIOS_PADRAO, premios, cofreMes, esforco, esforcoTxt, faixaDe, FAIXAS,
   mins, has, isRec, isFac, isEst, isEnt, norm, addD, dias, dow, semanaISO, numBR, nota10, brData, brDatas, isoData, semanalDe, fmtData, fmtTxt, curta, dataRuim,
-  expandeOwn, marca, cfExtra, efeitos, parseLinha, parseAvaliacoes, parseNotas, carregar, xpDe, nenDe, discOf, custo, andar, xpAte, ten, liga, ligaCom, refDe, sugerePri, HAB_EXTRA, sugereTipo, chefoes, estado, cartas};
+  expandeOwn, marca, cfExtra, efeitos, parseLinha, parseAvaliacoes, parseNotas, carregar, xpDe, nenDe, discOf, custo, andar, xpAte, ten, liga, ligaCom, refDe, sugerePri, HAB_EXTRA, sugereTipo, chefoes, estado, cartas,
+  CONQ_MAX, CONQ_RK, CONQ_TIPOS, CONQ_ICS, conqRk, progConq, descConq, avaliaConq, conqIA, tipoDe};
 })();

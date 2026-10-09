@@ -1,7 +1,7 @@
 # IA no Hunter.todo (opcional)
 
 O jogo funciona inteiro sem IA. Com IA, você digita menos: ela monta o plano de avaliação a partir do plano de ensino,
-transforma anotações de aula em tarefas, aplica as mudanças da caixa de entrada e escreve as cartas do Book.
+aplica as mudanças da caixa de entrada, cuida das suas tarefas e escreve as cartas do Book.
 
 Há dois jeitos de usar, e este arquivo serve para os dois:
 
@@ -40,8 +40,9 @@ abaixo). Se não, use o **modo chat** (no fim): o jogador cola um pedido do jogo
 | Aplicar a caixa de entrada e marcar o lembrete como aplicado | Apagar o histórico (`done.txt`) |
 | Escrever cartas narradas no Book | Criar ou remover disciplina, hábito ou mudar o semestre: peça ao jogador para usar a aba **Regras** |
 
-**O que o jogo não tem** (diga isso em vez de improvisar): horário semanal das aulas (grade horária), agenda do Google,
-lembretes por notificação, gravação de áudio. Também não há rotina automática: você só age quando o jogador chama.
+**O que o jogo não tem** (diga isso em vez de improvisar e não ofereça): aulas de qualquer tipo (cadastrar aula,
+grade horária, transformar anotações, áudio ou transcrição de aula em tarefas), agenda do Google, lembretes por
+notificação. Também não há rotina automática: você só age quando o jogador chama.
 
 ---
 
@@ -184,9 +185,6 @@ aplicar, a mesma linha vira `aplicado`.
    pergunte em vez de adivinhar.
 3. Grave (`/api/jogo/planos`, `/api/act` ou `/api/add`) e marque o lembrete com `/api/jogo/ajuste`.
 
-**Anotações de aula → tarefas.** No máximo 5 tarefas por aula, no formato de tarefa acima. Prova ou entrega citada
-vira a tarefa `Conferir: prova de SIGLA em dd/mm`. Mostre a lista e, com o ok, grave uma por uma em `/api/add`.
-
 **Lançar nota.** O jogador diz "tirei 7,5 na P1 de CALC2": confira se a chave existe no plano e use
 `/api/jogo/nota`. Se não existir, pergunte qual é a avaliação.
 
@@ -217,7 +215,6 @@ jogo.** Nada é enviado sozinho, e não precisa de conta, chave de API nem progr
 |---|---|---|
 | 1. Plano de ensino → provas e trabalhos | **Chefões** → *editar avaliações e notas* → *copiar pedido para a IA* | o mesmo editor (*usar estas linhas*), e você confere e salva |
 | 2. Carta narrada da semana, do mês, do semestre ou do ano | **Book** → *Narradas* → *escrever carta com IA* | o mesmo bloco (*adicionar carta*) |
-| 3. Anotações de aula → tarefas | **Lista** → *colar várias tarefas de uma vez* → *copiar pedido de aula → tarefas* | o mesmo bloco (*adicionar todas*) |
 
 Se o navegador não deixar copiar sozinho (acontece com a página aberta direto do arquivo), aparece uma janela com o
 texto: `Ctrl+A` e `Ctrl+C`.
@@ -298,46 +295,3 @@ Regras:
 DADOS
 {período, jogador, XP, Ten, andar, tarefas concluídas, hábitos, Codeforces, notas, chefões, cartas do nível de baixo}
 ```
-
-### 3. Anotações de aula → tarefas
-
-**Como usar:** na Lista, abra *colar várias tarefas de uma vez*, clique em *copiar pedido de aula → tarefas*, cole numa
-IA e troque o `(cole aqui)` pelas suas anotações da aula. Cole a resposta e clique em
-*adicionar todas*. Cada linha vira uma tarefa, com o XP calculado como se você tivesse digitado.
-
-Esse bloco também serve sem IA: dá para colar várias tarefas escritas à mão, uma por linha.
-
-```text
-Abaixo estão as minhas anotações de uma aula. Transforme em tarefas para a minha lista no formato todo.txt.
-Hoje: {hoje}. Minhas disciplinas: {SIGLA (nome), ...}.
-
-Responda SÓ com as tarefas, uma por linha, sem numeração, sem marcadores e sem texto antes ou depois.
-Formato: (A) texto da tarefa +fac.SIGLA tag due:dd/mm/aaaa
-
-Regras:
-- tag: {sua tag de entrega} para entregas (trabalho, lista que vale nota) e {sua tag de estudo} para estudo e revisão.
-- +fac.SIGLA: a sigla da disciplina da aula, da lista acima.
-- due: só quando a aula der uma data (entrega, prova), em dd/mm/aaaa.
-- (A), (B) ou (C) no começo só para o que é urgente: prova ou entrega em até 7 dias = (A). Senão, sem prioridade.
-- No máximo 5 tarefas, curtas e começando por verbo (Revisar, Fazer, Ler, Entregar).
-- Prova ou entrega citada na aula vira a tarefa "Conferir: prova de SIGLA em dd/mm".
-
-Exemplo:
-(A) Entregar lista 3 de integrais +fac.CALC2 @entrega due:15/10/2026
-Revisar regra da cadeia +fac.CALC2 @estudo
-
-ANOTAÇÕES DA AULA:
-(cole aqui)
-```
-
-## O que fica de fora (por enquanto)
-
-O jogo original do autor roda com automações agendadas. No template elas viram o copia e cola acima:
-
-| No jogo do autor | No template |
-|---|---|
-| Caixa de entrada aplicada sozinha às 12h e às 18h | pedido 1, quando você quiser (o pedido leva os lembretes da caixa) |
-| Cartas narradas escritas sozinhas toda semana | pedido 2, quando você quiser |
-
-Gravar e transcrever o áudio das aulas e conferir datas de prova na agenda do Google ficaram de fora do template de
-propósito, para não complicar. Estão em `docs/PENDENCIAS.md` como ideias a avaliar.

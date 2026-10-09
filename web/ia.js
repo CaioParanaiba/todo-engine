@@ -1,9 +1,8 @@
 /* Hunter.todo · IA opcional, sem automação: o jogo monta o pedido (prompt + os seus dados), você cola numa IA qualquer
  * (ChatGPT, Claude, Gemini...) e cola a resposta de volta no jogo. Nada sai do computador sozinho.
- * Três pedidos, explicados no IA.md (mantenha os textos daqui e de lá iguais):
+ * Dois pedidos, explicados no IA.md (mantenha os textos daqui e de lá iguais):
  *   plano de ensino → avaliações do chefão (o editor do chefão, em chefes.js, recebe a resposta)
  *   carta narrada   → aba Book, Narradas (POST /api/jogo/narrada)
- *   aula → tarefas  → Lista, "colar várias tarefas" (POST /api/add, uma por linha)
  * Carregado depois de chefes.js: usa CTX, D, HOJE, TEMP, BOSSES, UI, estado, render, post, recarrega, esc, toast, tagDe.
  */
 (function(){
@@ -15,8 +14,8 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .ia-box textarea{min-height:110px;width:100%;background:var(--panel2);border:1px solid var(--hair);border-radius:9px;padding:8px 10px;font:12.5px var(--f-mono);color:var(--ink);resize:vertical}
 .ia-box .linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .ia-pop textarea{min-height:320px}
-#ia-aula{margin-top:-6px}
-#ia-aula summary{cursor:pointer;font:600 12px var(--f-mono);color:var(--soft);padding:4px 2px}
+#ia-lote{margin-top:-6px}
+#ia-lote summary{cursor:pointer;font:600 12px var(--f-mono);color:var(--soft);padding:4px 2px}
 </style>`);
 
 /* ---------- copiar: área de transferência ou, se o navegador não deixar (arquivo aberto direto), uma janela para copiar à mão ---------- */
@@ -118,33 +117,17 @@ async function addCarta(){
   UI.bk = 'claude'; UI.bksel = 'N-' + P.periodo; render(); toast('Carta adicionada ao Book');
 }
 
-/* ---------- 3. aula → tarefas (Lista) ---------- */
-function promptAula(){
-  const discs = BOSSES.map(b => { const j = (CTX.JOG.disciplinas || []).find(x => x.d === b.d) || {}; return `${b.d}${j.n ? ' (' + j.n + ')' : ''}`; }).join(', ');
-  return ['Abaixo estão as minhas anotações de uma aula. Transforme em tarefas para a minha lista no formato todo.txt.',
-    `Hoje: ${br(HOJE)}. Minhas disciplinas: ${discs || 'nenhuma cadastrada'}.`, '',
-    'Responda SÓ com as tarefas, uma por linha, sem numeração, sem marcadores e sem texto antes ou depois.',
-    `Formato: (A) texto da tarefa +fac.SIGLA tag due:${F()}`, '',
-    'Regras:',
-    `- tag: ${tagDe('ent') || '@entrega'} para entregas (trabalho, lista que vale nota) e ${tagDe('est') || '@estudo'} para estudo e revisão.`,
-    '- +fac.SIGLA: a sigla da disciplina da aula, da lista acima.',
-    `- due: só quando a aula der uma data (entrega, prova), em ${F()}.`,
-    '- (A), (B) ou (C) no começo só para o que é urgente: prova ou entrega em até 7 dias = (A). Senão, sem prioridade.',
-    '- No máximo 5 tarefas, curtas e começando por verbo (Revisar, Fazer, Ler, Entregar).',
-    `- Prova ou entrega citada na aula vira a tarefa "Conferir: prova de SIGLA em ${F().slice(0,5)}".`,
-    '', 'Exemplo:', `(A) Entregar lista 3 de integrais +fac.CALC2 ${tagDe('ent') || '@entrega'} due:${br('2026-10-15')}`, `Revisar regra da cadeia +fac.CALC2 ${tagDe('est') || '@estudo'}`,
-    '', 'ANOTAÇÕES DA AULA:', '(cole aqui)'].join('\n');
-}
-const aulaHTML = () => `<details id="ia-aula" class="card"${UI.iaAula ? ' open' : ''}><summary>colar várias tarefas de uma vez (ex.: resposta de uma IA)</summary><div class="ia-box" style="margin-top:8px">
-  <p class="sub" style="margin:0">Uma tarefa por linha, no formato da Lista (<span class="mono">+fac.SIGLA</span>, tags, <span class="mono">due:${F()}</span>). Com IA: copie o pedido, cole numa IA junto com as anotações da aula e cole a resposta aqui.</p>
+/* ---------- colar várias tarefas de uma vez (Lista): uma por linha, à mão ou vindas de uma IA ---------- */
+const loteHTML = () => `<details id="ia-lote" class="card"${UI.iaLote ? ' open' : ''}><summary>colar várias tarefas de uma vez (ex.: resposta de uma IA)</summary><div class="ia-box" style="margin-top:8px">
+  <p class="sub" style="margin:0">Uma tarefa por linha, no formato da Lista (<span class="mono">+fac.SIGLA</span>, tags, <span class="mono">due:${F()}</span>).</p>
   <textarea id="ia-tl" placeholder="Revisar regra da cadeia +fac.CALC2 @estudo&#10;(A) Entregar lista 3 +fac.CALC2 @entrega due:${br('2026-10-15')}"></textarea>
-  <div class="linha"><button type="button" class="btn" data-iaaula>copiar pedido de aula → tarefas</button><button type="button" class="btn v" data-iatadd style="margin-left:auto">adicionar todas</button></div></div></details>`;
+  <div class="linha"><button type="button" class="btn v" data-iatadd style="margin-left:auto">adicionar todas</button></div></div></details>`;
 async function addTarefas(){
   const ls = document.getElementById('ia-tl').value.split('\n').map(l => l.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').replace(/`/g, '').trim()).filter(l => l && !l.startsWith('#'));
   if(!ls.length) return;
   let ok = 0; const erros = [];
   for(const l of ls){ try { await post('/api/add', {text:l}); ok++; } catch(e){ erros.push(`${l.slice(0, 40)}: ${e.message}`); } }
-  await recarrega(); UI.iaAula = !!erros.length; render();
+  await recarrega(); UI.iaLote = !!erros.length; render();
   if(!erros.length) document.getElementById('ia-tl').value = '';
   toast(`${ok} tarefa(s) adicionada(s)` + (erros.length ? `<small>${esc(erros.join(' · '))}</small>` : ''));
 }
@@ -152,17 +135,16 @@ async function addTarefas(){
 /* ---------- encaixe nas abas ---------- */
 const rBK0 = RENDER.bk, rL0 = RENDER.l;
 RENDER.bk = S => { rBK0(S); const v = document.getElementById('ia-carta'); if(v) v.remove(); if(UI.bk === 'claude') document.getElementById('bk-det').insertAdjacentHTML('beforeend', cartaHTML()); };
-RENDER.l = S => { rL0(S); const v = document.getElementById('ia-aula'); if(v) v.remove(); document.getElementById('l-add').insertAdjacentHTML('afterend', aulaHTML()); };
+RENDER.l = S => { rL0(S); const v = document.getElementById('ia-lote'); if(v) v.remove(); document.getElementById('l-add').insertAdjacentHTML('afterend', loteHTML()); };
 document.addEventListener('click', e => {
   const q = s => e.target.closest(s);
   if(q('[data-iafecha]')){ document.getElementById('ia-pop').remove(); return; }
   const tp = q('[data-iatipo]'); if(tp){ UI.iaTipo = tp.dataset.iatipo; render(); return; }
   if(q('[data-iacarta]')){ copia(promptCarta(UI.iaTipo || 'semana'), 'Pedido da carta'); return; }
   if(q('[data-iacadd]')){ addCarta(); return; }
-  if(q('[data-iaaula]')){ copia(promptAula(), 'Pedido de aula → tarefas'); return; }
   if(q('[data-iatadd]')){ addTarefas(); return; }
-  if(q('#ia-aula summary')){ UI.iaAula = !document.getElementById('ia-aula').open; }
+  if(q('#ia-lote summary')){ UI.iaLote = !document.getElementById('ia-lote').open; }
 });
-window.HJ_IA = {promptPlano, promptCarta, promptAula, copia};
+window.HJ_IA = {promptPlano, promptCarta, copia};
 if(CTX) tab(cur);
 })();

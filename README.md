@@ -120,7 +120,7 @@ Entra um jogador de exemplo, com histórico, e nada é gravado: recarregar a pá
   `web/chefes.js`: editor de avaliações e notas. `web/ia.js`: pedidos para a IA. `web/demo.js`: o servidor de mentira do
   modo demonstração (também usado no GitHub Pages).
 - **IA opcional.** O jogo funciona sem IA. Com uma IA qualquer, o jogo monta os pedidos (plano de ensino → provas e
-  trabalhos, cartas narradas, anotações de aula → tarefas) e você cola a resposta de volta. Veja [`IA.md`](IA.md).
+  trabalhos, cartas narradas) e você cola a resposta de volta. Veja [`IA.md`](IA.md).
 
 ## Licença
 

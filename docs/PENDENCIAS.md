@@ -3,7 +3,41 @@
 Lista viva do que falta e do que foi pensado para as próximas versões. O desenho do modo em grupo (placar Torre Trick)
 tem as pendências dele em [`COLETIVO.md`](COLETIVO.md).
 
-## Ideias para as próximas versões (anotadas em 09/10/2026; a v0.3 saiu no mesmo dia)
+## Onde estamos
+
+**v0.3** publicada em 09/10/2026 (tag `v0.3`, testada no Linux pelos amigos com foco em usabilidade). Entraram nela:
+ligação tarefa → avaliação pelo prazo e com várias palavras-chave (`liga()`/`ligaCom()` em `web/motor.js`, com o
+`→ P2` e o motivo nos Chefões), aba Torre Trick explicando o modo em grupo, backup em ZIP (`GET /api/backup`, aba Regras),
+prêmios reais editáveis com régua de esforço (Masadora; `premios` e `cofreMes` no `estado.json`), lembrete da caixa de
+entrada marcado como aplicado pela página, conquistas 000–099 genéricas (gerais + quatro por disciplina, 060 em diante)
+e tutoriais do Book (feitiços) e da Masadora que trocam de sub-aba sozinhos (`vai()` em `web/guia.js`).
+
+**Como testar sem mexer nos dados reais:** `python3 servidor.py --porta 8799 --dados PASTA_DE_TESTE --sem-navegador`
+e `node ferramentas/navegador.mjs URL roteiro.json` (Firefox headless com perfil próprio; roteiro com `js`, `log`, `shot`).
+O `guia.js` roda num escopo fechado: no roteiro, abra o tutorial clicando em `[data-trq]`. Pare o servidor com `pkill`
+numa chamada separada. Depois de mexer em `web/`, rode `python3 ferramentas/standalone.py` (gera o `docs/prototipo.html`);
+o Pages atualiza a cada push.
+
+## Planejado para a v0.4 (em ordem de prioridade)
+
+1. **Prioridade das tarefas** (reforçado pelo Caio: ainda não existe e é o primeiro da fila).
+   - **No formulário de adicionar:** escolher a prioridade (A, B, C, ...), **"o jogo decide"** ou **sem prioridade**.
+     Hoje só dá digitando `(A)` no começo do texto.
+   - **"O jogo decide":** sugere uma prioridade pela disciplina (prova chegando, chefão em fúria ou com mais tarefas
+     atrasadas), pelo prazo e por algum outro fator a definir. Mostrar a sugestão antes de enviar; o jogador aceita,
+     troca ou tira. Dá para reaproveitar a pontuação dos "golpes" de `estado()` (prova perto, prazo, fúria) e o
+     `ligaCom()` para saber a avaliação da tarefa.
+   - **Na Lista:** hoje só existe a seta de subir a prioridade; falta a de **descer** (o servidor já tem a ação `down`
+     em `POST /api/act`).
+2. **Codeforces marcado à mão, para ninguém ser penalizado.** Um botão para contar o Codeforces do dia quando os
+   problemas foram feitos onde a API não enxerga: **ITMO Academy (EDU) e contests de grupos privados**. Teste de
+   09/10/2026 com o handle do Caio: o `user.status` traz contests, problemset, virtuais e gyms públicos (todos os 13 gyms
+   dele eram públicos), e nenhuma submissão do EDU nem de grupo privado (não confirmado se ele fez alguma nesse período).
+   Decidir: quantos problemas a pessoa informa, se vale para a meta do dia e o XP como os da API, e como aparece no
+   heatmap (marcado como manual?). No modo em grupo vale o combinado entre amigos, como nos outros hábitos.
+3. **Calendário do Semestre:** os meses da aba Semestre estão fixos (ago/2026 a fev/2027); devem sair da temporada.
+
+## Ideias para depois (sem versão definida)
 
 1. **Textos pessoais viram escolha do jogador, sem ficar genéricos.** Muitos textos ainda são do jogo pessoal do autor
    (Killua, "transmutação estilo Killua", nomes e falas de personagens). Ideia: o jogador escolhe o personagem favorito
@@ -35,13 +69,6 @@ tem as pendências dele em [`COLETIVO.md`](COLETIVO.md).
 - **Fotos de perfil:** as imagens de personagens não vão para o repositório (direitos). Decidir de onde vêm (avatares
   próprios ou livres, ou cada um coloca os seus em `~/.hunter-todo/avatares/`).
 - **Testes automáticos** do `servidor.py` (hoje os testes são scripts soltos e o Firefox controlado por script).
-- **Calendário do Semestre:** os meses da aba Semestre estão fixos (ago/2026 a fev/2027); devem sair da temporada.
-- **Prioridade na Lista:**
-  - a seta de prioridade só sobe: falta a de descer (o servidor já tem a ação `down`);
-  - escolher a prioridade (A, B, C ou nenhuma) já no formulário de adicionar (hoje só digitando `(A)` no começo);
-  - **prioridade recomendada antes de enviar:** o formulário sugere uma prioridade pela disciplina (prova chegando, chefão
-    em fúria ou com mais tarefas atrasadas), pelo prazo e por algum outro fator a definir. O jogador aceita a sugestão e
-    envia, ou escolhe outra, ou nenhuma.
 - **Aba Lista, bloco "constância":** sobra muito espaço entre os heatmaps (20 semanas) e a borda direita. Avaliar: mais
   semanas conforme a largura, quadradinhos maiores, ou outra coisa ao lado (resumo dos números, por exemplo).
 

@@ -1241,9 +1241,9 @@ details.l-grp summary{cursor:pointer;list-style:none} details.l-grp summary::-we
 <script src="demo.js"></script>
 <script src="motor.js"></script>
 <script>
-/* Hunter.todo · página do jogo (servida pelo painel-todo em /jogo). As regras ficam em /jogo/motor.js (window.HJ).
-   Os dados vêm de GET /api/jogo; concluir tarefa usa POST /api/act (o mesmo do painel); nota, loja e caixa de entrada
-   gravam em jogo/notas.txt, jogo/estado.json e jogo/ajustes.txt via POST /api/jogo/... (o servidor commita). */
+/* Hunter.todo · página do jogo (servida pelo servidor.py). As regras ficam em motor.js (window.HJ).
+   Os dados vêm de GET /api/jogo; tarefas usam POST /api/act, /api/add e /api/undo; nota, loja e caixa de entrada
+   gravam em notas.txt, estado.json e ajustes.txt da pasta de dados via POST /api/jogo/... (rotas no topo do servidor.py). */
 const HJx = window.HJ;
 const {MEDIA, COFRE_MES, NEN, GUARDA, SPELLS, TK, PALS, palStyle, REAIS, ALLFX, mins, has, isRec, isFac, isEst, isEnt, norm, addD, dias, dow, xpDe, nenDe} = HJx;
 let CTX = null, D, HOJE, TEMP, BOSSES, AVAL, NOTAS, PARC, INBOX, EST, COS = [];
@@ -1501,7 +1501,7 @@ function itemHTML(S, it){
   return `<div class="it7${own?' own':''}${eq?' eq':''}${lk||need?' lock':''}">${pvHTML(it)}<div class="info"><b>${esc(it.n)}</b><p>${esc(it.d)}</p><div class="buy7"><span class="pr${it.p?'':' free'}">${it.excl ? 'exclusivo' : it.p ? fmt(it.p)+' J' : 'grátis'}${own?' · seu':''}</span>${btn}</div></div></div>`;
 }
 const SECS = {
-  aparencia:[['avatar','Fotos de perfil','O rosto das páginas do jogo. No painel fica sempre o símbolo da Associação. Coloque imagens novas em ~/Pictures/icons/ e rode jogo/avatares.py.'],['pal','Paletas','Só as cores. A Simples vem com o jogo.'],['tex','Texturas de fundo','Um padrão atrás de todas as telas. Um por vez.'],['fx','Efeitos','Animações compradas uma a uma. Dá para ligar e desligar cada uma.'],['frame','Molduras do avatar',''],['title','Títulos','Aparecem embaixo do andar, no card e na ficha.'],['full','Temas completos','Paleta, fundo e efeitos juntos, mais barato que comprar separado.']],
+  aparencia:[['avatar','Fotos de perfil','O rosto das páginas do jogo. No painel fica sempre o símbolo da Associação. Para ter mais fotos, coloque arquivos PNG na pasta avatares/ dos seus dados (~/.hunter-todo/avatares/).'],['pal','Paletas','Só as cores. A Simples vem com o jogo.'],['tex','Texturas de fundo','Um padrão atrás de todas as telas. Um por vez.'],['fx','Efeitos','Animações compradas uma a uma. Dá para ligar e desligar cada uma.'],['frame','Molduras do avatar',''],['title','Títulos','Aparecem embaixo do andar, no card e na ficha.'],['full','Temas completos','Paleta, fundo e efeitos juntos, mais barato que comprar separado.']],
   pixel:[['px','Mundo pixel','Primeiro desbloqueie o mundo; depois as peles.']],
 };
 function rMS(S){

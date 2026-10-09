@@ -1,7 +1,9 @@
-/* Hunter.todo · editor de um chefão (aba Chefões e Arena): avaliações (provas, trabalhos, listas) e notas lançadas, sem IA e sem
+/* Hunter.todo · editor de um chefão (aba Chefões e Arena): avaliações (provas, trabalhos, listas) e notas lançadas, sem
  * abrir arquivo. Carregado depois de guia.js: usa CTX, AVAL, HOJE, render, post, recarrega, esc, toast e o estilo .wz do assistente.
  * Grava por POST /api/jogo/planos {avaliacoes, notas}: o bloco da disciplina no avaliacoes.txt e as linhas dela no notas.txt.
  * O resto dos dois arquivos (outras disciplinas, comentários, cabeçalho do chefão) fica como está.
+ * Com a IA ligada (aba Regras), "ler plano com IA" e "aplicar lembretes com IA" põem a resposta no mesmo lugar do copiar e colar;
+ * as observações da IA (linhas #) aparecem no editor e ficam no bloco como "# (IA) ...".
  */
 (function(){
 'use strict';
@@ -17,6 +19,8 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .ce-nota{display:grid;grid-template-columns:minmax(0,1fr) 90px 34px;gap:8px;align-items:center;font-size:14px}
 .ce-nota small{display:block;font:11.5px var(--f-mono);color:var(--soft)}
 .ce-nota.del{opacity:.45;text-decoration:line-through}
+.ce-obs{font-size:13px;color:var(--soft);background:var(--panel2);border-left:3px solid var(--amb);border-radius:8px;padding:8px 12px}
+.ce-obs ul{margin:4px 0 0;padding-left:18px}
 @media (max-width:720px){ .ce-row{grid-template-columns:1fr 1fr} .ce-row .op{grid-column:1/-1} }
 </style>`);
 
@@ -46,20 +50,28 @@ function escreveLinha(a){
 
 let E = null;   // edição em andamento
 function abre(d){
+  aoSalvar = null;
   const linhas = String(CTX.AV_TXT || '').split('\n'), b = bloco(linhas, d), boss = BOSSES.find(x => x.d === d);
   if(!b || !boss){ toast('Disciplina não encontrada no avaliacoes.txt'); return; }
   const nlin = String(CTX.NT_TXT || '').split('\n');
   E = {d, boss, avs: linhas.slice(b.ini + 1, b.fim).filter(ehAval).map(lerLinha), del:[],
     notas: nlin.map((raw, idx) => { const p = raw.split('|').map(x => x.trim()); return p.length >= 4 && !raw.trim().startsWith('#') && p[1].toUpperCase() === d
       ? {idx, raw, data:p[0], k:p[2], v:p[3], parcial:/parcial/i.test(p[4] || ''), apaga:false} : null; }).filter(Boolean),
-    err:'', confirma:''};
+    err:'', confirma:'', obs:null, lemb:[], anexo:palpite(d)};
   desenha();
+}
+/* plano de ensino da pasta planos/ com a sigla ou o nome da disciplina no nome do arquivo */
+function palpite(d){
+  const ps = window.HJ_IA ? window.HJ_IA.planos() : [], j = (CTX.JOG.disciplinas || []).find(x => x.d === d) || {};
+  const sem = t => HJ.norm ? HJ.norm(t) : String(t).toLowerCase(), alvo = [d, j.n].filter(Boolean).map(t => sem(t).replace(/[^a-z0-9]/g, ''));
+  return ps.find(f => alvo.some(a => a && sem(f).replace(/[^a-z0-9]/g, '').includes(a))) || '';
 }
 /* resposta da IA (ou linhas coladas): "chave | nome | peso | data | palavra-chave | contínua", data em dd/mm/aaaa (ou mm/dd/aaaa, conforme a opção) ou AAAA-MM-DD, "?" = estimada */
 function cola(txt){
-  const novas = [];
+  const novas = [], obs = [];
   for(let l of String(txt).split('\n')){
-    l = l.replace(/`/g, '').trim(); if(!l || l.startsWith('#') || /^[-|: ]+$/.test(l)) continue;
+    l = l.replace(/`/g, '').trim(); if(l.startsWith('#')){ const o = l.replace(/^#+\s*/, '').trim(); if(o) obs.push(o); continue; }
+    if(!l || /^[-|: ]+$/.test(l)) continue;
     l = l.replace(/^\|/, '').replace(/\|$/, '');
     const p = l.split('|').map(x => x.trim()); if(p.length < 4 || /^chave$/i.test(p[0])) continue;
     const est = p[2].includes('?') || p[3].includes('?'), dt = p[3].replace('?', '').trim();
@@ -68,7 +80,7 @@ function cola(txt){
   }
   if(!novas.length){ E.err = 'Não achei nenhuma linha no formato "chave | nome | peso | data".'; desenha(); return; }
   for(const a of E.avs) if(a.orig && !novas.some(n => n.orig === a.orig)) E.del.push(a.orig);
-  E.avs = novas; E.err = ''; desenha(); toast(`${novas.length} avaliações coladas <small>confira e salve</small>`);
+  E.avs = novas; E.obs = obs; E.err = ''; desenha(); toast(`${novas.length} avaliações coladas <small>confira e salve</small>`);
 }
 function soma(){ return E.avs.reduce((s, a) => s + (HJ.numBR(a.w) || 0), 0); }
 function desenha(){
@@ -88,11 +100,8 @@ function desenha(){
           <label>palavra-chave <input type="text" data-ce="${i}:kw" value="${esc(a.kw)}" maxlength="60" placeholder="ex.: avl, árvore" title="palavras que aparecem nas tarefas desta avaliação, separadas por vírgula"></label></div></div>`).join('')}</div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button type="button" class="btn" data-ceadd>+ avaliação</button>
         <span class="ce-soma ${sm === 100 ? 'ok' : 'ruim'}">pesos somam ${String(sm).replace('.', ',')}%${sm === 100 ? ' ✓' : ' (precisa ser 100)'}</span></div>
-      <div class="ce-sec"><h3>Com IA (opcional)</h3>
-        <p>Copie o pedido, cole numa IA (ChatGPT, Claude, Gemini...) junto com o PDF do plano de ensino e cole a resposta aqui. As linhas substituem as avaliações acima; confira e clique em salvar.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-ceia>copiar pedido para a IA</button></div>
-        <textarea id="ce-cola" placeholder="P1 | Prova 1 | 30 | ${HJ.brData('2026-09-22')} | limite |&#10;P2 | Prova 2 | 70 | ${HJ.brData('2026-12-01')}? | |" style="min-height:90px;background:var(--panel2);border:1px solid var(--hair);border-radius:9px;padding:8px 10px;font:12.5px var(--f-mono);color:var(--ink)"></textarea>
-        <div><button type="button" class="btn" data-cecola>usar estas linhas</button></div></div>
+      ${E.obs && E.obs.length ? `<div class="ce-obs"><b>Observações da IA</b> (ficam no plano como comentário; confira os itens estimados):<ul>${E.obs.map(o => `<li>${esc(o)}</li>`).join('')}</ul></div>` : ''}
+      ${iaSec()}
       <div class="ce-sec"><h3>Notas lançadas</h3>
         ${E.notas.length ? E.notas.map((n, i) => `<div class="ce-nota${n.apaga ? ' del' : ''}"><span>${esc(n.k)}${n.parcial ? ' · parcial' : ''}<small>lançada em ${HJ.brData(n.data)}</small></span>
           <input data-cen="${i}" value="${esc(n.v)}" inputmode="decimal" aria-label="nota de ${esc(n.k)}"${n.apaga ? ' disabled' : ''}>
@@ -102,6 +111,36 @@ function desenha(){
     </div>
     <div class="wz-foot"><span class="err" role="alert">${esc(E.err)}</span><span style="display:flex;gap:8px;margin-left:auto"><button type="button" class="btn" data-cesair>cancelar</button><button type="button" class="btn v" data-cesalva>salvar</button></span></div></div>`;
 }
+function iaSec(){
+  const IA = window.HJ_IA, lig = IA && IA.ligada(), lb = IA ? IA.lembretes(E.d) : [], roda = IA && IA.rodando();
+  const ta = `<textarea id="ce-cola" placeholder="P1 | Prova 1 | 30 | ${HJ.brData('2026-09-22')} | limite |&#10;P2 | Prova 2 | 70 | ${HJ.brData('2026-12-01')}? | |" style="min-height:90px;background:var(--panel2);border:1px solid var(--hair);border-radius:9px;padding:8px 10px;font:12.5px var(--f-mono);color:var(--ink)"></textarea>
+        <div><button type="button" class="btn" data-cecola>usar estas linhas</button></div>`;
+  if(!lig) return `<div class="ce-sec"><h3>Com IA (opcional)</h3>
+        <p>Copie o pedido, cole numa IA (ChatGPT, Claude, Gemini...) junto com o PDF do plano de ensino e cole a resposta aqui. As linhas substituem as avaliações acima; confira e clique em salvar. Com uma IA de terminal instalada, ligue-a na aba Regras e ela faz isso sozinha.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-ceia>copiar pedido para a IA</button></div>
+        ${ta}</div>`;
+  const ps = IA.planos();
+  return `<div class="ce-sec"><h3>Com IA (${esc(IA.nomeAg())})</h3>
+        <p>Escolha o plano de ensino e a IA monta as avaliações. As linhas substituem as de cima: confira pesos e datas e clique em salvar. Leva de alguns segundos a alguns minutos.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="ce-plano" aria-label="plano de ensino" style="max-width:260px">${ps.length ? ps.map(f => `<option${f === E.anexo ? ' selected' : ''}>${esc(f)}</option>`).join('') : '<option value="">nenhum plano na pasta</option>'}</select>
+          <button type="button" class="btn" data-cearq>enviar arquivo</button><input type="file" id="ce-arq" accept=".pdf,.html,.htm,.docx,.txt,.md" hidden>
+          <button type="button" class="btn v" data-ceiarun="plano"${roda || !ps.length ? ' disabled' : ''}>ler plano com IA</button></div>
+        ${lb.length ? `<p>${lb.length} lembrete(s) da caixa de entrada cita(m) ${esc(E.d)}: ${lb.map(m => `<i>${esc(m.t)}</i>`).join(' · ')}</p>
+          <div><button type="button" class="btn" data-ceiarun="lemb"${roda ? ' disabled' : ''}>aplicar lembretes com IA</button></div>` : ''}
+        <details><summary class="sub" style="cursor:pointer">ou copiar e colar</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <div><button type="button" class="btn" data-ceia>copiar pedido para a IA</button></div>${ta}</div></details></div>`;
+}
+async function rodaIA(tipo){
+  const IA = window.HJ_IA, anexo = tipo === 'plano' ? (document.getElementById('ce-plano') || {}).value : '';
+  if(tipo === 'plano' && !anexo){ toast('Escolha ou envie o plano de ensino'); return; }
+  const d = E.d, lemb = tipo === 'lemb' ? IA.lembretes(d) : [];
+  try {
+    const txt = await IA.planoIA(d, anexo);
+    if(!E || E.d !== d){ toast(`A resposta da IA para ${d} chegou, mas o editor foi fechado`); return; }
+    E.lemb = lemb; cola(txt);
+  } catch(err){ if(E){ E.err = 'A IA não respondeu: ' + err.message; desenha(); } else toast('A IA não respondeu: ' + esc(err.message)); }
+}
 function valida(){
   const ks = E.avs.map(a => a.k.trim());
   if(!E.avs.length) return 'Deixe pelo menos uma avaliação.';
@@ -110,7 +149,7 @@ function valida(){
   const ruimD = E.avs.find(a => !HJ.isoData(a.dt, HOJE)); if(ruimD) return `${ruimD.k || 'Avaliação'}: ${HJ.dataRuim(ruimD.dt)}`;
   if(E.avs.some(a => !(HJ.numBR(a.w) > 0))) return 'Todo peso precisa ser um número maior que zero.';
   if(Math.abs(soma() - 100) > .01) return `Os pesos somam ${String(Math.round(soma() * 100) / 100).replace('.', ',')}%; precisam somar 100.`;
-  const nr = E.notas.find(n => !n.apaga && !(HJ.numBR(n.v) >= 0 && HJ.numBR(n.v) <= 10)); if(nr) return `Nota inválida em ${nr.k}: de 0 a 10.`;
+  const nr = E.notas.find(n => !n.apaga && !(HJ.nota10(n.v) >= 0 && HJ.nota10(n.v) <= 10)); if(nr) return `Nota inválida em ${nr.k}: de 0 a 10, ou em pontos como 4/5.`;
   return '';
 }
 async function salva(){
@@ -123,17 +162,18 @@ async function salva(){
   const linhas = String(CTX.AV_TXT || '').split('\n'), b = bloco(linhas, E.d);
   const novas = E.avs.map(a => escreveLinha({...a, k:a.k.trim(), n:a.n.trim()}));
   const corpo = []; let j = 0;
-  for(const l of linhas.slice(b.ini + 1, b.fim)){ if(!ehAval(l)){ corpo.push(l); continue; } if(j === 0) corpo.push(...novas); j++; }   // comentários ficam no lugar
+  for(const l of linhas.slice(b.ini + 1, b.fim)){ if(E.obs && /^\s*#\s*\(IA\)/.test(l)) continue; if(!ehAval(l)){ corpo.push(l); continue; } if(j === 0) corpo.push(...novas); j++; }   // comentários ficam no lugar
   if(!j) corpo.push(...novas);
+  if(E.obs) corpo.unshift(...E.obs.map(o => '# (IA) ' + o.replace(/\n/g, ' ')));   // observações da última resposta da IA, logo abaixo do cabeçalho
   const av = [...linhas.slice(0, b.ini + 1), ...corpo, ...linhas.slice(b.fim)].join('\n');
   const nlin = String(CTX.NT_TXT || '').split('\n'), porIdx = new Map(E.notas.map(n => [n.idx, n]));
   const nt = nlin.flatMap((raw, idx) => { const n = porIdx.get(idx); if(!n) return [raw];
     const k = ren[n.k] || n.k; if(n.apaga || perdem.includes(n)) return [];
     if(k === n.k && n.v === n.raw.split('|')[3].trim()) return [raw];
-    return [`${n.data} | ${E.d} | ${k} | ${String(HJ.numBR(n.v)).replace('.', ',')}${n.parcial ? ' | parcial' : ''}`]; }).join('\n');
-  try { await post('/api/jogo/planos', {avaliacoes:av, notas:nt}); await recarrega(); }
+    return [`${n.data} | ${E.d} | ${k} | ${String(HJ.nota10(n.v)).replace('.', ',')}${n.parcial ? ' | parcial' : ''}`]; }).join('\n');
+  try { await post('/api/jogo/planos', {avaliacoes:av, notas:nt}); for(const m of E.lemb) await post('/api/jogo/ajuste', {quando:m.d, texto:m.t, aplicado:true}); await recarrega(); }
   catch(err){ E.err = 'Não salvou: ' + err.message; desenha(); return; }
-  document.getElementById('ce').remove(); E = null; render(); toast('Chefão salvo <small>avaliacoes.txt e notas.txt</small>');
+  const nl = E.lemb.length; if(aoSalvar){ aoSalvar(); aoSalvar = null; } document.getElementById('ce').remove(); E = null; render(); toast('Chefão salvo <small>avaliacoes.txt e notas.txt' + (nl ? ` · ${nl} lembrete(s) marcado(s) como aplicado(s)` : '') + '</small>');
 }
 
 document.addEventListener('input', e => {
@@ -150,9 +190,19 @@ document.addEventListener('click', e => {
   const dl = q('[data-cedel]'); if(dl){ const a = E.avs.splice(+dl.dataset.cedel, 1)[0]; if(a.orig) E.del.push(a.orig); desenha(); return; }
   const nd = q('[data-cendel]'); if(nd){ const n = E.notas[+nd.dataset.cendel]; n.apaga = !n.apaga; desenha(); return; }
   if(q('[data-ceia]')){ window.HJ_IA.copia(window.HJ_IA.promptPlano(E.d), 'Pedido do plano de ensino'); return; }
-  if(q('[data-cecola]')){ cola(document.getElementById('ce-cola').value); return; }
-  if(q('[data-cesair]')){ document.getElementById('ce').remove(); E = null; return; }
+  if(q('[data-cecola]')){ E.lemb = []; cola(document.getElementById('ce-cola').value); return; }
+  if(q('[data-cearq]')){ document.getElementById('ce-arq').click(); return; }
+  const ir = q('[data-ceiarun]'); if(ir){ ir.disabled = true; rodaIA(ir.dataset.ceiarun); return; }
+  if(q('[data-cesair]')){ document.getElementById('ce').remove(); E = null; aoSalvar = null; return; }
   if(q('[data-cesalva]')) salva();
+});
+document.addEventListener('change', async e => {
+  if(!E) return;
+  if(e.target.id === 'ce-plano'){ E.anexo = e.target.value; return; }
+  if(e.target.id !== 'ce-arq' || !e.target.files[0]) return;
+  try { E.anexo = await window.HJ_IA.enviaPlano(e.target.files[0]); toast(`${esc(E.anexo)} guardado <small>na pasta planos</small>`); }
+  catch(err){ toast('Não enviou: ' + esc(err.message)); }
+  if(E) desenha();
 });
 document.addEventListener('keydown', e => { if(E && e.key === 'Escape'){ document.getElementById('ce').remove(); E = null; } });
 
@@ -160,6 +210,8 @@ document.addEventListener('keydown', e => { if(E && e.key === 'Escape'){ documen
 const rB2_0 = RENDER.b2, rB_0 = RENDER.b;
 RENDER.b2 = S => { rB2_0(S); document.querySelectorAll('#b2-cols .col').forEach((c, i) => { const b = S.bs[i]; if(b) c.querySelector('.ch').insertAdjacentHTML('beforeend', `<button type="button" class="btn" data-cedit="${b.d}" style="margin-top:10px">editar avaliações e notas</button>`); }); };
 RENDER.b = S => { rB_0(S); const d = document.querySelector('#b-bosses .bdet'); if(d && UI.bsel) d.insertAdjacentHTML('beforeend', `<p style="margin:10px 0 0"><button type="button" class="btn" data-cedit="${UI.bsel}">editar avaliações e notas</button></p>`); };
-window.HJ_CHEFES = {abre};
+/* "ler todos os planos" (ia.js): abre o editor com a resposta da IA já colada; aoSalvar marca o item como salvo */
+let aoSalvar = null;
+window.HJ_CHEFES = {abre, cola: (txt, fn) => { if(!E) return; E.lemb = []; aoSalvar = fn || null; cola(txt); }};
 if(CTX) tab(cur);
 })();

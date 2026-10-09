@@ -60,7 +60,7 @@ const TIPOS = [
   {k:'ent', n:'Entrega',   c:5, pre:'@', ess:'algo que você <b>entrega para alguém</b>: lista, trabalho, atividade no sistema da faculdade. Tem prazo e alguém confere.', ex:'Lista 3 de derivadas +fac.CALC2 {tag} due:sexta', xp:25},
   {k:'est', n:'Estudo',    c:0, pre:'@', ess:'tempo de <b>aprender</b>: revisar, ler, resumir, refazer exercícios. Ninguém cobra, mas é o que prepara a prova.', ex:'Revisar integrais por partes +fac.CALC2 {tag}', xp:15},
   {k:'fac', n:'Faculdade', c:2, pre:'+', ess:'<b>outras coisas da faculdade</b> que não são entrega nem estudo: organizar o projeto, montar o grupo, falar com o professor. Basta a disciplina.', ex:'Montar o grupo do projeto +fac.POO', xp:15, fixo:'+fac.SIGLA'},
-  {k:'tre', n:'Treino',    c:1, pre:'+', ess:'<b>prática fora da matéria</b>: Codeforces, contest, projeto para treinar programação.', ex:'Virtual contest no Codeforces {tag}', xp:10},
+  {k:'tre', n:'Treino e projetos', c:1, pre:'+', ess:'<b>programação e projetos pessoais fora da matéria</b>: Codeforces, contest, o seu app ou site, ajudar num projeto (como o próprio Hunter.todo).', ex:'Virtual contest no Codeforces {tag}', xp:10},
   {k:'hab', n:'Hábito',    c:4, pre:'+', ess:'o que se <b>repete todo dia</b>: digitação, leitura, exercício. Vale metade, mas mantém o Ten.', ex:'Treino de digitação {tag}', xp:5},
   {k:'vid', n:'Vida',      c:3, pre:'',  ess:'<b>todo o resto</b>: casa, família, saúde, documentos. Sem tag nenhuma.', ex:'Renovar a carteirinha do RU', xp:10, fixo:'sem tag'},
 ];
@@ -243,7 +243,7 @@ function desenhaW(){
   const f = bg.querySelector('.wz-body input'); if(f && W.passo !== 1) f.focus();
 }
 function abreW(){ W.editar = false; PASSOS = PASSOS_1; iniciaW(); desenhaW(); }
-function abreDisciplinas(){
+function abreDisciplinas(nova){   // nova = {d, n}: disciplina sugerida (ex.: um plano de ensino lido pela IA sem chefão)
   iniciaW(); W.editar = true; PASSOS = ['Disciplinas']; W.passo = 0;
   const BL = blocos(CTX.AV_TXT), simples = a => a.length === 2 && a.some(x => x.k === 'N1') && a.some(x => x.k === 'N2');
   W.ini = TEMP.ini; W.fim = TEMP.fim;
@@ -253,6 +253,7 @@ function abreDisciplinas(){
     const notas = Object.keys(NOTAS).concat(Object.keys(PARC)).filter(k => k.startsWith(b.d + ':')).length;
     return simples(a) ? {d:b.d, n:j.n || '', n1:a.find(x => x.k === 'N1').dt, n2:a.find(x => x.k === 'N2').dt, notas}
       : {d:b.d, n:j.n || '', n1:'', n2:'', det:a.length, bloco:BL[b.d] || '', notas}; });
+  if(nova && nova.d && !W.disc.some(x => x.d === nova.d)) W.disc.push({d:nova.d, n:nova.n || '', n1:meio(W.ini, W.fim, .45), n2:meio(W.ini, W.fim, .95)});
   if(!W.disc.length) W.disc.push({d:'', n:'', n1:meio(W.ini, W.fim, .45), n2:meio(W.ini, W.fim, .95)});
   desenhaW();
 }
@@ -316,13 +317,13 @@ const TOURS = {
      ['#b-log','Últimas lutas','O que você concluiu por último e quanto rendeu.', 1]],
   b2:[['#b2-cols','Um chefão por disciplina','A vida é a nota: cada avaliação tira <b>peso × nota/10</b> pontos, e passar de 60 derruba. Registre a nota aqui depois da prova. Nota baixa não pune: o chefão entra em <b>fúria</b> e as tarefas dele valem ×1,5.'],
       ['#b2-cols .bd','Preparação','Cada tarefa da disciplina se liga a uma avaliação. Concluir todas antes da data dá <b>1 feitiço à escolha</b>, seja qual for a nota.'],
-      ['#b2-inbox','Anotações do plano','Mudou a data ou o peso de uma avaliação? Anote aqui. Fica em ajustes.txt para você aplicar no avaliacoes.txt (ou pedir a uma IA).'],
+      ['#b2-inbox','Anotações do plano','Mudou a data ou o peso de uma avaliação? Anote aqui. Fica em ajustes.txt até ser aplicado: no editor da disciplina, à mão ou com a IA ligada (aplicar lembretes com IA).'],
       ['#b2-leg','Como ler','O resumo das regras dos chefões.']],
   d2:[['#d2-months','O semestre inteiro','Cada quadradinho é um dia: azul com tarefas, roxo tracejado com Zetsu. Os anéis marcam as avaliações.'],
       ['#d2-ladder','Escada da temporada','Os marcos do semestre e onde você está.', 1],
       ['#d2-next','Próximas avaliações','As provas que vêm aí, com a preparação de cada uma.', 1]],
   bk:[['#bk-prog','Progresso do Book','Quantas cartas você já tem. As de 000 a 099 são conquistas com regra fixa, conferidas pelo jogo: as gerais e quatro para cada disciplina (060 em diante).', 0, vai({bk:'slot', bksel:'001'})],
-      ['#bk-tabs','Três tipos de carta','<b>Conquistas</b> (troféus por regra fixa), <b>narradas</b> (a história da sua semana ou mês, escrita por IA se você usar) e <b>feitiços</b>. Só os feitiços se usam: os outros dois são coleção.'],
+      ['#bk-tabs','Três tipos de carta','<b>Conquistas</b> (troféus por regra fixa), <b>narradas</b> (a história da sua semana ou mês, escrita por IA se você usar; com a IA ligada em Regras, sai sozinha) e <b>feitiços</b>. Só os feitiços se usam: os outros dois são coleção.'],
       ['#bk-grid','Conquistas','Cada carta pede algo: dias seguidos, tarefas no prazo, uma disciplina vencida. Clique numa delas para ver a regra e quanto falta. As apagadas ainda não são suas.'],
       ['#bk-det','Detalhe da carta','A regra e o seu progresso. As conquistas se marcam sozinhas: não precisa fazer nada além de jogar.'],
       ['#bk-grid','Feitiços: o que são','Cartas de efeito que você guarda na bolsa e usa quando quiser. O número em cada uma é quantas você tem.<br><b>Zetsu extra</b>: +1 folga no Ten · <b>Ko</b>: a próxima tarefa vale XP ×2 · <b>Acompanhar</b>: a próxima entrega vale ×2 · <b>Gyo</b>: você escolhe o atributo da missão da semana · <b>Ken</b>: adia um prazo em 1 dia sem perder o bônus · <b>Retorno</b>: conta a meta do Codeforces de ontem.', 0, vai({bk:'feit', bksel:'F:ko'})],

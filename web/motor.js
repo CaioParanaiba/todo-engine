@@ -15,7 +15,7 @@ const ALLFX = ['shim','aura','shake','zap','drift','confete'];
 
 const NEN = [
   {k:'int', n:'Intensificação', c:'estudo',   f:'@estudo',     s:'Força de base. Horas de estudo e revisão que deixam você pronto para as provas.'},
-  {k:'tra', n:'Transmutação',   c:'treino',   f:'+treino · Codeforces',      s:'Transformar teoria em código rápido. É o tipo do Killua.'},
+  {k:'tra', n:'Transmutação',   c:'treino',   f:'+treino · Codeforces · projetos', s:'Transformar teoria em código rápido. É o tipo do Killua.'},
   {k:'con', n:'Conjuração',     c:'criação',  f:'outras tarefas da faculdade',      s:'Criar do zero: códigos, projetos, roteiros, organizar a matéria.'},
   {k:'esp', n:'Especialização', c:'vida',     f:'o resto (sem tag)', s:'O que é só seu: casa, família, saúde, pessoas.'},
   {k:'man', n:'Manipulação',    c:'hábitos',  f:'+rotina',         s:'Controle de si: hábitos diários, como a digitação.'},
@@ -167,6 +167,8 @@ const dias = (a,b) => Math.round((new Date(b+'T12:00:00Z') - new Date(a+'T12:00:
 const dow = iso => (new Date(iso+'T12:00:00Z').getUTCDay()+6)%7;
 const semanaISO = iso => { const d = new Date(iso+'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 3 - (d.getUTCDay()+6)%7); const y = d.getUTCFullYear(), w1 = new Date(Date.UTC(y,0,4)); return y + '-W' + String(1 + Math.round(((d - w1)/864e5 - 3 + (w1.getUTCDay()+6)%7)/7)).padStart(2,'0'); };
 const numBR = s => parseFloat(String(s).replace(',','.'));
+/* nota lançada de 0 a 10, ou em pontos ("4/5" = 4 de 5 → 8), com até 2 casas */
+const nota10 = s => { const m = /^\s*([\d.,]+)\s*\/\s*([\d.,]+)\s*$/.exec(String(s)); const v = m ? numBR(m[1]) / numBR(m[2]) * 10 : numBR(s); return isFinite(v) ? Math.round(v * 100) / 100 : NaN; };
 /* datas na tela: dd/mm/aaaa (padrão) ou mm/dd/aaaa, à escolha do jogador (jogador.json, "datas": "dmy" | "mdy", aba Regras).
    Nos arquivos continuam AAAA-MM-DD (formato do todo.txt). */
 let MDY = false;
@@ -288,6 +290,23 @@ function ligaCom(t, avs, ref){
 const refDe = (t, HOJE) => t.done || (t.due && t.due > HOJE ? t.due : HOJE);
 /* "o jogo decide": prioridade sugerida para uma tarefa nova, com os motivos. Pontos: avaliação ligada chegando, prazo,
    fúria do chefão, atrasadas da disciplina e entrega; 70+ = A, 40+ = B, 20+ = C, abaixo disso sem prioridade */
+/* tipo sugerido pelo texto da tarefa (formulário da Lista, "o jogo sugere"): palavras de cada tipo, na ordem
+   entrega > treino e projetos > estudo > faculdade > vida. Sem palavra conhecida, não sugere (fica o que estava). */
+const TIPO_PAL = [
+  ['ent', 'lista,trabalho,entrega,entregar,enviar,submeter,relatorio,atividade,apresentacao,seminario,artigo,tp,ep,lab,laboratorio,questionario'],
+  ['tre', 'codeforces,contest,leetcode,atcoder,cses,beecrowd,uri,maratona,icpc,obi,treino,treinar,upsolve,projeto pessoal,meu projeto,app,site,bot,github,repositorio,desenvolver,desenvolvimento,programar,hunter.todo,todo-engine'],
+  ['est', 'revisar,revisao,estudar,estudo,ler,leitura,resumo,resumir,exercicio,exercicios,refazer,prova,simulado,videoaula,assistir aula,capitulo,flashcard,anki'],
+  ['fac', 'grupo,professor,professora,monitoria,monitor,matricula,orientador,coordenacao,secretaria,ementa,horario,sala'],
+  ['vid', 'medico,consulta,dentista,exame de sangue,compras,comprar,mercado,farmacia,pagar,conta de,boleto,banco,documento,rg,cpf,carteirinha,limpar,lavar,arrumar,cozinhar,casa,familia,mae,pai,aniversario,presente,cabelo,academia,correr,viagem,passagem'],
+].map(([k, ps]) => [k, ps.split(',')]);
+function sugereTipo(txt, temDisc){
+  const t = ' ' + norm(txt).replace(/[^a-z0-9.+-]+/g, ' ') + ' ';
+  for(const [k, ps] of TIPO_PAL){
+    const p = ps.find(p => t.includes(' ' + p + ' '));
+    if(p) return k === 'fac' && !temDisc ? {k:'vid', por:p} : {k, por:p};
+  }
+  return null;
+}
 function sugerePri(t, bs, HOJE, C){
   let sc = 0; const por = [], d = discOf(t, C), b = bs.find(b => b.d === d);
   if(b && b.avs.length){ const a = liga(t, b.avs, refDe(t, HOJE)), k = a && a.dt >= HOJE ? dias(HOJE, a.dt) : null;
@@ -489,6 +508,6 @@ function cartas(C, S){
 }
 
 window.HJ = {TAGS, configura, isTre, MEDIA, DIF, COFRE_MES, ALLFX, NEN, GUARDA, SPELLS, TK, PALS, palStyle, COS, catalogo, REAIS, PREMIOS_PADRAO, premios, cofreMes, esforco, esforcoTxt, faixaDe, FAIXAS,
-  mins, has, isRec, isFac, isEst, isEnt, norm, addD, dias, dow, semanaISO, numBR, brData, brDatas, isoData, semanalDe, fmtData, fmtTxt, curta, dataRuim,
-  expandeOwn, marca, cfExtra, efeitos, parseLinha, parseAvaliacoes, parseNotas, carregar, xpDe, nenDe, discOf, custo, andar, xpAte, ten, liga, ligaCom, refDe, sugerePri, chefoes, estado, cartas};
+  mins, has, isRec, isFac, isEst, isEnt, norm, addD, dias, dow, semanaISO, numBR, nota10, brData, brDatas, isoData, semanalDe, fmtData, fmtTxt, curta, dataRuim,
+  expandeOwn, marca, cfExtra, efeitos, parseLinha, parseAvaliacoes, parseNotas, carregar, xpDe, nenDe, discOf, custo, andar, xpAte, ten, liga, ligaCom, refDe, sugerePri, sugereTipo, chefoes, estado, cartas};
 })();

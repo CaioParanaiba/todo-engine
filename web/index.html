@@ -1074,8 +1074,8 @@ a.btn{display:inline-block;text-decoration:none}
 .l-main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
 .l-col{min-width:0}
 .l-add{padding:14px}
-.l-line{display:flex;gap:8px}
-.l-line input{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--hair);border-radius:10px;padding:10px 12px;font:15px var(--f-ui);color:var(--ink)}
+.l-line{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.l-line input{flex:1 1 170px;min-width:0;background:var(--panel2);border:1px solid var(--hair);border-radius:10px;padding:10px 12px;font:15px var(--f-ui);color:var(--ink)}
 .l-line input::placeholder{color:var(--faint)}
 .l-go:disabled{opacity:.45;cursor:not-allowed}
 .l-opts{display:flex;gap:10px 18px;flex-wrap:wrap;margin-top:10px;align-items:center}
@@ -1085,7 +1085,14 @@ a.btn{display:inline-block;text-decoration:none}
 #l-date{border:1px solid var(--hair);background:none;border-radius:99px;padding:3px 10px;width:112px;font:500 12.5px var(--f-mono);color:var(--ink)} #l-date::placeholder{color:var(--faint)}
 .l-chip .d{width:8px;height:8px;border-radius:50%;background:var(--c,var(--faint))}
 .l-chip[aria-pressed="true"]{color:var(--ink);border-color:var(--c,var(--volt));background:color-mix(in srgb,var(--c,var(--volt)) 14%,transparent)}
+.l-tipos{flex:0 1 auto;gap:3px} .l-tipos .l-chip{padding:3px 8px;font-size:12px;gap:5px}
+@media (max-width:760px){ .l-line input{flex-basis:100%} .l-go{margin-left:auto} }
+.l-q{min-width:26px;justify-content:center;font-family:var(--f-mono);font-weight:700}
+.l-ajuda{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--panel2);font-size:13px;color:var(--soft)}
+.l-ajuda table{width:100%;border-collapse:collapse} .l-ajuda td{padding:5px 8px 5px 0;vertical-align:top;border-top:1px solid var(--hair)} .l-ajuda tr:first-child td{border-top:0}
+.l-ajuda td:first-child{white-space:nowrap;font-weight:600} .l-ajuda i{color:var(--ink);font-style:normal}
 .l-pc{font-family:var(--f-mono);font-weight:700;min-width:30px;justify-content:center}
+.l-tsug{font:500 11.5px var(--f-ui);color:var(--faint)}
 .l-psug{font-weight:500;color:var(--soft)} .l-psug small{margin-left:6px;font:11.5px var(--f-ui);color:var(--faint)}
 .l-seg select,.l-seg input[type=date]{background:var(--panel2);border:1px solid var(--hair);border-radius:99px;padding:3px 10px;font:12.5px var(--f-ui);color:var(--ink)}
 .l-prev{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center;margin-top:12px;padding-top:10px;border-top:1px dashed var(--hair);font:600 12.5px var(--f-mono)}
@@ -1093,6 +1100,7 @@ a.btn{display:inline-block;text-decoration:none}
 .l-xp{font:700 12px var(--f-mono);border-radius:7px;padding:2px 7px;background:color-mix(in srgb,var(--grn) 16%,transparent);color:var(--grn);white-space:nowrap;font-variant-numeric:tabular-nums}
 .l-mult{font:600 11px var(--f-mono);color:var(--amb);white-space:nowrap}
 .l-groups{display:flex;flex-direction:column;gap:14px;margin-top:16px}
+.l-cfm{border:0;background:none;padding:0 2px;cursor:pointer;font:11px var(--f-mono);color:var(--faint);opacity:.6} .l-cfm:hover,.l-cfm:focus-visible{opacity:1;color:var(--ink)}
 .l-grp h3{display:flex;align-items:baseline;gap:10px;margin:0 0 6px;padding:0 4px;font-size:inherit}
 .l-grp h3 .t{font:700 13px var(--f-hud);letter-spacing:.04em;text-transform:uppercase}
 .l-grp h3 .t.late{color:var(--red)} .l-grp h3 .t.ok{color:var(--grn)}
@@ -1191,10 +1199,11 @@ details.l-grp summary{cursor:pointer;list-style:none} details.l-grp summary::-we
         <form class="card l-add" id="l-add" autocomplete="off">
           <div class="l-line">
             <input type="text" id="l-txt" placeholder="Nova tarefa: ex. Lista 3 de derivadas" aria-label="Nova tarefa">
+            <div class="l-seg l-tipos" id="l-tipo" role="group" aria-label="Tipo"></div>
             <button class="btn v l-go" id="l-btn" type="submit" disabled>+ adicionar</button>
           </div>
+          <div class="l-ajuda" id="l-ajuda" hidden></div>
           <div class="l-opts">
-            <div class="l-seg" id="l-tipo" role="group" aria-label="Tipo"><span>tipo</span></div>
             <div class="l-seg"><span>disciplina</span><select id="l-disc" aria-label="Disciplina"><option value="">nenhuma</option></select></div>
             <div class="l-seg" id="l-due" role="group" aria-label="Prazo"><span>prazo</span></div>
             <div class="l-seg" id="l-pri" role="group" aria-label="Prioridade"><span>prioridade</span></div>
@@ -1366,7 +1375,7 @@ function avList(b, where, withField){
   return b.avs.map(a => `<div class="av4"><span class="nm">${esc(a.n)}<small>${a.w}%${a.real?'':' · ex.'}${a.cont?' · contínuo':''}</small></span><span class="st ${a.st==='ok'?'ok':a.st==='low'?'low':a.st==='wait'||a.st==='hoje'?'wait':'fut'}">${stTxt(a)}</span>
     <span class="ln2"><span>${a.tot ? `preparação ${a.ok}/${a.tot}${a.prepOk?' · bônus ganho':a.prepFull?' · completa, bônus no dia':''}` : 'nenhuma tarefa ligada ainda'}</span>${prepBar(a)}</span>
     ${a.cont && a.parts.length ? `<span class="prt">${a.parts.map((p,i) => `<span>${a.k}${i+1}: ${nf(p)}</span>`).join('')}</span>` : ''}
-    ${withField && a.cont ? `<span class="nf"><label class="sub" for="n-${b.d}-${a.k}-${where}">parcial</label><input id="n-${b.d}-${a.k}-${where}" inputmode="decimal" placeholder="8"><button data-nota="${b.d}:${a.k}" data-in="n-${b.d}-${a.k}-${where}" data-cont="1">+ parcial</button></span>` : withField && a.nota == null && a.dt <= HOJE ? `<span class="nf"><label class="sub" for="n-${b.d}-${a.k}-${where}">nota</label><input id="n-${b.d}-${a.k}-${where}" inputmode="decimal" placeholder="7,5"><button data-nota="${b.d}:${a.k}" data-in="n-${b.d}-${a.k}-${where}">registrar</button></span>` : ''}</div>`).join('');
+    ${withField && a.cont ? `<span class="nf"><label class="sub" for="n-${b.d}-${a.k}-${where}">parcial</label><input id="n-${b.d}-${a.k}-${where}" placeholder="8 ou 4/5" title="de 0 a 10, ou em pontos: 4/5 = 4 de 5"><button data-nota="${b.d}:${a.k}" data-in="n-${b.d}-${a.k}-${where}" data-cont="1">+ parcial</button></span>` : withField && a.nota == null && a.dt <= HOJE ? `<span class="nf"><label class="sub" for="n-${b.d}-${a.k}-${where}">nota</label><input id="n-${b.d}-${a.k}-${where}" placeholder="7,5 ou 4/5" title="de 0 a 10, ou em pontos: 4/5 = 4 de 5"><button data-nota="${b.d}:${a.k}" data-in="n-${b.d}-${a.k}-${where}">registrar</button></span>` : ''}</div>`).join('');
 }
 const OG = {slot:'conquista', claude:'narrada com IA'};
 const PXCLS = {map:'map8', p1:'c8', p3:'gi', p3b:'shop8'};
@@ -1420,7 +1429,7 @@ function rB2(S){
         <h4>tarefas pendentes (${b.open.length})</h4>${b.open.length ? b.open.map(t => `<button class="tk" data-hit="${t.n}">${avTask(t,22)}<span class="t">${esc(t.txt)}${ligTxt(b,t)}</span><span class="v" style="color:var(--volt)">+${xpDe({...t,done:HOJE})}</span></button>`).join('') : '<p class="sub">nada pendente</p>'}
         <div class="drop">${ic('card')} preparação completa antes da data: 1 feitiço à escolha</div></div></div>`).join('');
   document.getElementById('b2-inbox').innerHTML = `<h2><span class="c">~/</span>caixa de entrada · plano de ensino</h2>
-    <label class="sub" for="inbox-txt">Anote mudanças do plano de ensino (data, peso, avaliação nova). Ficam em ajustes.txt: aplique no plano (editar avaliações e notas, ou peça a uma IA, veja IA.md) e marque como aplicado.</label>
+    <label class="sub" for="inbox-txt">Anote mudanças do plano de ensino (data, peso, avaliação nova). Ficam em ajustes.txt: aplique no plano (editar avaliações e notas; com a IA ligada, "aplicar lembretes com IA" no editor da disciplina) e marque como aplicado.</label>
     <textarea id="inbox-txt" placeholder="ex.: ARQ1: a P2 virou dois trabalhos de 15"></textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span class="sub mono">grava em ajustes.txt</span><button class="btn v" data-inbox>enviar</button></div>
     <div class="log">${INBOX.map((m,i) => [m,i]).reverse().map(([m,i]) => `<div class="${m.st==='ok'?'':'p'}"><small>${HJx.brDatas(m.d)} · ${m.st==='ok'?'aplicado':'pendente'} <button class="go" data-aplic="${i}">${m.st==='ok'?'voltar a pendente':'marcar aplicado'}</button></small>${esc(m.t)}${m.r?`<small>→ ${esc(m.r)}</small>`:''}</div>`).join('')}</div>`;
@@ -1449,7 +1458,7 @@ function rD2(S){
 }
 /* ---------- Book limpo ---------- */
 const TIERS = [['ano','Anual','lendária · uma por ano'],['semestre','Semestral','rara · uma por semestre'],['mes','Mensal','uma por mês'],['semana','Semanal','comum · uma por semana']];
-const espera = t => t === 'ano' ? `a de ${HOJE.slice(0,4)} sai em 31/12` : t === 'semestre' ? `a de ${TEMP.nome.replace('Temporada ','')} sai no fim do semestre (${ddmm(TEMP.fim)})` : t === 'mes' ? 'a deste mês sai no dia 1º' : 'a desta semana sai no domingo';
+const espera = t => t === 'ano' ? `a de ${HOJE.slice(0,4)} sai em 1º/jan` : t === 'semestre' ? `a de ${TEMP.nome.replace('Temporada ','')} sai depois do fim do semestre (${ddmm(HJx.addD(TEMP.fim, 1))})` : t === 'mes' ? 'a deste mês sai no dia 1º' : 'a desta semana sai na segunda';
 function usoHTML(S, s){
   // controles de "usar" de um feitiço: alguns pedem uma escolha (atributo, tarefa ou qual feitiço)
   const k = s.k, como = k === 'escolha' ? UI.como : k, base = k === 'escolha' ? `escolha:${como||''}` : k;
@@ -1713,8 +1722,14 @@ function rSys(S){
 
 
 /* ---------- Lista (tela inicial): adicionar, concluir, editar, remover; cada tarefa mostra quanto vale ---------- */
-const LTIPOS = [{k:'ent', n:'entrega', c:5}, {k:'est', n:'estudo', c:0}, {k:'fac', n:'faculdade', c:2}, {k:'tre', n:'treino', c:1}, {k:'hab', n:'hábito', c:4}, {k:'vid', n:'vida', c:3}];
-const LA = {tipo:'est', due:'', pri:'jogo'};   // rascunho do formulário (pri: 'jogo' = o jogo decide, '' = sem, ou a letra)
+const LTIPOS = [
+  {k:'ent', n:'entrega', c:5, d:'algo que você entrega para alguém, com prazo', ex:'Lista 3 de derivadas · Trabalho de BD · Relatório do lab'},
+  {k:'est', n:'estudo', c:0, d:'tempo de aprender para a matéria: ninguém cobra, mas prepara a prova', ex:'Revisar integrais · Ler o capítulo 4 · Refazer a P1'},
+  {k:'fac', n:'faculdade', c:2, d:'outras coisas da faculdade, ligadas a uma disciplina, que não são entrega nem estudo', ex:'Montar o grupo do projeto · Falar com o professor'},
+  {k:'tre', n:'treino/projeto', c:1, d:'treino e projetos: programação e projetos pessoais fora da matéria', ex:'Contest no Codeforces · Ajudar no desenvolvimento do Hunter.todo · Meu site'},
+  {k:'hab', n:'hábito', c:4, d:'o que se repete: vale metade, mas mantém o Ten (os fixos ficam em Regras)', ex:'Treino de digitação · 30 min de leitura'},
+  {k:'vid', n:'vida', c:3, d:'todo o resto: casa, saúde, família, documentos, trabalho ou estágio (por enquanto)', ex:'Renovar a carteirinha · Consulta no dentista · Pagar o boleto'}];
+const LA = {tipo:'est', due:'', pri:'jogo', auto:true, por:''};   // auto: o tipo segue a sugestão do texto até o jogador escolher um   // rascunho do formulário (pri: 'jogo' = o jogo decide, '' = sem, ou a letra)
 const LPRI = [['jogo','o jogo decide'], ['A','A'], ['B','B'], ['C','C'], ['','sem']], PRI_COR = {A:'var(--red)', B:'var(--amb)', C:'var(--soft)'};
 const SEM3 = ['seg','ter','qua','qui','sex','sáb','dom'];
 const tagDe = k => { const T = HJx.TAGS[k]; return !T ? '' : T.ctx[0] ? '@' + T.ctx[0] : T.proj[0] ? '+' + T.proj[0] : ''; };
@@ -1740,24 +1755,34 @@ function priL(linha, S){
   const s = HJx.sugerePri(HJx.parseLinha(HOJE + ' ' + linha, 0), S.bs, HOJE, CTX);
   return {pri: s.pri, sug: s};
 }
+function ajudaL(){
+  return `<table><tbody>${LTIPOS.map(t => `<tr><td style="color:${NC(t.c)}">${t.n}</td><td>${esc(t.d)}.<br><i>${esc(t.ex)}</i></td></tr>`).join('')}</tbody></table>
+    <p style="margin:8px 0 0">Na dúvida, pense em quem cobra: alguém espera a entrega → <b>entrega</b>; é para a prova → <b>estudo</b>; programação ou projeto seu → <b>treino/projeto</b>. O jogo sugere o tipo pelas palavras do texto${window.HJ_IA && window.HJ_IA.ligada() ? ', e o botão <b>IA?</b> pergunta à IA' : ''}; clicar num tipo troca a sugestão.</p>`;
+}
+function marcaTipo(){ document.querySelectorAll('[data-ltipo]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ltipo === LA.tipo)); }
 function prevL(){
   if(!CTX) return;
+  if(LA.auto){ const sg = HJx.sugereTipo(document.getElementById('l-txt').value, !!document.getElementById('l-disc').value);
+    if(sg){ if(LA.tipo !== sg.k){ LA.tipo = sg.k; marcaTipo(); } LA.por = `pela palavra "${sg.por}"`; } else LA.por = ''; }
   const S = estado(), linha = rascunho(), t = HJx.parseLinha(HOJE + ' ' + linha, 0), v = valeL(t, S), nen = NEN[nenDe(t)], P = priL(linha, S);
   document.getElementById('l-btn').disabled = !document.getElementById('l-txt').value.trim();
   const jb = document.querySelector('[data-lpri="jogo"]'); if(jb) jb.innerHTML = 'o jogo decide' + (P.sug ? ` · <b>${P.sug.pri || 'sem'}</b>` : '');
   const ptx = P.sug ? (P.sug.pri ? `prioridade <b style="color:${PRI_COR[P.sug.pri]}">${P.sug.pri}</b>` : 'sem prioridade') + `<small>${P.sug.por.length ? esc(P.sug.por.join(' · ')) : 'nada urgente'}</small>`
     : P.como ? `prioridade <b style="color:${PRI_COR[P.pri] || 'var(--soft)'}">${P.pri}</b><small>${P.como}</small>` : '';
-  document.getElementById('l-prev').innerHTML = `<span>vale <span class="l-xp">+${v.x} XP</span></span><span class="l-mult">${v.base} XP${v.ms.map(m => ' · ' + m + ' ×1,5').join('')}</span><span style="color:${NC(nenDe(t))}">${esc(nen.n)}</span>${ptx ? `<span class="l-psug" title="o jogo olha a avaliação chegando, o prazo, a fúria do chefão, as atrasadas da disciplina e se é entrega">${ptx}</span>` : ''}<code title="como fica no todo.txt (no arquivo, as datas ficam como AAAA-MM-DD)">${esc(HJx.brDatas((P.pri ? `(${P.pri}) ` : '') + HOJE + ' ' + linha))}</code>`;
+  document.getElementById('l-prev').innerHTML = `<span>vale <span class="l-xp">+${v.x} XP</span></span><span class="l-mult">${v.base} XP${v.ms.map(m => ' · ' + m + ' ×1,5').join('')}</span><span style="color:${NC(nenDe(t))}">${esc(nen.n)}${LA.por ? `<small class="l-tsug"> · ${esc((LTIPOS.find(x => x.k === LA.tipo) || {}).n || '')} ${esc(LA.por)}</small>` : ''}</span>${ptx ? `<span class="l-psug" title="o jogo olha a avaliação chegando, o prazo, a fúria do chefão, as atrasadas da disciplina e se é entrega">${ptx}</span>` : ''}<code title="como fica no todo.txt (no arquivo, as datas ficam como AAAA-MM-DD)">${esc(HJx.brDatas((P.pri ? `(${P.pri}) ` : '') + HOJE + ' ' + linha))}</code>`;
 }
 function formL(){
   const tp = document.getElementById('l-tipo');
   if(!tp.dataset.ok){
     tp.dataset.ok = 1;
-    tp.insertAdjacentHTML('beforeend', LTIPOS.map(t => `<button type="button" class="l-chip" style="--c:${NC(t.c)}" data-ltipo="${t.k}" aria-pressed="${t.k === LA.tipo}" title="${esc(NEN[t.c].n)}${tagDe(t.k) ? ' · ' + tagDe(t.k) : ''}"><span class="d"></span>${t.n}</button>`).join(''));
+    tp.insertAdjacentHTML('beforeend', LTIPOS.map(t => `<button type="button" class="l-chip" style="--c:${NC(t.c)}" data-ltipo="${t.k}" aria-pressed="${t.k === LA.tipo}" title="${esc(t.d)}. Ex.: ${esc(t.ex)}${tagDe(t.k) ? ' · tag ' + tagDe(t.k) : ''}"><span class="d"></span>${t.n}</button>`).join('')
+      + '<button type="button" class="l-chip" data-ltipoia hidden title="pergunta à IA ligada qual tipo combina com esta tarefa (modelo leve, leva alguns segundos)">IA?</button>'
+      + '<button type="button" class="l-chip l-q" data-lajuda aria-expanded="false" title="o que encaixa em quê">?</button>');
     const sexta = addD(HOJE, (4 - dow(HOJE) + 7) % 7 || 7);
     document.getElementById('l-due').insertAdjacentHTML('beforeend', [['sem',''],['hoje',HOJE],['amanhã',addD(HOJE,1)],['sexta',sexta]].map(([n,d]) => `<button type="button" class="l-chip" data-ldue="${d}" aria-pressed="${d === LA.due}">${n}</button>`).join('') + `<input class="dt" inputmode="numeric" maxlength="10" placeholder="${HJx.fmtTxt()}" id="l-date" aria-label="Outra data (${HJx.fmtTxt()})">`);
     document.getElementById('l-pri').insertAdjacentHTML('beforeend', LPRI.map(([k,n]) => `<button type="button" class="l-chip${k.length === 1 ? ' l-pc' : ''}"${PRI_COR[k] ? ` style="--c:${PRI_COR[k]}"` : ''} data-lpri="${k}" aria-pressed="${k === LA.pri}"${k === 'jogo' ? ' title="sugere pela avaliação chegando, prazo, fúria do chefão, atrasadas da disciplina e entrega"' : ''}>${n}</button>`).join(''));
   }
+  document.querySelector('[data-ltipoia]').hidden = !(window.HJ_IA && window.HJ_IA.ligada());
   const ld = document.getElementById('l-date'); ld.placeholder = HJx.fmtTxt(); ld.setAttribute('aria-label', `Outra data (${HJx.fmtTxt()})`);   // a opção de datas pode mudar na aba Regras
   const sel = document.getElementById('l-disc'), opts = BOSSES.map(b => b.d).join(',');
   if(sel.dataset.opts !== opts){ const v = sel.value; sel.dataset.opts = opts; sel.innerHTML = '<option value="">nenhuma</option>' + BOSSES.map(b => `<option value="${b.d}">${b.d}</option>`).join(''); sel.value = v; }
@@ -1851,21 +1876,58 @@ function habitosL(S){
     <span class="nm">Ten<small>${S.ten.cur} dias · recorde ${S.ten.max}</small></span>${grade('var(--grn)', d => S.ten.st[d] === 'on' ? 'h4' : S.ten.st[d] === 'z' ? 'z' : '', d => S.ten.st[d] === 'on' ? 'ativo' : S.ten.st[d] === 'z' ? 'Zetsu' : 'vazio')}
     ${diarios.length || !(J.habitos || []).length ? `<span class="nm">Hábitos<small>${nh} por dia</small></span>${grade(NC(4), d => lv((hd[d]||0)/nh), d => `${hd[d]||0} de ${nh}`)}` : ''}
     ${semanais.map(x => `<span class="nm">${esc(x.n)}<small>${x.semana}× por semana</small></span>${gradeSem(x, NC(4))}`).join('')}`;
-  if(J.cf && J.cf.handle) H += `<span class="nm">Codeforces<small>${esc(J.cf.handle)} · meta ${meta}</small></span>${grade(NC(1), d => { const n = cfd[d]||0; return !n ? '' : n < meta ? (n < meta/2 ? 'h1' : 'h2') : n === meta ? 'h3' : 'h4'; }, d => `${cfd[d]||0} problema(s)`)}`;
+  const cfm = (D.cf && D.cf.manual) || {};
+  if(J.cf && J.cf.handle) H += `<span class="nm">Codeforces<small>${esc(J.cf.handle)} · meta ${meta}${CTX.SRV ? ` <button type="button" class="l-cfm" data-cfmao title="fez problema onde o jogo não enxerga (ITMO Academy, grupo privado)? marque à mão">✋${cfm[HOJE] ? ' ' + cfm[HOJE] : ''}</button>` : ''}</small></span>${grade(NC(1), d => { const n = cfd[d]||0; return !n ? '' : n < meta ? (n < meta/2 ? 'h1' : 'h2') : n === meta ? 'h3' : 'h4'; }, d => `${cfd[d]||0} problema(s)${cfm[d] ? ` (${cfm[d]} à mão)` : ''}`)}`;
   H += `</div>${leg('var(--soft)')}`;
   if(!(J.cf && J.cf.handle)) H += `<p class="sub" style="margin:10px 0 0">Faz Codeforces? Ligue em <button class="go" data-go="sys">Regras →</button> com o seu handle e ganhe o heatmap e o XP automáticos.</p>`;
   document.getElementById('l-heat').innerHTML = H;
+}
+/* "IA?" no formulário: a IA ligada sugere o tipo (pedido curto, modelo leve); a resposta vem como "tipo | motivo" */
+async function tipoIA(btn){
+  const txt = document.getElementById('l-txt').value.trim(); if(!txt){ toast('Escreva a tarefa primeiro'); return; }
+  const pedido = ['Classifique a tarefa abaixo num destes tipos do meu jogo de tarefas. Responda SÓ com uma linha: tipo | motivo curto (até 12 palavras).', '',
+    ...LTIPOS.map(t => `${t.k}: ${t.d}. Ex.: ${t.ex}`), '', `Disciplina escolhida: ${document.getElementById('l-disc').value || 'nenhuma'}`, `Tarefa: ${txt}`].join('\n');
+  btn.disabled = true;
+  try {
+    const r = await window.HJ_IA.rodaIA(pedido, 'tipo da tarefa', '', true), m = r.match(/\b(ent|est|fac|tre|hab|vid)\b\s*\|?\s*(.*)/);
+    if(!m) throw new Error('resposta fora do formato: ' + r.slice(0, 80));
+    LA.tipo = m[1]; LA.auto = false; LA.por = 'pela IA: ' + m[2].trim().slice(0, 90); marcaTipo(); prevL();
+  } catch(err){ toast('A IA não respondeu: ' + esc(err.message)); }
+  btn.disabled = false;
+}
+/* Codeforces à mão: o marcador ✋ no heatmap pede confirmação e soma 1 problema hoje (conta igual aos da API) */
+function cfMaoPergunta(){
+  const bg = document.createElement('div'); bg.className = 'wz-bg'; bg.id = 'cfm';
+  bg.innerHTML = `<div class="wz" role="dialog" aria-modal="true" aria-labelledby="cfm-t" style="max-width:460px"><div class="wz-body"><h3 id="cfm-t">Problema do Codeforces feito à mão</h3>
+    <p>Use quando você resolveu um problema onde o jogo não enxerga: <b>ITMO Academy (EDU)</b> ou <b>contest de grupo privado</b>. Cada confirmação soma <b>1 problema hoje</b> e conta igual aos outros (meta do dia e XP). Sem conferência: vale a sua palavra.</p></div>
+    <div class="wz-foot"><span style="display:flex;gap:8px;margin-left:auto"><button type="button" class="btn" data-cfmx>cancelar</button><button type="button" class="btn v" data-cfmok>sim, fiz 1 problema</button></span></div></div>`;
+  document.body.appendChild(bg); bg.querySelector('[data-cfmok]').focus();
+}
+async function cfMao(menos){
+  const el = document.getElementById('cfm'); if(el) el.remove();
+  try { const r = await post('/api/cf/mao', menos ? {menos:true} : {}); await recarrega(); render();
+    if(menos){ toast(`Desfeito <small>${r.hoje} problema(s) hoje</small>`); return; }
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+    const to = document.createElement('div'); to.className = 'toast'; to.innerHTML = `+1 problema à mão <small>${r.hoje} hoje (${r.mao} à mão)</small><button class="l-undo" data-cfmmenos>desfazer</button>`;
+    document.body.appendChild(to); setTimeout(() => to.remove(), 6000); }
+  catch(err){ toast('Não marcou: ' + esc(err.message)); }
 }
 function toastUndo(html){ document.querySelectorAll('.toast').forEach(t => t.remove()); const to = document.createElement('div'); to.className = 'toast'; to.innerHTML = html + '<button class="l-undo" data-lundo>desfazer</button>'; document.body.appendChild(to); setTimeout(() => to.remove(), 6000); }
 async function acaoL(fn, msg){ try { await fn(); await recarrega(); render(); if(msg) toastUndo(msg); } catch(err){ toast('Não deu: ' + esc(err.message)); } }
 document.addEventListener('click', async e => {
   const q = s => e.target.closest(s);
-  const tp = q('[data-ltipo]'); if(tp){ LA.tipo = tp.dataset.ltipo; document.querySelectorAll('[data-ltipo]').forEach(b => b.setAttribute('aria-pressed', b === tp));
+  if(q('[data-lajuda]')){ const a = document.getElementById('l-ajuda'), b = q('[data-lajuda]'); a.hidden = !a.hidden; b.setAttribute('aria-expanded', !a.hidden); if(!a.hidden) a.innerHTML = ajudaL(); return; }
+  if(q('[data-ltipoia]')){ tipoIA(q('[data-ltipoia]')); return; }
+  const tp = q('[data-ltipo]'); if(tp){ LA.tipo = tp.dataset.ltipo; LA.auto = false; LA.por = 'escolhido por você'; marcaTipo();
     if(LA.tipo === 'fac' && !document.getElementById('l-disc').value && BOSSES[0]) document.getElementById('l-disc').value = BOSSES[0].d; prevL(); return; }
   const pr = q('[data-lpri]'); if(pr){ LA.pri = pr.dataset.lpri; document.querySelectorAll('[data-lpri]').forEach(b => b.setAttribute('aria-pressed', b === pr)); prevL(); return; }
   const du = q('[data-ldue]'); if(du){ LA.due = du.dataset.ldue; document.getElementById('l-date').value = ''; document.querySelectorAll('[data-ldue]').forEach(b => b.setAttribute('aria-pressed', b === du)); prevL(); return; }
   const oa = q('[data-ontemabre]'); if(oa){ UI.ontem = oa.dataset.ontemabre === '1'; render(); return; }
   const on = q('[data-ontem]'); if(on){ UI.ontem = false; acaoL(() => post('/api/ontem', {id:on.dataset.ontem}), 'Marcado como feito ontem'); return; }
+  if(q('[data-cfmao]')){ cfMaoPergunta(); return; }
+  if(q('[data-cfmx]')){ document.getElementById('cfm').remove(); return; }
+  if(q('[data-cfmok]')){ cfMao(false); return; }
+  if(q('[data-cfmmenos]')){ q('[data-cfmmenos]').closest('.toast').remove(); cfMao(true); return; }
   if(q('[data-lundo]')){ q('[data-lundo]').closest('.toast').remove(); acaoL(() => post('/api/undo', {}), ''); return; }
   if(q('#l-feitas summary')){ UI.ldone = !document.getElementById('l-feitas').open; return; }
   const b = q('[data-l]'); if(!b) return;
@@ -1904,7 +1966,7 @@ document.getElementById('l-add').addEventListener('submit', async e => {
   e.preventDefault(); if(!document.getElementById('l-txt').value.trim()) return;
   const S = estado(), linha = rascunho(), v = valeL(HJx.parseLinha(HOJE + ' ' + linha, 0), S), P = priL(linha, S);
   try { await post('/api/add', {text:(P.pri ? `(${P.pri}) ` : '') + linha}); } catch(err){ toast('Não adicionou: ' + esc(err.message)); return; }
-  document.getElementById('l-txt').value = ''; LA.pri = 'jogo'; document.querySelectorAll('[data-lpri]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lpri === 'jogo'));   // a letra escolhida vale só para esta tarefa
+  document.getElementById('l-txt').value = ''; LA.pri = 'jogo'; LA.auto = true; LA.por = ''; document.querySelectorAll('[data-lpri]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lpri === 'jogo'));   // a letra escolhida vale só para esta tarefa
   await recarrega(); render(); toastUndo(`Adicionada${P.pri ? ` com prioridade ${P.pri}` : ''} <small>vale +${v.x} XP</small>`);
 });
 
@@ -1983,8 +2045,8 @@ document.addEventListener('click', async e => {
     try { await post('/api/jogo/ajuste', {texto:t}); await recarrega(); toast('Anotado <small>em ajustes.txt</small>'); render(); } catch(err){ toast('Não enviou: ' + esc(err.message)); } return; }
   const nb = q('[data-nota]');
   if(nb){
-    const v = HJx.numBR(document.getElementById(nb.dataset.in).value || '');
-    if(isNaN(v) || v < 0 || v > 10){ toast('Nota de 0 a 10 <small>ex.: 7,5</small>'); return; }
+    const v = HJx.nota10(document.getElementById(nb.dataset.in).value || '');
+    if(isNaN(v) || v < 0 || v > 10){ toast('Nota de 0 a 10, ou em pontos <small>ex.: 7,5 ou 4/5 (4 de 5)</small>'); return; }
     const [d,k] = nb.dataset.nota.split(':'), antes = estado();
     try { await post('/api/jogo/nota', {disc:d, aval:k, nota:v, parcial: !!nb.dataset.cont}); await recarrega(); } catch(err){ toast('Não gravou: ' + esc(err.message)); return; }
     const depois = estado(), b = depois.bs.find(b => b.d === d), av = b && b.avs.find(a => a.k === k);

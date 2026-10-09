@@ -3,15 +3,31 @@
 O jogo funciona inteiro sem IA. Com IA, você digita menos: ela monta o plano de avaliação a partir do plano de ensino,
 aplica as mudanças da caixa de entrada, cuida das suas tarefas e escreve as cartas do Book.
 
-Há dois jeitos de usar, e este arquivo serve para os dois:
+Há três jeitos de usar:
 
-| Tipo de IA | Exemplos | Como funciona |
+| Jeito | Exemplos | Como funciona |
 |---|---|---|
-| **IA de terminal** (lê e grava arquivos no seu computador) | Codex, Claude Code, Gemini CLI | Ela lê seus dados e grava direto no jogo. Você só diz o que quer. |
+| **IA ligada no jogo** (recomendado) | Codex, Claude Code, Gemini CLI instalados no computador | Aba **Regras → IA**: o jogo acha a IA instalada e você liga com um clique. Os botões do jogo chamam a IA sozinhos. |
 | **IA de chat** (só conversa) | ChatGPT, Claude, Gemini no navegador | O jogo monta o pedido, você cola na IA e cola a resposta de volta. |
+| **Conversar com a IA de terminal** | os mesmos da primeira linha | Abra-a na pasta do jogo e peça coisas soltas: *"adie a lista para sexta"*, *"tirei 4 de 5 na P1 de CALC2"*. |
 
-**Com IA de terminal:** abra-a dentro da pasta do jogo (`~/todo-engine`) e diga *"leia o IA.md"*. Depois é só pedir:
-*"monte o plano de CALC2 com este PDF"*, *"aplique a caixa de entrada"*, *"escreva a carta da semana passada"*.
+**IA ligada no jogo.** Instale uma IA de terminal, entre na conta dela pelo terminal uma vez e, no jogo, vá em
+**Regras → IA**, escolha a IA e clique em **testar**. A partir daí:
+
+- **Plano de ensino:** ponha os PDFs em `~/.hunter-todo/planos/` (ou use *enviar arquivo* no editor do chefão). Em
+  **Chefões**, *ler todos os planos* liga cada arquivo à disciplina, lê um por um e deixa cada resultado para você
+  revisar e salvar (disciplina ainda não cadastrada vira o botão *cadastrar*). Para uma só, *ler plano com IA* no
+  editor da disciplina.
+- **Tipo da tarefa:** no formulário da Lista, o botão *IA?* pergunta à IA qual tipo combina (pedido curto, com o modelo
+  mais leve). Sem IA, o jogo sugere pelas palavras e o *?* mostra o que encaixa em quê.
+- **Caixa de entrada:** no editor da disciplina, *aplicar lembretes com IA*. Ao salvar, os lembretes ficam marcados
+  como aplicados.
+- **Cartas do Book:** as que faltam são escritas sozinhas quando você abre o jogo (semana fechada na segunda, mês no
+  dia 1, semestre no dia seguinte ao fim da temporada, ano em 1º de janeiro). As de antes de ligar a IA saem pelo
+  botão *escrever cartas antigas* no Book. Dá para desligar as automáticas em Regras.
+
+A IA só devolve texto e não tem permissão para gravar nada: quem confere e grava é o jogo. Os dados de cada pedido vão
+para a empresa da IA escolhida.
 
 **Com IA de chat:** veja [Modo chat](#modo-chat-os-pedidos-do-jogo) no fim deste arquivo.
 
@@ -24,7 +40,8 @@ RPG com tema Hunter x Hunter. **Tudo o que você precisa está neste arquivo.** 
 código da página para entender os dados ou como gravar.
 
 **Na primeira resposta**, seja curto: em até 5 linhas, diga o que você pode fazer (tabela abaixo) e pergunte o que o
-jogador quer. Não repita este arquivo para ele.
+jogador quer. Não repita este arquivo para ele. Se a IA ainda não está ligada no jogo (`jogador.json` sem `"ia"` ou com
+`"agente": "chat"`), diga numa linha que dá para ligar em **Regras → IA**, para os botões do jogo usarem você sozinhos.
 
 **Qual modo usar:** se você consegue rodar comandos ou ler arquivos neste computador, use o **modo agente** (logo
 abaixo). Se não, use o **modo chat** (no fim): o jogador cola um pedido do jogo e você responde só no formato pedido.
@@ -42,7 +59,21 @@ abaixo). Se não, use o **modo chat** (no fim): o jogador cola um pedido do jogo
 
 **O que o jogo não tem** (diga isso em vez de improvisar e não ofereça): aulas de qualquer tipo (cadastrar aula,
 grade horária, transformar anotações, áudio ou transcrição de aula em tarefas), agenda do Google, lembretes por
-notificação. Também não há rotina automática: você só age quando o jogador chama.
+notificação.
+
+### Se o jogador pedir para "configurar", "automatizar" ou "instalar" a IA
+
+**Não crie nada:** nada de rotina agendada, timer, cron, serviço do sistema, skill, script ou programa próprio. A
+automação já vem no jogo, e cada computador precisa ficar igual para dar suporte. Responda em poucas linhas:
+
+1. Confira se o servidor está ligado (`/api/ping`) e diga ao jogador para abrir **Regras → IA**, escolher a IA dele e
+   clicar em **testar**. Se o teste acusar falta de login, mostre o comando de login da IA.
+2. Explique o que passa a acontecer sozinho: as cartas do Book que faltam, ao abrir o jogo (semana na segunda, mês no
+   dia 1, semestre no dia seguinte ao fim da temporada, ano em 1º/jan). Não pergunte essas datas: são regras do jogo.
+3. Explique onde ficam os botões: *ler todos os planos* em Chefões, *ler plano com IA* e *aplicar lembretes com IA* no
+   editor de cada chefão, *IA?* no formulário da Lista e *escrever cartas antigas* no Book. Os planos de ensino ficam em `~/.hunter-todo/planos/`.
+
+O resto do modo agente (abaixo) serve para os pedidos soltos que o jogador fizer na conversa.
 
 ---
 
@@ -62,7 +93,8 @@ notificação. Também não há rotina automática: você só age quando o jogad
 | `notas.txt` | notas lançadas | acrescentar |
 | `ajustes.txt` | caixa de entrada (lembretes de mudança) | marcar como aplicado |
 | `narradas.json` | cartas do Book | acrescentar, **pela API** |
-| `jogador.json` | nome, tags, hábitos, disciplinas, Codeforces, formato de data | só ler |
+| `planos/` | planos de ensino (PDF, HTML...) | ler |
+| `jogador.json` | nome, tags, hábitos, disciplinas, Codeforces, formato de data, IA ligada (`ia`) | só ler |
 | `estado.json`, `cf.json` | loja, carteira; cache do Codeforces | não mexer |
 
 ### 2. Como ler e gravar
@@ -119,8 +151,9 @@ aceita `hoje`, `amanha` e `+3`; já `15/10` é lido no formato do jogador e pode
 - `(A)`, `(B)`, `(C)`: prioridade (opcional). `(A)` = prova ou entrega em até 7 dias; o resto, em geral, sem prioridade.
 - a data logo depois é a de criação (o jogo põe sozinho no `/api/add`; não escreva).
 - `+fac.SIGLA`: liga a tarefa à disciplina (a sigla do `avaliacoes.txt`).
-- tags: as do jogador estão em `jogador.json` → `tags` (`ent` = entrega, `est` = estudo, `tre` = treino,
-  `hab` = hábito). Sem tag do jogador, use `@entrega` e `@estudo`. **A tag muda o XP**: entrega vale mais que estudo.
+- tags: as do jogador estão em `jogador.json` → `tags` (`ent` = entrega, `est` = estudo, `tre` = treino e projetos de
+  programação, inclusive pessoais, `hab` = hábito). Faculdade sem entrega nem estudo = só `+fac.SIGLA`; o resto (casa,
+  saúde, documentos, trabalho) fica sem tag. Sem tag do jogador, use `@entrega` e `@estudo`. **A tag muda o XP**: entrega vale mais que estudo.
 - `due:` prazo. Só ponha quando houver uma data de verdade.
 - `av:CHAVE` (opcional): liga a tarefa a uma avaliação específica (ex.: `av:P2`). Sem isso, o jogo liga pelas
   palavras-chave e pela data.
@@ -150,10 +183,13 @@ P2 | Prova 2 | 50 | 2026-12-01? | |
     vazio.
   - **contínua**: várias entregas que viram uma média (listas semanais, participação). Senão, vazio.
   - Recuperação, prova substitutiva e exame opcional ficam de fora.
+  - **Nota em pontos** (a P1 vale 5 de 10): o peso continua sendo quanto ela vale na nota final; anote numa linha `#`
+    quanto cada avaliação vale, para o jogador lançar como `4/5`.
 - Linhas com `#` são comentários: use para anotar dúvidas (ex.: `# peso da P2 não está claro no plano`).
 
 **Notas (`notas.txt`):** `2026-09-25 | CALC2 | P1 | 7,5` e, para cada entrega de uma contínua,
-`... | L | 8 | parcial`. Use a rota `/api/jogo/nota`.
+`... | L | 8 | parcial`. Use a rota `/api/jogo/nota`. A nota é sempre de 0 a 10: se o plano dá a avaliação em pontos
+("tirei 4 de 5"), converta (4 / 5 × 10 = 8). Na página, o jogador pode digitar `4/5` direto.
 
 **Caixa de entrada (`ajustes.txt`):** `2026-10-08 14:30 | pendente | P2 de CALC2 passou para 03/12`. Depois de
 aplicar, a mesma linha vira `aplicado`.
@@ -175,7 +211,9 @@ aplicar, a mesma linha vira `aplicado`.
 1. `GET /api/jogo`; ache o bloco `[SIGLA]` no `avaliacoes`. Se a disciplina não existe, peça para cadastrá-la em
    **Regras** antes.
 2. Leia o plano de ensino e monte as linhas (regras do formato acima). Mantenha as chaves que já existem.
-3. **Mostre as linhas ao jogador e espere o ok** (pesos e datas mudam a nota que falta em cada chefão).
+3. Resolva sozinho o que dá para deduzir (fórmula → pesos, data pela semana, regra confusa): marque com `?` e explique
+   numa linha `# ...`. Só pergunte se não der para fechar 100 ou se o plano se contradiz de um jeito que muda muito a
+   nota. Depois, **mostre as linhas ao jogador e espere o ok** (pesos e datas mudam a nota que falta em cada chefão).
 4. Troque só as linhas daquele bloco, mande o arquivo inteiro em `/api/jogo/planos` e conte o que mudou
    (ex.: "P2 mudou de 01/12 para 03/12; a soma dos pesos é 100").
 
@@ -189,7 +227,7 @@ aplicar, a mesma linha vira `aplicado`.
 `/api/jogo/nota`. Se não existir, pergunte qual é a avaliação.
 
 **Carta narrada.** Os fatos vêm do `done` (linhas `x DATA ...` dentro do período) e do `notas`. Hábitos são as
-linhas com `rec:`; o Codeforces está em `cf.json` → `por_dia`. **Não calcule XP, Ten nem andar**: se quiser esses
+linhas com `rec:`; o Codeforces está em `cf.json` → `por_dia` (mais `manual`, os marcados à mão). **Não calcule XP, Ten nem andar**: se quiser esses
 números, peça ao jogador para copiar o pedido em **Book → Narradas** (ele já traz tudo) ou escreva sem eles. Não
 precisa pedir ok antes de gravar uma carta: ela não muda pontuação, e o jogador pode pedir outra.
 
@@ -200,7 +238,7 @@ e use `/api/act`. Se houver mais de uma parecida, pergunte qual.
 
 1. Antes de mudar plano, notas ou várias tarefas de uma vez, **mostre o que vai mudar e espere o ok**. Uma tarefa
    avulsa que o jogador ditou pode ir direto.
-2. Nunca invente: sem data, sem peso ou sem nota no material, pergunte ou marque com `?`.
+2. Nunca invente fato: o que você deduziu leva `?` e uma linha `#` explicando; o que não dá para deduzir, pergunte.
 3. Depois de gravar, resuma o que mudou e lembre de recarregar a página.
 4. Responda no idioma e com as datas no formato do jogador.
 
@@ -213,7 +251,7 @@ jogo.** Nada é enviado sozinho, e não precisa de conta, chave de API nem progr
 
 | Para quê | Onde fica no jogo | A resposta da IA volta para |
 |---|---|---|
-| 1. Plano de ensino → provas e trabalhos | **Chefões** → *editar avaliações e notas* → *copiar pedido para a IA* | o mesmo editor (*usar estas linhas*), e você confere e salva |
+| 1. Plano de ensino → provas e trabalhos (e lembretes da caixa de entrada) | **Chefões** → *editar avaliações e notas* → *copiar pedido para a IA* | o mesmo editor (*usar estas linhas*), e você confere e salva |
 | 2. Carta narrada da semana, do mês, do semestre ou do ano | **Book** → *Narradas* → *escrever carta com IA* | o mesmo bloco (*adicionar carta*) |
 
 Se o navegador não deixar copiar sozinho (acontece com a página aberta direto do arquivo), aparece uma janela com o
@@ -222,7 +260,8 @@ texto: `Ctrl+A` e `Ctrl+C`.
 **Para a IA de chat:** quando receber um destes pedidos, responda **só** no formato que ele pede, sem explicação
 antes ou depois (o jogo lê a resposta direto). Dúvidas vão dentro do formato (linha com `#` no plano de avaliação).
 
-Os pedidos abaixo são os mesmos que o jogo monta (o código está em `web/ia.js`; ao mudar um, mude o outro). Os trechos
+Com a IA ligada no jogo (Regras → IA), os botões mandam estes mesmos pedidos para a IA de terminal, e a resposta cai no
+mesmo lugar. Os pedidos abaixo são os mesmos que o jogo monta (o código está em `web/ia.js`; ao mudar um, mude o outro). Os trechos
 entre `{chaves}` o jogo preenche com os seus dados. As datas saem no formato escolhido na aba Regras (dd/mm/aaaa ou
 mm/dd/aaaa); os exemplos abaixo estão em dd/mm/aaaa.
 
@@ -231,7 +270,9 @@ mm/dd/aaaa); os exemplos abaixo estão em dd/mm/aaaa.
 **Como usar:** abra o chefão da disciplina, clique em *copiar pedido para a IA*, cole numa IA e **anexe o PDF do plano de
 ensino**. Cole a resposta em *usar estas linhas*, confira pesos e datas e clique em *salvar*.
 
-Também serve quando o plano muda no meio do semestre: o pedido já leva o plano que está no jogo e as mudanças que você
+Sem o PDF, o mesmo pedido aplica os lembretes da caixa de entrada (com a IA ligada, é o botão *aplicar lembretes com
+IA*; a primeira linha passa a ser "Atualize o plano de avaliação da disciplina {SIGLA} ({nome}) do meu jogo de tarefas
+com as mudanças que o professor avisou (no fim deste pedido)."). Também serve quando o plano muda no meio do semestre: o pedido já leva o plano que está no jogo e as mudanças que você
 anotou na caixa de entrada sobre aquela disciplina. Notas lançadas continuam valendo enquanto a chave da avaliação for a
 mesma.
 
@@ -248,7 +289,9 @@ Regras:
 - data: dd/mm/aaaa. Sem data exata no plano, estime pela semana ou aula indicada e ponha ? no fim (ex.: 15/10/2026?). Peso incerto também leva ? (ex.: 20?).
 - palavra-chave: de 1 a 3 palavras que vão aparecer nas tarefas de estudo só dessa avaliação, separadas por vírgula (ex.: integral, derivada). Pode ficar vazia.
 - contínua: escreva contínua quando forem várias entregas que viram uma média (listas semanais, participação). Senão, deixe vazio.
+- Nota em pontos (ex.: a P1 vale 5 pontos de 10): o peso continua sendo quanto ela vale na nota final, e avise numa linha # quanto cada avaliação vale (eu lanço a nota como 4/5 e o jogo converte).
 - Recuperação, prova substitutiva e exame opcional ficam de fora.
+- Resolva sozinho o que dá para deduzir (fórmula, data pela semana, regra confusa): marque com ? e explique numa linha #. Se não der para fechar 100, mande as linhas mesmo assim e diga numa linha # o que falta.
 - Para me avisar de algo (dúvida, regra especial), use uma linha começando com #.
 
 Exemplo de resposta:
@@ -280,7 +323,7 @@ semestre e no ano vão também os chefões e as cartas do nível de baixo (o mê
 | ano | até 400 | até 600 |
 
 ```text
-Escreva uma carta narrada do meu jogo de tarefas (Hunter.todo, tema Hunter x Hunter) sobre {a semana passada} ({início} a {fim}), com os fatos abaixo.
+Escreva uma carta narrada do meu jogo de tarefas (Hunter.todo, tema Hunter x Hunter) sobre {a semana} de {início} a {fim}, com os fatos abaixo.
 Responda SÓ com um objeto JSON, sem texto antes ou depois e sem markdown:
 {"tipo": "{tipo}", "periodo": "{período}", "titulo": "...", "ic": "...", "cronica": "...", "texto": "..."}
 

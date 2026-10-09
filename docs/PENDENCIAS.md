@@ -18,24 +18,70 @@ O `guia.js` roda num escopo fechado: no roteiro, abra o tutorial clicando em `[d
 numa chamada separada. Depois de mexer em `web/`, rode `python3 ferramentas/standalone.py` (gera o `docs/prototipo.html`);
 o Pages atualiza a cada push.
 
-**v0.3.1** publicada em 09/10/2026: prioridade no formulário ("o jogo decide", A, B, C, sem) e seta de descer na Lista
-(item 1 abaixo), e o `IA.md` com o modo agente para IA de terminal (Codex, Claude Code).
+**v0.3.1** publicada em 09/10/2026: prioridade no formulário e seta de descer na Lista, e o `IA.md` com o modo agente.
 
-## Planejado para a v0.4 (em ordem de prioridade)
+**v0.4** publicada em 09/10/2026 (tag `v0.4`, falta o teste dos amigos). Entraram nela:
+1. **Prioridade das tarefas.** O formulário tem os botões `o jogo decide · A · B · C · sem` (`(A)` digitado no começo do
+   texto passa na frente dos botões). "O jogo decide" usa `sugerePri()` em `web/motor.js`: avaliação ligada chegando
+   (até 3 dias 50, até 7 dias 35, até 14 dias 15), prazo (até 1 dia 50, até 3 dias 35, até 7 dias 15), chefão em fúria
+   20, 2+ atrasadas na disciplina 15, entrega 10; 70+ = A, 40+ = B, 20+ = C. Na Lista, ▲ sobe e ▼ desce (do C, tira a
+   prioridade); cada seta some no limite. Pesos **a calibrar** com o uso.
+2. **IA integrada ao jogo** (seção abaixo), com *ler todos os planos* e nota em pontos (`4/5`).
+3. **Tipos das tarefas na linha do campo** (Lista). O tipo segue a sugestão do texto (`sugereTipo()` em `web/motor.js`,
+   listas de palavras em `TIPO_PAL`, ordem entrega > treino e projetos > estudo > faculdade > vida) até o jogador clicar
+   num tipo; a prévia diz o motivo ("pela palavra lista"). Cada tipo tem descrição e exemplos ao passar o mouse, o **?**
+   abre a tabela "o que encaixa em quê", e com a IA ligada o **IA?** pergunta à IA (`leve: true`: `--model haiku` no
+   Claude Code, esforço baixo no Codex, `gemini-2.5-flash` no Gemini). **Treino** virou **treino e projetos**:
+   programação e projetos pessoais fora da matéria (ex.: ajudar no desenvolvimento do Hunter.todo). Trabalho e estágio
+   continuam em vida, por enquanto.
+4. **Codeforces à mão** (ITMO Academy, grupos privados, que a API não enxerga): o ✋ discreto ao lado de "Codeforces" no
+   heatmap pede confirmação e soma 1 problema hoje (`POST /api/cf/mao`; `manual` no `cf.json`, somado ao `por_dia` em
+   `cf_soma()`). Sem limite nem conferência: vale a palavra do jogador. Conta igual para a meta do dia e o XP; o
+   heatmap mostra "(n à mão)" no dia. O aviso tem *desfazer*. No modo em grupo vale o combinado entre amigos.
 
-1. ✅ **Prioridade das tarefas** (feito, falta o teste dos amigos). O formulário tem os botões `o jogo decide · A · B · C ·
-   sem` (`(A)` digitado no começo do texto continua valendo e passa na frente dos botões). "O jogo decide" usa
-   `sugerePri()` em `web/motor.js`: avaliação ligada chegando (até 3 dias 50, até 7 dias 35, até 14 dias 15), prazo (até
-   1 dia 50, até 3 dias 35, até 7 dias 15), chefão em fúria 20, 2+ atrasadas na disciplina 15, entrega 10; 70+ = A,
-   40+ = B, 20+ = C. A sugestão e os motivos aparecem na prévia, e a letra volta para "o jogo decide" depois de
-   adicionar. Na Lista, ▲ e ▼ (cada seta some no limite). Pesos **a calibrar** com o uso.
-2. **Codeforces marcado à mão, para ninguém ser penalizado.** Um botão para contar o Codeforces do dia quando os
-   problemas foram feitos onde a API não enxerga: **ITMO Academy (EDU) e contests de grupos privados**. Teste de
-   09/10/2026 com o handle do Caio: o `user.status` traz contests, problemset, virtuais e gyms públicos (todos os 13 gyms
-   dele eram públicos), e nenhuma submissão do EDU nem de grupo privado (não confirmado se ele fez alguma nesse período).
-   Decidir: quantos problemas a pessoa informa, se vale para a meta do dia e o XP como os da API, e como aparece no
-   heatmap (marcado como manual?). No modo em grupo vale o combinado entre amigos, como nos outros hábitos.
-3. **Calendário do Semestre:** os meses da aba Semestre estão fixos (ago/2026 a fev/2027); devem sair da temporada.
+## Planejado para a v0.5
+
+1. Testar Codex e Gemini CLI com a IA ligada (e o Windows: `.cmd` do npm). Os nomes de modelo do pedido leve podem mudar.
+2. Calibrar as palavras de `TIPO_PAL` e os pesos do `sugerePri()` com o uso dos amigos.
+
+## Arquivado (decidir depois, em outra temporada)
+
+- **Calendário do Semestre:** os meses da aba Semestre estão fixos (ago/2026 a fev/2027); devem sair da temporada.
+- **Temporadas antigas:** o jogo só conhece a temporada atual (carta do semestre de temporadas passadas, histórico).
+
+## IA integrada ao jogo (v0.4)
+
+**Por quê.** Teste de 09/10/2026: um amigo pediu ao Codex "crie as automações que o IA.md exige", e o agente inventou um
+controlador em Python, um timer do systemd a cada 15 min, uma skill própria e 35 cartas antigas de uma vez, perguntando
+coisas que o jogo deveria decidir. Cada computador ficaria de um jeito. Decisão: **o jogo chama o agente de terminal
+que o jogador já tem; a IA só devolve texto, e o jogo confere e grava.**
+
+O que entrou:
+- **Regras → IA** (`iaHTML()` em `web/ia.js`): o servidor acha `claude`, `codex` e `gemini` (PATH + pastas comuns, porque
+  o serviço do início automático roda com PATH curto), o jogador escolhe e clica em *testar*. Fica em `jogador.json` →
+  `"ia": {"agente", "desde", "cartas"}` (`POST /api/ia/config`; o `/api/config` do assistente preserva o campo).
+- **Rota única** `POST /api/ia/rodar {pedido, anexo?}` → `{id}`; a página consulta `GET /api/ia/rodar?id=`. Um pedido por
+  vez, 10 min de limite, pasta temporária só com o anexo, pedido pela entrada padrão. Comandos em `comando_agente()`:
+  `claude -p --tools Read --permission-mode dontAsk` (testado de verdade), `codex exec --sandbox read-only` e
+  `gemini -p` (**não testados**: conferir num computador com eles). Erro de login vira "rode `X` no terminal".
+- **Plano de ensino:** pasta `~/.hunter-todo/planos/` (`POST /api/ia/plano` para *enviar arquivo*). No editor do chefão,
+  *ler plano com IA* (o arquivo com a sigla ou o nome da disciplina vem escolhido). As linhas `#` da resposta aparecem
+  como "Observações da IA" e ficam no bloco como `# (IA) ...` (trocadas a cada nova resposta).
+- **Caixa de entrada:** *aplicar lembretes com IA* no editor (o pedido 1 sem anexo); ao salvar, os lembretes ficam aplicados.
+- **Mais liberdade no pedido 1:** a IA resolve o que dá para deduzir (`?` + linha `#`) e só deixa de fechar 100 se não
+  houver jeito. **Nota em pontos:** a nota aceita `4/5` (`HJ.nota10()` em `web/motor.js`), no quadro e no editor.
+- **Cartas sozinhas:** `faltando()` lista os períodos fechados sem carta e com alguma atividade; ao abrir o jogo, as de
+  depois de ligar a IA são escritas uma por vez (indicador no canto). As de antes, pelo botão *escrever cartas antigas*.
+  Regras fixas: semana fecha na segunda, mês no dia 1, semestre no dia seguinte ao fim, ano em 1º/jan.
+- **`IA.md`** (seção "Se o jogador pedir para configurar": proíbe rotinas próprias), **`AGENTS.md`** (+ `CLAUDE.md` que o
+  importa): `docs/` não é do jogo.
+
+- **Ler todos os planos** (aba Chefões, card "planos de ensino · IA"): um pedido liga cada arquivo da pasta a uma
+  disciplina (`arquivo | SIGLA`, `arquivo | NOVA | sigla | nome` ou `arquivo | NADA`) e depois um pedido por disciplina.
+  Cada resultado fica "pronto para revisar": *revisar e salvar* abre o editor com as linhas; disciplina nova abre o
+  cadastro de Regras já preenchido (`HJ_GUIA.abreDisciplinas({d, n})`).
+
+O que falta da IA está em "Planejado para a v0.5" e em "Arquivado".
 
 ## Ideias para depois (sem versão definida)
 
@@ -44,8 +90,8 @@ o Pages atualiza a cada push.
    no começo (assistente) ou compra na loja, e os textos se adaptam a ele. Falta decidir o formato: lista fixa de
    personagens com textos prontos, textos escritos pelo jogador ou textos gerados por IA.
 2. **Personagem conselheiro na aba Chefões, só para quem usa IA.** Um personagem de anime que lê as disciplinas, as
-   tarefas de cada uma e o plano de ensino e dá dicas soltas. O personagem é escolhido (ou comprado) na loja. Falta
-   decidir como a IA entra: copia e cola, como no resto do `IA.md`, ou uma chave de API do jogador.
+   tarefas de cada uma e o plano de ensino e dá dicas soltas. O personagem é escolhido (ou comprado) na loja. A IA
+   entra pela rota da seção "IA integrada ao jogo".
 3. **Hábito semanal acima da meta rende mais.** Ex.: academia com meta de 2× por semana feita 3× ganha bônus. Hoje o
    hábito some da Lista quando a meta é cumprida; seria preciso deixar marcar a mais (botão "fiz de novo") e definir o
    bônus.

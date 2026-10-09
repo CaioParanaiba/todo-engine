@@ -10,8 +10,9 @@ Serve a página do jogo (web/) em http://127.0.0.1:PORTA/ e grava os dados do jo
   avaliacoes.txt, notas.txt plano de avaliação das disciplinas e notas lançadas
   estado.json               loja, carteira, o que está equipado e os prêmios reais do jogador
   ajustes.txt, narradas.json caixa de entrada e cartas narradas (opcionais)
+  planos/                   planos de ensino (PDF, HTML...) que a IA lê
   avatares/*.png            fotos de perfil extras
-  cf.json                   cache do Codeforces (problemas aceitos por dia)
+  cf.json                   cache do Codeforces (problemas aceitos por dia e os marcados à mão)
 
 Rotas (as mesmas que web/demo.js simula no modo demonstração):
   GET  /api/jogo                          tudo o que a página precisa
@@ -25,6 +26,11 @@ Rotas (as mesmas que web/demo.js simula no modo demonstração):
   POST /api/jogo/narrada {carta}         carta narrada colada da IA (aba Book) em narradas.json
   POST /api/jogo/planos {avaliacoes, notas} editor do chefão: grava os dois arquivos (o anterior fica em .bak)
   POST /api/jogo/nota {disc, aval, nota, parcial?} · /api/jogo/ajuste {texto} ou {quando, texto, aplicado} · /api/jogo/estado {estado}
+  POST /api/cf/mao {menos?}               +1 problema do Codeforces hoje, marcado à mão (ITMO, grupo privado); menos = desfaz
+  GET  /api/ia                            agentes de terminal achados, a escolha do jogador e os planos de ensino da pasta planos/
+  POST /api/ia/config {agente?, cartas?}  liga a IA (claude | codex | gemini) ou volta ao copiar e colar (chat)
+  POST /api/ia/rodar {pedido, anexo?, leve?} roda o agente com o pedido da página → {id}; GET /api/ia/rodar?id= até ficar pronto
+  POST /api/ia/plano {nome, base64}       guarda um plano de ensino em planos/
 
 Todo dia o servidor cria as recorrentes de hoje (um hábito por linha, rec:ID:DATA, e a do Codeforces se houver handle),
 tira as que ficaram abertas de dias anteriores e conclui sozinho a do Codeforces quando a meta do dia é batida. Se a meta foi
@@ -50,7 +56,7 @@ from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSAO = "0.3.1"
+VERSAO = "0.4"
 REPO = Path(__file__).resolve().parent
 WEB = REPO / "web"
 DADOS = Path()   # definido em main()
@@ -452,6 +458,8 @@ def api_config(d):
     if av is not None and (not isinstance(av, str) or len(av) > 60000):
         raise Erro("avaliacoes inválido")
     with lock:
+        if "ia" not in j and "ia" in jogador():   # a escolha da IA tem rota própria: o assistente não a apaga
+            j["ia"] = jogador()["ia"]
         gravar_json("jogador.json", j)
         if av is not None:
             gravar_txt("avaliacoes.txt", av if av.endswith("\n") else av + "\n")
@@ -487,6 +495,7 @@ def cf_atualiza(cf):
                 cache = {"desde": hoje().isoformat(), "creditados": []}
             cache.update(handle=cf["handle"], por_dia=conta)
             gravar_json("cf.json", cache)
+        conta = cf_soma(cache)
         cf_auto_conclui(cf, conta)
         cf_bonus_atrasado(cf, conta)
     except Exception as e:   # sem internet, handle errado ou API fora do ar: fica o que estava no cf.json
@@ -540,6 +549,34 @@ def cf_bonus_atrasado(cf, conta):
         gravar_json("cf.json", cache)
 
 
+def cf_soma(cache):
+    """Problemas por dia: os que a API do Codeforces enxerga mais os marcados à mão (ITMO Academy, grupos privados)."""
+    conta = dict(cache.get("por_dia") or {})
+    for d, n in (cache.get("manual") or {}).items():
+        conta[d] = conta.get(d, 0) + n
+    return conta
+
+
+def api_cf_mao(d):
+    """Botão discreto "marcar à mão": +1 problema hoje (ou -1, para desfazer). Sem limite: vale a confiança do jogador.
+    Conta igual aos da API, para a meta do dia e o XP."""
+    cf = cf_conf(jogador())
+    if not cf:
+        raise Erro("ligue o Codeforces na aba Regras primeiro")
+    dia, passo = hoje().isoformat(), -1 if d.get("menos") else 1
+    with lock:
+        cache = ler_json("cf.json", {})
+        if cache.get("handle") != cf["handle"]:
+            raise Erro("o Codeforces ainda não foi consultado; tente de novo em alguns segundos", 409)
+        manual = cache.get("manual") or {}
+        manual[dia] = max(0, manual.get(dia, 0) + passo)
+        cache["manual"] = {k: v for k, v in sorted(manual.items())[-400:] if v}
+        gravar_json("cf.json", cache)
+        conta = cf_soma(cache)
+    cf_auto_conclui(cf, conta)
+    return {"ok": True, "hoje": conta.get(dia, 0), "mao": cache["manual"].get(dia, 0)}
+
+
 def cf_leitura(j):
     cf = cf_conf(j)
     if not cf:
@@ -548,7 +585,9 @@ def cf_leitura(j):
         cf_vivo["rodando"] = True
         threading.Thread(target=cf_atualiza, args=(cf,), daemon=True).start()
     cache = ler_json("cf.json", {})
-    return {"handle": cf["handle"], "por_dia": cache.get("por_dia", {}) if cache.get("handle") == cf["handle"] else {}}
+    if cache.get("handle") != cf["handle"]:
+        return {"handle": cf["handle"], "por_dia": {}, "manual": {}}
+    return {"handle": cf["handle"], "por_dia": cf_soma(cache), "manual": cache.get("manual") or {}}
 
 
 # ---------- jogo: leitura e as três gravações ----------
@@ -699,6 +738,175 @@ def backup():
     return buf.getvalue()
 
 
+# ---------- IA integrada (opcional): o jogo chama o agente de terminal do jogador e só lê o texto que ele devolve ----------
+# A página monta o pedido (web/ia.js, o mesmo do modo chat) e confere a resposta; o agente roda sem poder gravar nada,
+# numa pasta temporária com o pedido e o anexo. Ligar e escolher o agente: aba Regras (jogador.json → "ia").
+AGENTES = {
+    "claude": {"nome": "Claude Code", "login": "claude   (na primeira vez ele pede o login)"},
+    "codex": {"nome": "Codex", "login": "codex login"},
+    "gemini": {"nome": "Gemini CLI", "login": "gemini   (na primeira vez ele pede o login)"},
+}
+IA_TEMPO = 600   # segundos por pedido
+PLANO_EXT = {".pdf", ".html", ".htm", ".txt", ".md", ".docx"}
+NOME_PLANO = re.compile(r"^[\w .()\-]{1,80}$")
+ia_tarefas = {}   # id → {"estado": rodando|pronto|erro, "texto", "erro", "ini", "seg"}
+ia_lock = threading.Lock()   # um pedido por vez
+
+
+def caminhos_extra():
+    """Pastas onde os instaladores costumam pôr os agentes. O serviço de início automático roda com um PATH curto."""
+    h = Path.home()
+    extra = [h / ".local" / "bin", h / ".npm-global" / "bin", h / ".bun" / "bin", h / ".volta" / "bin", h / "bin",
+             Path("/usr/local/bin"), Path("/opt/homebrew/bin"), Path("/usr/bin")]
+    if sistema() == "windows":
+        extra.append(Path(os.environ.get("APPDATA") or h / "AppData" / "Roaming") / "npm")
+    extra += sorted((h / ".nvm" / "versions" / "node").glob("*/bin"), reverse=True)
+    return [str(p) for p in extra if p.is_dir()]
+
+
+def path_agentes():
+    return os.pathsep.join([os.environ.get("PATH", "")] + caminhos_extra())
+
+
+def acha_agente(ag):
+    import shutil
+    return shutil.which(ag, path=path_agentes())
+
+
+def ia_conf(j=None):
+    c = (j or jogador()).get("ia")
+    c = c if isinstance(c, dict) else {}
+    ag = c.get("agente") if c.get("agente") in AGENTES else "chat"
+    return {"agente": ag, "desde": str(c.get("desde") or ""), "cartas": c.get("cartas", True) is not False}
+
+
+def planos():
+    p = DADOS / "planos"
+    return sorted(f.name for f in p.iterdir() if f.is_file() and f.suffix.lower() in PLANO_EXT) if p.is_dir() else []
+
+
+def api_ia_get():
+    return {"ok": True, "conf": ia_conf(), "planos": planos(), "pasta": str(DADOS / "planos"),
+            "agentes": [{"id": k, "nome": v["nome"], "login": v["login"], "achado": bool(acha_agente(k))} for k, v in AGENTES.items()]}
+
+
+def api_ia_config(d):
+    """Escolhe o agente (ou "chat" = copiar e colar) e liga/desliga as cartas automáticas. "desde" marca o dia em que a IA
+    foi ligada: as cartas automáticas começam nos períodos fechados a partir dele (as antigas, só pelo botão)."""
+    ag = d.get("agente", None)
+    with lock:
+        j = jogador()
+        c = ia_conf(j)
+        if ag is not None:
+            if ag != "chat" and ag not in AGENTES:
+                raise Erro("agente desconhecido")
+            if ag != "chat" and not c["desde"]:
+                c["desde"] = hoje().isoformat()
+            c["agente"] = ag
+        if "cartas" in d:
+            c["cartas"] = bool(d["cartas"])
+        j["ia"] = c
+        gravar_json("jogador.json", j)
+    return {"ok": True, "conf": c}
+
+
+def comando_agente(ag, exe, pasta, saida, leve=False):
+    """Linha de comando de cada agente, sem permissão de escrita. O pedido vai pela entrada padrão.
+    leve: pedido pequeno (tipo de uma tarefa), com o modelo mais barato e rápido de cada um."""
+    if ag == "claude":
+        return [exe, "-p", "--tools", "Read", "--permission-mode", "dontAsk", "--no-session-persistence", "--strict-mcp-config"] + (["--model", "haiku"] if leve else [])
+    if ag == "codex":
+        return [exe, "exec", "--sandbox", "read-only", "--skip-git-repo-check", "--color", "never", "--cd", pasta, "--output-last-message", saida]\
+            + (["-c", 'model_reasoning_effort="low"'] if leve else []) + ["-"]
+    return [exe, "-p", "Responda ao pedido acima, seguindo as regras dele."] + (["-m", "gemini-2.5-flash"] if leve else [])
+
+
+def explica_erro(ag, saida):
+    s = " ".join(saida.split())[-400:]
+    if re.search(r"log ?in|logged|auth|credential|api key|401|403|unauthorized", s, re.I):
+        return f"Parece que falta entrar na conta do {AGENTES[ag]['nome']}. Rode no terminal: {AGENTES[ag]['login']}. Mensagem: {s}"
+    return s or "o agente terminou sem responder"
+
+
+def ia_executa(tid, ag, exe, pedido, anexos, leve):
+    import tempfile
+    t = ia_tarefas[tid]
+    try:
+        with tempfile.TemporaryDirectory(prefix="hunter-ia-") as pasta:
+            if anexos:
+                import shutil
+                for a in anexos:
+                    shutil.copy2(DADOS / "planos" / a, Path(pasta) / a)
+                pedido += "\n\n" + (f"O arquivo {anexos[0]} está na pasta atual: leia-o." if len(anexos) == 1
+                                     else "Os arquivos estão na pasta atual: " + ", ".join(anexos) + ". Leia-os.")
+            saida = str(Path(pasta) / ".resposta.txt")
+            env = dict(os.environ, PATH=os.pathsep.join([str(Path(exe).parent), path_agentes()]))
+            r = subprocess.run(comando_agente(ag, exe, pasta, saida, leve), input=pedido, capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", cwd=pasta, env=env, timeout=IA_TEMPO)
+            texto = Path(saida).read_text(encoding="utf-8") if ag == "codex" and Path(saida).exists() else r.stdout
+            if r.returncode != 0 or not texto.strip():
+                raise Erro(explica_erro(ag, (r.stderr or "") + " " + (r.stdout or "")))
+            t.update(estado="pronto", texto=texto.strip())
+    except subprocess.TimeoutExpired:
+        t.update(estado="erro", erro=f"o agente passou de {IA_TEMPO // 60} minutos sem responder")
+    except (Erro, OSError) as e:
+        t.update(estado="erro", erro=str(e))
+    finally:
+        t["seg"] = round(time.time() - t["ini"])
+        ia_lock.release()
+        log("ia:", ag, t["estado"], f"{t['seg']}s")
+
+
+def api_ia_rodar(d):
+    """{pedido, anexo?: "arquivo" | ["arquivos"] da pasta planos/, leve?: true para um pedido pequeno}"""
+    pedido, anexos = d.get("pedido"), d.get("anexo") or []
+    anexos = [anexos] if isinstance(anexos, str) else anexos
+    if not isinstance(pedido, str) or not 1 <= len(pedido) <= 200000:
+        raise Erro("pedido inválido")
+    if not isinstance(anexos, list) or len(anexos) > 30 or any(a not in planos() for a in anexos):
+        raise Erro("arquivo do plano não encontrado na pasta planos")
+    ag = ia_conf()["agente"]
+    if ag == "chat":
+        raise Erro("a IA não está ligada (aba Regras → IA)")
+    exe = acha_agente(ag)
+    if not exe:
+        raise Erro(f"não achei o {AGENTES[ag]['nome']} neste computador")
+    if not ia_lock.acquire(blocking=False):
+        raise Erro("a IA já está trabalhando num pedido; espere ele terminar", 409)
+    tid = str(int(time.time() * 1000))
+    for velho in sorted(ia_tarefas)[:-20]:
+        del ia_tarefas[velho]
+    ia_tarefas[tid] = {"estado": "rodando", "texto": "", "erro": "", "ini": time.time(), "seg": 0, "agente": ag}
+    threading.Thread(target=ia_executa, args=(tid, ag, exe, pedido, anexos, bool(d.get("leve"))), daemon=True).start()
+    return {"ok": True, "id": tid}
+
+
+def api_ia_tarefa(tid):
+    t = ia_tarefas.get(tid)
+    if not t:
+        raise Erro("pedido não encontrado (o servidor reiniciou?)", 404)
+    seg = t["seg"] if t["estado"] != "rodando" else round(time.time() - t["ini"])
+    return {"ok": True, "estado": t["estado"], "texto": t["texto"], "erro": t["erro"], "seg": seg}
+
+
+def api_ia_plano(d):
+    """Recebe um plano de ensino escolhido na página e guarda em DADOS/planos (também dá para pôr o arquivo lá à mão)."""
+    import base64
+    nome = Path(str(d.get("nome", ""))).name.strip()
+    if not NOME_PLANO.match(nome) or Path(nome).suffix.lower() not in PLANO_EXT or nome.startswith("."):
+        raise Erro("nome de arquivo inválido (use PDF, HTML, DOCX, TXT ou MD)")
+    try:
+        corpo = base64.b64decode(str(d.get("base64", "")), validate=True)
+    except ValueError:
+        raise Erro("arquivo inválido")
+    if not corpo or len(corpo) > 15_000_000:
+        raise Erro("arquivo vazio ou maior que 15 MB")
+    p = DADOS / "planos"
+    p.mkdir(exist_ok=True)
+    (p / nome).write_bytes(corpo)
+    return {"ok": True, "nome": nome, "planos": planos()}
+
+
 # ---------- iniciar com o computador (opcional: liga e desliga na aba Regras, ou com --instalar / --desinstalar) ----------
 SERVICO = "hunter-todo"
 EXEC = {"fundo": False, "porta": 8642, "srv": None, "passou": False, "systemd": None}
@@ -822,8 +1030,9 @@ def api_autostart(d):
 
 
 ROTAS = {"/api/act": api_act, "/api/add": api_add, "/api/undo": api_undo, "/api/config": api_config, "/api/ontem": api_ontem, "/api/autostart": api_autostart,
-         "/api/jogo/nota": api_jogo_nota, "/api/jogo/planos": api_jogo_planos, "/api/jogo/narrada": api_jogo_narrada, "/api/jogo/ajuste": api_jogo_ajuste, "/api/jogo/estado": api_jogo_estado}
-LIMITE = {"/api/jogo/narrada": 40000, "/api/config": 90000, "/api/jogo/estado": 65536, "/api/jogo/planos": 130000}
+         "/api/jogo/nota": api_jogo_nota, "/api/jogo/planos": api_jogo_planos, "/api/jogo/narrada": api_jogo_narrada, "/api/jogo/ajuste": api_jogo_ajuste, "/api/jogo/estado": api_jogo_estado,
+         "/api/cf/mao": api_cf_mao, "/api/ia/config": api_ia_config, "/api/ia/rodar": api_ia_rodar, "/api/ia/plano": api_ia_plano}
+LIMITE = {"/api/ia/rodar": 300000, "/api/ia/plano": 21_000_000, "/api/jogo/narrada": 40000, "/api/config": 90000, "/api/jogo/estado": 65536, "/api/jogo/planos": 130000}
 ESTATICOS = {"/": ("index.html", "text/html; charset=utf-8"), "/index.html": ("index.html", "text/html; charset=utf-8"),
              "/motor.js": ("motor.js", "text/javascript; charset=utf-8"), "/guia.js": ("guia.js", "text/javascript; charset=utf-8"),
              "/demo.js": ("demo.js", "text/javascript; charset=utf-8"), "/chefes.js": ("chefes.js", "text/javascript; charset=utf-8"),
@@ -888,6 +1097,12 @@ class H(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             return self.wfile.write(corpo)
+        if caminho in ("/api/ia", "/api/ia/rodar"):
+            q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            try:
+                return self._json(200, api_ia_get() if caminho == "/api/ia" else api_ia_tarefa((q.get("id") or [""])[0]))
+            except Erro as e:
+                return self._json(e.code, {"ok": False, "error": str(e)})
         if caminho == "/api/jogo":
             try:
                 return self._json(200, api_jogo_get())

@@ -111,16 +111,22 @@ Entra um jogador de exemplo, com histórico, e nada é gravado: recarregar a pá
 - **Esqueci de marcar um hábito ontem:** no card "hábitos de hoje", clique em **esqueci de marcar ontem**. Ele conta
   para ontem (XP, Ten e heatmap). Só vale para o dia anterior.
 - **Codeforces não conta:** confira o handle na aba Regras. A contagem atualiza a cada 10 minutos e precisa de internet.
+  Problema feito onde a API não enxerga (ITMO Academy, contest de grupo privado): clique no ✋ ao lado de "Codeforces" no
+  heatmap da Lista e confirme; cada confirmação soma 1 problema hoje.
+- **Não sei qual tipo escolher para a tarefa:** o jogo sugere pelas palavras do texto; o **?** ao lado dos tipos mostra o
+  que encaixa em quê, e com a IA ligada o **IA?** pergunta a ela.
 
 ## Como funciona por dentro
 
 - `servidor.py`: servidor local (só a biblioteca padrão do Python). Lê e grava os seus arquivos, cria os hábitos de cada dia
   e consulta o Codeforces. Só aceita conexões do próprio computador.
 - `web/index.html`: a página do jogo. `web/motor.js`: todas as regras e contas. `web/guia.js`: assistente e tutorial.
-  `web/chefes.js`: editor de avaliações e notas. `web/ia.js`: pedidos para a IA. `web/demo.js`: o servidor de mentira do
+  `web/chefes.js`: editor de avaliações e notas. `web/ia.js`: pedidos para a IA e a IA ligada. `web/demo.js`: o servidor de mentira do
   modo demonstração (também usado no GitHub Pages).
-- **IA opcional.** O jogo funciona sem IA. Com uma IA qualquer, o jogo monta os pedidos (plano de ensino → provas e
-  trabalhos, cartas narradas) e você cola a resposta de volta. Veja [`IA.md`](IA.md).
+- **IA opcional.** O jogo funciona sem IA. Com uma IA de terminal instalada (Claude Code, Codex ou Gemini CLI), ligue-a
+  em **Regras → IA**: o jogo passa a ler os planos de ensino (pasta `~/.hunter-todo/planos/`), aplicar a caixa de entrada
+  e escrever as cartas do Book sozinho, e você confere antes de salvar. Sem ela, o jogo monta os pedidos e você cola
+  numa IA de chat. Veja [`IA.md`](IA.md).
 
 ## Licença
 

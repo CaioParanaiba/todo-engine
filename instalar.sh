@@ -29,7 +29,7 @@ fi
 
 cd "$PASTA"
 # o script chega pelo cano (curl | sh): as perguntas das boas-vindas leem do terminal
-if [ -r /dev/tty ] && [ -w /dev/tty ]; then
+if (: </dev/tty) 2>/dev/null; then   # abre de verdade (sem terminal, /dev/tty existe mas não abre)
   exec python3 servidor.py </dev/tty
 else
   exec python3 servidor.py

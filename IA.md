@@ -16,7 +16,8 @@ Há três jeitos de usar:
 
 - **Plano de ensino:** ponha os PDFs em `~/.hunter-todo/planos/` (ou use *enviar arquivo* no editor do chefão). Em
   **Chefões**, *ler todos os planos* liga cada arquivo à disciplina, lê um por um e deixa cada resultado para você
-  revisar e salvar (disciplina ainda não cadastrada vira o botão *cadastrar*). Para uma só, *ler plano com IA* no
+  revisar no editor, ou marcar várias (*selecionar todos*) e *salvar selecionados* de uma vez (disciplina ainda não
+  cadastrada vira o botão *cadastrar*). Para uma só, *ler plano com IA* no
   editor da disciplina.
 - **Tipo da tarefa:** no formulário da Lista, o botão *IA?* pergunta à IA qual tipo combina (pedido curto, com o modelo
   mais leve). Sem IA, o jogo sugere pelas palavras e o *?* mostra o que encaixa em quê.
@@ -176,7 +177,8 @@ P2 | Prova 2 | 50 | 2026-12-01? | |
 - `chave | nome | peso | data | palavras-chave | contínua`:
   - **chave**: 1 a 8 letras ou números (P1, T1, L). **As notas se ligam pela chave**: ao atualizar um plano, mantenha
     as chaves que já existem, senão a nota lançada some do chefão.
-  - **peso**: % da nota final, só o número. Os pesos da disciplina somam 100. Se o plano usar fórmula (ex.:
+  - **peso**: % da nota final, só o número. Os pesos da disciplina somam 100, a não ser que o bloco tenha a linha
+    `# soma livre: ...` (o jogador autorizou ponto extra no editor): aí podem passar de 100, e o bônus entra com o peso dele. Se o plano usar fórmula (ex.:
     NF = 0,4·N1 + 0,6·N2, com N1 = média de P1 e T1), faça a conta até o peso de cada avaliação na nota final.
   - **data**: `AAAA-MM-DD`. Estimada (o plano só diz a semana ou a aula) leva `?` no fim. Peso incerto também (`20?`).
   - **palavras-chave**: 1 a 3 palavras que aparecem nas tarefas só dessa avaliação, separadas por vírgula. Pode ficar

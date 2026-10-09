@@ -22,6 +22,7 @@ Rotas (as mesmas que web/demo.js simula no modo demonstração):
   POST /api/undo  {}                      desfaz a última operação deste servidor
   POST /api/config {jogador, avaliacoes?} grava jogador.json (e avaliacoes.txt) e refaz os hábitos de hoje
   POST /api/ontem {id}                    "esqueci de marcar ontem": grava o hábito no done.txt como feito ontem
+  POST /api/denovo {id}                   "fiz de novo": hábito semanal com a meta cumprida, feito mais uma vez hoje
   POST /api/autostart {ligar}             liga ou desliga o início junto com o computador
   POST /api/jogo/narrada {carta}         carta narrada colada da IA (aba Book) em narradas.json
   POST /api/jogo/planos {avaliacoes, notas} editor do chefão: grava os dois arquivos (o anterior fica em .bak)
@@ -56,7 +57,7 @@ from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSAO = "0.4.1"
+VERSAO = "0.4.2"
 VERSAO_NOME = "atualização da IA"   # nome da série 0.4 (aparece em Configurações → servidor)
 REPO = Path(__file__).resolve().parent
 WEB = REPO / "web"
@@ -444,6 +445,28 @@ def api_ontem(d):
         inserir(done, nova)
         gravar(done, "done.txt")
         undo_stack.append({"from": None, "to": nova, "arq": "done.txt"})
+        del undo_stack[:-40]
+    return {"ok": True}
+
+
+def api_denovo(d):
+    """Botão "fiz de novo": hábito semanal com a meta da semana já cumprida (o servidor não criou a linha de hoje) feito
+    mais uma vez hoje. Grava concluído no todo.txt; o motor conta as vezes acima da meta com XP em dobro."""
+    hj = hoje().isoformat()
+    j = jogador()
+    h = next((h for h in habitos(j) if h["id"] == str(d.get("id", ""))), None)
+    if not h or not h["semana"]:
+        raise Erro("hábito semanal não encontrado")
+    marca = f"rec:{h['id']}:{hj}"
+    with lock:
+        arruma_dia()
+        linhas = ler()
+        if any(marca in l.split() for l in linhas):
+            raise Erro("esse hábito já está na Lista de hoje (uma vez por dia)")
+        nova = f"x {hj} {linha_habito(h, tag_habito(j), hj)}"
+        inserir(linhas, nova)
+        gravar(linhas)
+        undo_stack.append({"from": None, "to": nova})
         del undo_stack[:-40]
     return {"ok": True}
 
@@ -1054,7 +1077,7 @@ def api_autostart(d):
             + (" Este continua rodando até você reiniciar o PC." if EXEC["fundo"] else "")}
 
 
-ROTAS = {"/api/act": api_act, "/api/add": api_add, "/api/undo": api_undo, "/api/config": api_config, "/api/ontem": api_ontem, "/api/autostart": api_autostart,
+ROTAS = {"/api/act": api_act, "/api/add": api_add, "/api/undo": api_undo, "/api/config": api_config, "/api/ontem": api_ontem, "/api/denovo": api_denovo, "/api/autostart": api_autostart,
          "/api/jogo/nota": api_jogo_nota, "/api/jogo/planos": api_jogo_planos, "/api/jogo/narrada": api_jogo_narrada, "/api/jogo/ajuste": api_jogo_ajuste, "/api/jogo/estado": api_jogo_estado,
          "/api/cf/mao": api_cf_mao, "/api/ia/config": api_ia_config, "/api/ia/rodar": api_ia_rodar, "/api/ia/plano": api_ia_plano}
 LIMITE = {"/api/ia/rodar": 300000, "/api/ia/plano": 21_000_000, "/api/jogo/narrada": 40000, "/api/config": 90000, "/api/jogo/estado": 65536, "/api/jogo/planos": 130000}

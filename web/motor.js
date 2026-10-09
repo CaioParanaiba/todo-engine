@@ -246,6 +246,7 @@ function carregar(api){
 }
 
 /* ---------- regras ---------- */
+const HAB_EXTRA = 2;   // hábito semanal feito acima da meta da semana: XP ×2 (a calibrar)
 function xpDe(t){ if((t.rec||'').startsWith('cf') && !(t.done && t.done < CF_DESDE)) return CF_BONUS; let x = isRec(t) ? 10 : isEnt(t) ? 25 : isEst(t) ? 15 : isFac(t) ? 15 : 10; if(isRec(t)) x *= .5; if(t.due && t.done && t.done <= t.due) x *= 1.5; return Math.round(x); }
 /* tipo de Nen: treino → Transmutação; hábito → Manipulação; entrega → Emissão; estudo → Intensificação (com ou sem disciplina);
    outra da faculdade → Conjuração; o resto → Especialização (vida) */
@@ -341,7 +342,7 @@ function chefoes(C, feitas, abertas){
     }
     const need = wrest ? (60 - pts)/wrest*10 : null;
     const dead = pts >= 60, fury = !dead && avs.some(a => a.nota != null) && need > MEDIA;
-    return {...B, avs, pts, rest: 1000 - pts*10, tot:1000, dead, fury, need, st: dead ? 'dead' : fury ? 'hurt' : '', open: avs.flatMap(a => a.abertas), lig};
+    return {...B, avs, pts, rest: Math.max(0, 1000 - pts*10), tot:1000, dead, fury, need, st: dead ? 'dead' : fury ? 'hurt' : '', open: avs.flatMap(a => a.abertas), lig};
   });
 }
 /* marca curta de uma linha do todo (para lembrar o que já estava feito quando um feitiço foi usado) */
@@ -381,9 +382,15 @@ function estado(C){
     const at = [0,0,0,0,0,0]; for(const t of feitas) if(t.done < ws) at[nenDe(t)] += xpBase(t); return at.indexOf(Math.min(...at)); };
   const fracoCache = {}, fracoSem = d => { const ws = addD(d,-dow(d)); return fracoCache[ws] ?? (fracoCache[ws] = fracoDa(ws)); };
   const porDia = {}, xpDia = {}, attr = [0,0,0,0,0,0], xs = [];
+  /* hábito semanal acima da meta ("fiz de novo"): da (meta+1)ª vez na semana em diante, pelo dia do hábito, vale ×2 */
+  const metaSem = Object.fromEntries(((C.JOG && C.JOG.habitos) || []).filter(h => h.semana).map(h => [h.id, +h.semana]));
+  const extraHab = new Set(), contaSem = {};
+  feitas.map((t, i) => [String(t.rec || '').split(':'), i]).filter(([r]) => metaSem[r[0]] && r[1]).sort((a, b) => a[0][1].localeCompare(b[0][1]))
+    .forEach(([[id, dia], i]) => { const k = id + '@' + addD(dia, -dow(dia)); contaSem[k] = (contaSem[k] || 0) + 1; if(contaSem[k] > metaSem[id]) extraHab.add(i); });
   let total = 0;
   feitas.forEach((t,i) => {
     let x = xpBase(t);
+    if(extraHab.has(i)) x *= HAB_EXTRA;                                 // hábito semanal acima da meta
     if(nenDe(t) === fracoSem(t.done)) x *= 1.5;                       // missão da semana
     const d = discOf(t,C); if(d && furia[d] && t.done >= furia[d]) x *= 1.5;   // fúria
     if(F.mult.has(i)) x *= F.mult.get(i);                              // Ko / Acompanhar
@@ -509,5 +516,5 @@ function cartas(C, S){
 
 window.HJ = {TAGS, configura, isTre, MEDIA, DIF, COFRE_MES, ALLFX, NEN, GUARDA, SPELLS, TK, PALS, palStyle, COS, catalogo, REAIS, PREMIOS_PADRAO, premios, cofreMes, esforco, esforcoTxt, faixaDe, FAIXAS,
   mins, has, isRec, isFac, isEst, isEnt, norm, addD, dias, dow, semanaISO, numBR, nota10, brData, brDatas, isoData, semanalDe, fmtData, fmtTxt, curta, dataRuim,
-  expandeOwn, marca, cfExtra, efeitos, parseLinha, parseAvaliacoes, parseNotas, carregar, xpDe, nenDe, discOf, custo, andar, xpAte, ten, liga, ligaCom, refDe, sugerePri, sugereTipo, chefoes, estado, cartas};
+  expandeOwn, marca, cfExtra, efeitos, parseLinha, parseAvaliacoes, parseNotas, carregar, xpDe, nenDe, discOf, custo, andar, xpAte, ten, liga, ligaCom, refDe, sugerePri, HAB_EXTRA, sugereTipo, chefoes, estado, cartas};
 })();

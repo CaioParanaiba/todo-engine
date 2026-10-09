@@ -1100,6 +1100,7 @@ a.btn{display:inline-block;text-decoration:none}
 .l-xp{font:700 12px var(--f-mono);border-radius:7px;padding:2px 7px;background:color-mix(in srgb,var(--grn) 16%,transparent);color:var(--grn);white-space:nowrap;font-variant-numeric:tabular-nums}
 .l-mult{font:600 11px var(--f-mono);color:var(--amb);white-space:nowrap}
 .l-groups{display:flex;flex-direction:column;gap:14px;margin-top:16px}
+.l-denovo{padding:3px 9px;font-size:11.5px;white-space:nowrap}
 .l-cfm{border:0;background:none;padding:0 2px;cursor:pointer;font:11px var(--f-mono);color:var(--faint);opacity:.6} .l-cfm:hover,.l-cfm:focus-visible{opacity:1;color:var(--ink)}
 .l-grp h3{display:flex;align-items:baseline;gap:10px;margin:0 0 6px;padding:0 4px;font-size:inherit}
 .l-grp h3 .t{font:700 13px var(--f-hud);letter-spacing:.04em;text-transform:uppercase}
@@ -1300,7 +1301,7 @@ function sync(api){
   avisoVersao();
 }
 /* a página vem do disco a cada pedido, mas o servidor em segundo plano pode estar com o código antigo (atualizou sem reiniciar) */
-const VERSAO_PAGINA = '0.4.1';
+const VERSAO_PAGINA = '0.4.2';
 function avisoVersao(){
   const v = CTX && CTX.SRV && CTX.SRV.versao, el = document.getElementById('aviso-versao');
   if(!v || v === VERSAO_PAGINA){ if(el) el.remove(); return; }
@@ -1377,7 +1378,7 @@ const golpeRow = g => `<button class="tk golpe" data-hit="${g.t.n}" style="displ
   <span class="chiprow"><span class="pill xp">+${g.x} XP</span>${g.av?`<span class="pill" title="preparação">${ic(g.b.ic)} prepara ${g.b.d} ${g.av.k} ${g.av.ok}/${g.av.tot}</span>`:''}${g.t.prova===HOJE?'<span class="pill bon">prova hoje</span>':g.t.due?`<span class="pill">due ${ddmm(g.t.due)}</span>`:''}${g.fury?'<span class="pill dmg">fúria ×1,5</span>':g.bonus?'<span class="pill bon">missão ×1,5</span>':''}</span></button>`;
 function metaDia(S){
   const cf = S.rot.find(t => /codeforces/i.test(t.txt));
-  return `<div class="meta"><div class="m"><span class="av" style="--c:var(--n2)">${ic('tra')}</span><span><b>Codeforces</b> <span class="sub">+5 por questão (até 6) · 3 = meta, +10</span></span>
+  return `<div class="meta"><div class="m"><span class="av" style="--c:var(--n2)">${ic('tra')}</span><span><b>Codeforces</b>${CTX.JOG.cf && CTX.JOG.cf.handle ? cfMaoBtn() : ''} <span class="sub">+5 por questão (até 6) · 3 = meta, +10</span></span>
     <span class="slots" title="${S.cfHoje} hoje no Codeforces">${[0,1,2].map(i=>`<i class="${S.cfHoje>i||(cf&&cf.ok)?'on':''}"></i>`).join('')}<span class="sep"></span>${[3,4,5].map(i=>`<i class="bn${S.cfHoje>i?' on':''}"></i>`).join('')}</span></div>
     ${S.rot.filter(t => t !== cf).map(t => `<button class="tk" data-hit="${t.n}" style="padding:4px 0">${avTask(t)}<span class="t">${esc(t.txt)}</span><span class="v" style="color:var(--soft)">${t.ok?'✓':'+'+xpDe({...t,done:HOJE})}</span></button>`).join('')}</div>`;
 }
@@ -1858,14 +1859,14 @@ function habitosL(S){
   let h = '';
   if(cf || cfT){ const n = S.cfHoje, ok = n >= meta || (cfT && cfT.ok);
     h += `<div class="l-hb${ok ? ' ok' : ''}" style="--c:${NC(1)}"><span class="av" style="--c:${NC(1)};--s:22px">${ic('tra')}</span>
-      <span class="t">Codeforces${cf ? ` <small>${esc(cf.handle)} · ${n} hoje · meta ${meta}${CTX.SRV ? ` <button type="button" class="l-cfm" data-cfmao title="fez problema onde o jogo não enxerga (ITMO Academy, grupo privado)? marque à mão">✋${((D.cf && D.cf.manual) || {})[HOJE] ? ' ' + D.cf.manual[HOJE] : ''}</button>` : ''}</small>` : ''}</span>
+      <span class="t">Codeforces${cf ? ` <small>${esc(cf.handle)} · ${n} hoje · meta ${meta}${cfMaoBtn()}</small>` : ''}</span>
       <span class="l-slots" title="${n} problema(s) hoje">${Array.from({length:meta}, (_,i) => `<i class="${n > i ? 'on' : ''}"></i>`).join('')}<span class="sep"></span>${[0,1,2].map(i => `<i class="bn${n > meta + i ? ' on' : ''}"></i>`).join('')}</span>
       <span class="l-auto">automático: conta os problemas aceitos no dia (+5 cada, até 6) · bater a meta dá +10${CTX.SRV ? ' · ✋ marca à mão o que o site não mostra (ITMO, grupo privado)' : ''}</span></div>`; }
   h += habs.map(t => `<div class="l-hb${t.ok ? ' ok' : ''}" style="--c:${NC(4)}" data-ln="${t.n}"><button class="l-ck" style="--c:${NC(4)}" data-l="${t.ok ? 'reopen' : 'done'}" aria-label="${t.ok ? 'desmarcar' : 'marcar'}: ${esc(t.txt)}">${t.ok ? '✓' : ''}</button>
-      <span class="t">${esc(t.txt)}${sem(recId(t)) ? `<small>${sem(recId(t))}× por semana · ${naSemana(recId(t), SEG)}/${sem(recId(t))} nesta semana</small>` : ''}</span><span class="l-xp">+${xpDe({...t, done:HOJE})}</span></div>`).join('');
+      <span class="t">${esc(t.txt)}${sem(recId(t)) ? `<small>${sem(recId(t))}× por semana · ${naSemana(recId(t), SEG)}/${sem(recId(t))} nesta semana${naSemana(recId(t), SEG) > sem(recId(t)) ? ` · acima da meta, XP ×${HJx.HAB_EXTRA}` : ''}</small>` : ''}</span><span class="l-xp">+${xpDe({...t, done:HOJE}) * (sem(recId(t)) && naSemana(recId(t), SEG) > sem(recId(t)) ? HJx.HAB_EXTRA : 1)}</span></div>`).join('');
   /* semanal com a meta da semana cumprida: o servidor não cria a linha de hoje; mostra como completo */
   h += (J.habitos || []).filter(x => x.semana && !habs.some(t => recId(t) === x.id) && naSemana(x.id, SEG) >= x.semana).map(x => `<div class="l-hb ok" style="--c:${NC(4)}"><span class="l-ck" style="--c:${NC(4)}" aria-hidden="true">✓</span>
-      <span class="t">${esc(x.n)}<small>${x.semana}× por semana · semana completa</small></span><span></span></div>`).join('');
+      <span class="t">${esc(x.n)}<small>${x.semana}× por semana · semana completa${naSemana(x.id, SEG) > x.semana ? ` (+${naSemana(x.id, SEG) - x.semana} acima da meta)` : ''}</small></span>${CTX.SRV ? `<button type="button" class="btn l-denovo" data-denovo="${esc(x.id)}" title="fez mais uma vez hoje? acima da meta vale XP ×${HJx.HAB_EXTRA}">fiz de novo +${xpDe({txt:x.n, rec:x.id + ':' + HOJE, proj:[], ctx:[], done:HOJE}) * HJx.HAB_EXTRA}</button>` : '<span></span>'}</div>`).join('');
   /* esqueci de marcar ontem: hábitos de hoje que não aparecem como feitos ontem; marcar conta para ontem (XP, Ten e heatmap) */
   const ONT = addD(HOJE, -1), feitosOnt = new Set(D.feitas.filter(t => t.done === ONT && (t.rec||'').endsWith(':' + ONT)).map(t => t.rec.split(':')[0]));
   const faltam = (J.habitos || []).filter(x => !feitosOnt.has(x.id) && !(x.semana && naSemana(x.id, addD(ONT, -dow(ONT))) >= x.semana));
@@ -1892,7 +1893,7 @@ function habitosL(S){
     ${diarios.length || !(J.habitos || []).length ? `<span class="nm">Hábitos<small>${nh} por dia</small></span>${grade(NC(4), d => lv((hd[d]||0)/nh), d => `${hd[d]||0} de ${nh}`)}` : ''}
     ${semanais.map(x => `<span class="nm">${esc(x.n)}<small>${x.semana}× por semana</small></span>${gradeSem(x, NC(4))}`).join('')}`;
   const cfm = (D.cf && D.cf.manual) || {};
-  if(J.cf && J.cf.handle) H += `<span class="nm">Codeforces<small>${esc(J.cf.handle)} · meta ${meta}${CTX.SRV ? ` <button type="button" class="l-cfm" data-cfmao title="fez problema onde o jogo não enxerga (ITMO Academy, grupo privado)? marque à mão">✋${cfm[HOJE] ? ' ' + cfm[HOJE] : ''}</button>` : ''}</small></span>${grade(NC(1), d => { const n = cfd[d]||0; return !n ? '' : n < meta ? (n < meta/2 ? 'h1' : 'h2') : n === meta ? 'h3' : 'h4'; }, d => `${cfd[d]||0} problema(s)${cfm[d] ? ` (${cfm[d]} à mão)` : ''}`)}`;
+  if(J.cf && J.cf.handle) H += `<span class="nm">Codeforces<small>${esc(J.cf.handle)} · meta ${meta}${cfMaoBtn()}</small></span>${grade(NC(1), d => { const n = cfd[d]||0; return !n ? '' : n < meta ? (n < meta/2 ? 'h1' : 'h2') : n === meta ? 'h3' : 'h4'; }, d => `${cfd[d]||0} problema(s)${cfm[d] ? ` (${cfm[d]} à mão)` : ''}`)}`;
   H += `</div>${leg('var(--soft)')}`;
   if(!(J.cf && J.cf.handle)) H += `<p class="sub" style="margin:10px 0 0">Faz Codeforces? Ligue em <button class="go" data-go="cfg">Configurações →</button> com o seu handle e ganhe o heatmap e o XP automáticos.</p>`;
   document.getElementById('l-heat').innerHTML = H;
@@ -1910,6 +1911,9 @@ async function tipoIA(btn){
   } catch(err){ toast('A IA não respondeu: ' + esc(err.message)); }
   btn.disabled = false;
 }
+/* o ✋ ao lado de todo "Codeforces" (Lista: hábitos e heatmap; Arena: meta do dia); só com o servidor de verdade */
+const cfMaoBtn = () => { if(!CTX.SRV) return ''; const n = ((D.cf && D.cf.manual) || {})[HOJE];
+  return ` <button type="button" class="l-cfm" data-cfmao title="fez problema onde o jogo não enxerga (ITMO Academy, grupo privado)? marque à mão">✋${n ? ' ' + n : ''}</button>`; };
 /* Codeforces à mão: o marcador ✋ no heatmap pede confirmação e soma 1 problema hoje (conta igual aos da API) */
 function cfMaoPergunta(){
   const bg = document.createElement('div'); bg.className = 'wz-bg'; bg.id = 'cfm';
@@ -1940,6 +1944,7 @@ document.addEventListener('click', async e => {
   const oa = q('[data-ontemabre]'); if(oa){ UI.ontem = oa.dataset.ontemabre === '1'; render(); return; }
   const on = q('[data-ontem]'); if(on){ UI.ontem = false; acaoL(() => post('/api/ontem', {id:on.dataset.ontem}), 'Marcado como feito ontem'); return; }
   if(q('[data-cfmao]')){ cfMaoPergunta(); return; }
+  const dn = q('[data-denovo]'); if(dn){ dn.disabled = true; acaoL(() => post('/api/denovo', {id:dn.dataset.denovo}), `Feito de novo <small>acima da meta da semana: XP ×${HJx.HAB_EXTRA}</small>`); return; }
   if(q('[data-cfmx]')){ document.getElementById('cfm').remove(); return; }
   if(q('[data-cfmok]')){ cfMao(false); return; }
   if(q('[data-cfmmenos]')){ q('[data-cfmmenos]').closest('.toast').remove(); cfMao(true); return; }

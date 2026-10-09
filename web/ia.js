@@ -23,6 +23,8 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .ia-lote{display:flex;flex-direction:column;gap:6px;margin-top:12px}
 .ia-lote>div{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--hair);font-size:13.5px}
 .ia-lote small{color:var(--soft)}
+.ia-sel{border-top:0!important}
+.ia-sel label{display:flex;gap:6px;align-items:center;font:13px var(--f-ui);color:var(--ink);text-transform:none;letter-spacing:0}
 .ia-ags{display:flex;flex-direction:column;gap:6px}
 .ia-ags label{display:flex;flex-direction:row;align-items:center;gap:10px;text-transform:none;letter-spacing:0;font:14px var(--f-ui);color:var(--ink);padding:8px 10px;border:1px solid var(--hair);border-radius:9px}
 .ia-ags label.off{opacity:.55}
@@ -58,7 +60,7 @@ function promptPlano(d, semAnexo){
     'chave | nome da avaliação | peso | data | palavra-chave | contínua', '',
     'Regras:',
     '- chave: de 1 a 8 letras ou números, sem espaço (ex.: P1, P2, T1, L).',
-    '- peso: quanto a avaliação vale na nota final, em %, só o número. Os pesos somam 100. Se o plano usar fórmula (ex.: NF = 0,4·N1 + 0,6·N2, com N1 = média de P1 e T1), faça a conta para chegar ao peso de cada avaliação na nota final.',
+    `- peso: quanto a avaliação vale na nota final, em %, só o número. ${window.HJ_CHEFES && window.HJ_CHEFES.livre(d) ? 'Os pesos somam 100 ou mais: esta disciplina tem ponto extra, então avaliações de bônus entram com o peso delas.' : 'Os pesos somam 100.'} Se o plano usar fórmula (ex.: NF = 0,4·N1 + 0,6·N2, com N1 = média de P1 e T1), faça a conta para chegar ao peso de cada avaliação na nota final.`,
     `- data: ${F()}. Sem data exata no plano, estime pela semana ou aula indicada e ponha ? no fim (ex.: ${br('2026-10-15')}?). Peso incerto também leva ? (ex.: 20?).`,
     '- palavra-chave: de 1 a 3 palavras que vão aparecer nas tarefas de estudo só dessa avaliação, separadas por vírgula (ex.: integral, derivada). Pode ficar vazia.',
     '- contínua: escreva contínua quando forem várias entregas que viram uma média (listas semanais, participação). Senão, deixe vazio.',
@@ -299,14 +301,22 @@ async function lerTodos(){
 function loteHTML2(){
   if(!ligada()) return '';
   const ps = (IAS && IAS.planos) || [], L = LOTE;
-  const st = {fila:'na fila', lendo:'lendo...', pronto:'pronto para revisar', erro:'erro', salvo:'salvo'};
+  const st = {fila:'na fila', lendo:'lendo...', pronto:'pronto para revisar', erro:'erro', salvo:'salvo'}, prontos = L ? L.itens.filter(it => it.estado === 'pronto') : [];
   return `<div class="card" id="ia-planos"><h2><span class="c">~/</span>planos de ensino · IA</h2>
-    <p class="sub" style="margin:0 0 10px">${ps.length ? `${ps.length} arquivo(s) na pasta planos.` : 'A pasta planos está vazia: ponha os PDFs lá ou envie pelo editor de um chefão.'} A IA liga cada plano à disciplina e monta as avaliações; você revisa e salva cada uma.</p>
+    <p class="sub" style="margin:0 0 10px">${ps.length ? `${ps.length} arquivo(s) na pasta planos.` : 'A pasta planos está vazia: ponha os PDFs lá ou envie pelo editor de um chefão.'} A IA liga cada plano à disciplina e monta as avaliações; você revisa cada uma no editor ou marca várias e salva de uma vez.</p>
     <button type="button" class="btn v" data-ialertodos${!ps.length || IA_RODA ? ' disabled' : ''}>ler todos os planos</button>
     ${L ? `<div class="ia-lote">${L.erro ? `<p class="sub" style="color:var(--red)">${esc(L.erro)}</p>` : ''}
-      ${L.itens.map((it, i) => `<div><span><b>${esc(it.d)}</b> <small>${esc(it.arq)} · ${st[it.estado]}${it.erro ? ': ' + esc(it.erro) : ''}</small></span>${it.estado === 'pronto' ? `<button type="button" class="btn" data-iarev="${i}">revisar e salvar</button>` : ''}</div>`).join('')}
+      ${prontos.length > 1 ? `<div class="ia-sel"><label><input type="checkbox" data-iaseltodos${prontos.every(it => it.sel) ? ' checked' : ''}> selecionar todos (${prontos.length})</label><button type="button" class="btn v" data-iasalvasel${prontos.some(it => it.sel) ? '' : ' disabled'}>salvar selecionados</button></div>` : ''}
+      ${L.itens.map((it, i) => `<div><span>${it.estado === 'pronto' ? `<input type="checkbox" data-iasel="${i}"${it.sel ? ' checked' : ''} aria-label="selecionar ${esc(it.d)}"> ` : ''}<b>${esc(it.d)}</b> <small>${esc(it.arq)} · ${st[it.estado]}${it.erro ? ': ' + esc(it.erro) : ''}</small></span>${it.estado === 'pronto' ? `<button type="button" class="btn" data-iarev="${i}">revisar e salvar</button>` : ''}</div>`).join('')}
       ${L.novas.map((it, i) => `<div><span><b>${esc(it.n || it.d)}</b> <small>${esc(it.arq)} · disciplina ainda não cadastrada</small></span><button type="button" class="btn" data-ianova="${i}">cadastrar ${esc(it.d)}</button></div>`).join('')}
       ${L.fora.length ? `<p class="sub">Não são planos de ensino: ${L.fora.map(esc).join(', ')}</p>` : ''}</div>` : ''}</div>`;
+}
+/* salva de uma vez os planos marcados; os que não passam (pesos, data, nota que sumiria) ficam para revisar no editor */
+async function salvaSel(){
+  const sel = LOTE.itens.filter(it => it.estado === 'pronto' && it.sel);
+  let r; try { r = await window.HJ_CHEFES.aplicaVarios(sel.map(it => ({d:it.d, texto:it.texto}))); } catch(err){ toast('Não salvou: ' + esc(err.message)); return; }
+  for(const it of sel){ const f = r.falha.find(x => x.d === it.d); if(f){ it.erro = f.motivo; it.sel = false; } else { it.estado = 'salvo'; it.erro = ''; it.sel = false; } }
+  render(); toast(`${r.ok.length} plano(s) salvo(s)` + (r.falha.length ? `<small>${r.falha.length} para revisar no editor</small>` : ''));
 }
 const planoIA = (d, anexo) => rodaIA(promptPlano(d, !anexo), anexo ? `lendo ${anexo}` : `lembretes de ${d}`, anexo);
 
@@ -344,6 +354,8 @@ async function salvaConf(d){
   }
 }
 document.addEventListener('change', e => {
+  const sl = e.target.closest('[data-iasel]'); if(sl){ LOTE.itens[+sl.dataset.iasel].sel = sl.checked; render(); return; }
+  if(e.target.matches('[data-iaseltodos]')){ LOTE.itens.forEach(it => { if(it.estado === 'pronto') it.sel = e.target.checked; }); render(); return; }
   const ag = e.target.closest('[data-iaag]'); if(ag){ salvaConf({agente:ag.dataset.iaag}); return; }
   if(e.target.matches('[data-iacartas]')) salvaConf({cartas:e.target.checked});
 });
@@ -358,6 +370,7 @@ document.addEventListener('click', e => {
   if(q('[data-iatesta]')){ testa(); return; }
   if(q('[data-iatour]')){ const t = q('.toast'); if(t) t.remove(); window.HJ_GUIA.tutorial('ia'); return; }
   if(q('[data-ialertodos]')){ lerTodos(); return; }
+  if(q('[data-iasalvasel]')){ salvaSel(); return; }
   const rv = q('[data-iarev]'); if(rv){ const it = LOTE.itens[+rv.dataset.iarev]; window.HJ_CHEFES.abre(it.d); window.HJ_CHEFES.cola(it.texto, () => { it.estado = 'salvo'; }); return; }
   const nv = q('[data-ianova]'); if(nv){ const it = LOTE.novas[+nv.dataset.ianova]; window.HJ_GUIA.abreDisciplinas({d:it.d, n:it.n}); return; }
   if(q('[data-iaprocura]')){ IAS = null; render(); carregaIA().then(() => render()); return; }

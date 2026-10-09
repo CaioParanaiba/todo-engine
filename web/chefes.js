@@ -19,6 +19,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .ce-nota{display:grid;grid-template-columns:minmax(0,1fr) 90px 34px;gap:8px;align-items:center;font-size:14px}
 .ce-nota small{display:block;font:11.5px var(--f-mono);color:var(--soft)}
 .ce-nota.del{opacity:.45;text-decoration:line-through}
+#ce .ce-livre{display:flex;flex-direction:row;gap:6px;align-items:center;font:13px var(--f-ui);color:var(--soft);text-transform:none;letter-spacing:0;margin-left:auto}
 .ce-obs{font-size:13px;color:var(--soft);background:var(--panel2);border-left:3px solid var(--amb);border-radius:8px;padding:8px 12px}
 .ce-obs ul{margin:4px 0 0;padding-left:18px}
 @media (max-width:720px){ .ce-row{grid-template-columns:1fr 1fr} .ce-row .op{grid-column:1/-1} }
@@ -48,6 +49,66 @@ function escreveLinha(a){
   return [a.k, a.n || a.k, String(a.w).replace('.', ',') + e, iso + e].concat(a.kw || a.cont ? [a.kw] : [], a.cont ? ['contínua'] : []).join(' | ');
 }
 
+/* "soma livre": o jogador autorizou os pesos da disciplina a passar de 100 (pontos extras); fica como comentário no bloco */
+const LIVRE = /^\s*#\s*soma livre/i, LIVRE_TXT = '# soma livre: os pesos podem passar de 100 (pontos extras)';
+function livre(d, txt){ const linhas = String(txt == null ? CTX.AV_TXT || '' : txt).split('\n'), b = bloco(linhas, d); return !!b && linhas.slice(b.ini + 1, b.fim).some(l => LIVRE.test(l)); }
+const somaDe = avs => avs.reduce((s, a) => s + (HJ.numBR(a.w) || 0), 0);
+const fmtSoma = x => String(Math.round(x * 100) / 100).replace('.', ',');
+/* resposta da IA (ou linhas coladas) → avaliações; as que já existiam (mesma chave) guardam a linha original */
+function lerResposta(txt, atuais){
+  const novas = [], obs = [];
+  for(let l of String(txt).split('\n')){
+    l = l.replace(/`/g, '').trim(); if(l.startsWith('#')){ const o = l.replace(/^#+\s*/, '').trim(); if(o) obs.push(o); continue; }
+    if(!l || /^[-|: ]+$/.test(l)) continue;
+    l = l.replace(/^\|/, '').replace(/\|$/, '');
+    const p = l.split('|').map(x => x.trim()); if(p.length < 4 || /^chave$/i.test(p[0])) continue;
+    const est = p[2].includes('?') || p[3].includes('?'), dt = p[3].replace('?', '').trim();
+    const velha = atuais.find(a => a.orig && a.orig.toUpperCase() === p[0].toUpperCase());
+    novas.push({k:p[0], n:p[1], w:p[2].replace('?', '').replace('%', '').trim(), dt: /^\d{4}-/.test(dt) ? HJ.brData(dt) : dt, est, kw:(p[4] || '').toLowerCase(), cont:/cont/i.test(p[5] || ''), orig: velha ? velha.orig : '', raw: velha ? velha.raw : ''});
+  }
+  return {novas, obs, del: atuais.filter(a => a.orig && !novas.some(n => n.orig === a.orig)).map(a => a.orig)};
+}
+function validaAvs(avs, liv){
+  const ks = avs.map(a => a.k.trim());
+  if(!avs.length) return 'Deixe pelo menos uma avaliação.';
+  if(ks.some(k => !CHAVE.test(k))) return 'A chave tem de 1 a 8 letras ou números, sem espaço (ex.: P1, T2, L).';
+  if(new Set(ks.map(k => k.toUpperCase())).size !== ks.length) return 'Há duas avaliações com a mesma chave.';
+  const ruimD = avs.find(a => !HJ.isoData(a.dt, HOJE)); if(ruimD) return `${ruimD.k || 'Avaliação'}: ${HJ.dataRuim(ruimD.dt)}`;
+  if(avs.some(a => !(HJ.numBR(a.w) > 0))) return 'Todo peso precisa ser um número maior que zero.';
+  const sm = somaDe(avs);
+  if(liv ? sm < 99.99 : Math.abs(sm - 100) > .01) return `Os pesos somam ${fmtSoma(sm)}%; precisam somar ${liv ? '100 ou mais' : '100 (ou marque "pode passar de 100%")'}.`;
+  return '';
+}
+/* o avaliacoes.txt inteiro com o bloco da disciplina trocado (comentários ficam no lugar; observações da IA e a marca de soma livre, logo abaixo do cabeçalho) */
+function montaAv(txt, d, avs, obs, liv){
+  const linhas = String(txt || '').split('\n'), b = bloco(linhas, d);
+  const novas = avs.map(a => escreveLinha({...a, k:a.k.trim(), n:a.n.trim()}));
+  const corpo = []; let j = 0;
+  for(const l of linhas.slice(b.ini + 1, b.fim)){ if((obs && /^\s*#\s*\(IA\)/.test(l)) || LIVRE.test(l)) continue; if(!ehAval(l)){ corpo.push(l); continue; } if(j === 0) corpo.push(...novas); j++; }
+  if(!j) corpo.push(...novas);
+  if(obs) corpo.unshift(...obs.map(o => '# (IA) ' + o.replace(/\n/g, ' ')));
+  if(liv) corpo.unshift(LIVRE_TXT);
+  return [...linhas.slice(0, b.ini + 1), ...corpo, ...linhas.slice(b.fim)].join('\n');
+}
+const avsDe = (txt, d) => { const linhas = String(txt || '').split('\n'), b = bloco(linhas, d); return b ? linhas.slice(b.ini + 1, b.fim).filter(ehAval).map(lerLinha) : null; };
+/* "ler todos os planos" → salvar selecionados: aplica as respostas da IA de várias disciplinas num POST só.
+   Pula (para revisar no editor) a que não passa na validação ou apagaria uma avaliação com nota lançada. */
+async function aplicaVarios(itens){
+  let av = String(CTX.AV_TXT || ''); const ok = [], falha = [];
+  const comNota = d => new Set(String(CTX.NT_TXT || '').split('\n').map(l => l.split('|').map(x => x.trim())).filter(p => p.length >= 4 && p[1].toUpperCase() === d).map(p => p[2]));
+  for(const it of itens){
+    const atuais = avsDe(av, it.d); if(!atuais){ falha.push({d:it.d, motivo:'disciplina não encontrada'}); continue; }
+    const r = lerResposta(it.texto, atuais), liv = livre(it.d, av);
+    if(!r.novas.length){ falha.push({d:it.d, motivo:'a resposta não tem avaliações'}); continue; }
+    const perde = r.del.filter(k => comNota(it.d).has(k));
+    if(perde.length){ falha.push({d:it.d, motivo:`${perde.join(', ')} tem nota lançada: revise no editor`}); continue; }
+    const err = validaAvs(r.novas, liv); if(err){ falha.push({d:it.d, motivo:err}); continue; }
+    av = montaAv(av, it.d, r.novas, r.obs, liv); ok.push(it.d);
+  }
+  if(ok.length){ await post('/api/jogo/planos', {avaliacoes:av}); await recarrega(); render(); }
+  return {ok, falha};
+}
+
 let E = null;   // edição em andamento
 function abre(d){
   aoSalvar = null;
@@ -57,7 +118,7 @@ function abre(d){
   E = {d, boss, avs: linhas.slice(b.ini + 1, b.fim).filter(ehAval).map(lerLinha), del:[],
     notas: nlin.map((raw, idx) => { const p = raw.split('|').map(x => x.trim()); return p.length >= 4 && !raw.trim().startsWith('#') && p[1].toUpperCase() === d
       ? {idx, raw, data:p[0], k:p[2], v:p[3], parcial:/parcial/i.test(p[4] || ''), apaga:false} : null; }).filter(Boolean),
-    err:'', confirma:'', obs:null, lemb:[], anexo:palpite(d)};
+    err:'', confirma:'', obs:null, lemb:[], anexo:palpite(d), livre:livre(d)};
   desenha();
 }
 /* plano de ensino da pasta planos/ com a sigla ou o nome da disciplina no nome do arquivo */
@@ -68,28 +129,20 @@ function palpite(d){
 }
 /* resposta da IA (ou linhas coladas): "chave | nome | peso | data | palavra-chave | contínua", data em dd/mm/aaaa (ou mm/dd/aaaa, conforme a opção) ou AAAA-MM-DD, "?" = estimada */
 function cola(txt){
-  const novas = [], obs = [];
-  for(let l of String(txt).split('\n')){
-    l = l.replace(/`/g, '').trim(); if(l.startsWith('#')){ const o = l.replace(/^#+\s*/, '').trim(); if(o) obs.push(o); continue; }
-    if(!l || /^[-|: ]+$/.test(l)) continue;
-    l = l.replace(/^\|/, '').replace(/\|$/, '');
-    const p = l.split('|').map(x => x.trim()); if(p.length < 4 || /^chave$/i.test(p[0])) continue;
-    const est = p[2].includes('?') || p[3].includes('?'), dt = p[3].replace('?', '').trim();
-    const velha = E.avs.find(a => a.orig && a.orig.toUpperCase() === p[0].toUpperCase());
-    novas.push({k:p[0], n:p[1], w:p[2].replace('?', '').replace('%', '').trim(), dt: /^\d{4}-/.test(dt) ? HJ.brData(dt) : dt, est, kw:(p[4] || '').toLowerCase(), cont:/cont/i.test(p[5] || ''), orig: velha ? velha.orig : '', raw: velha ? velha.raw : ''});
-  }
-  if(!novas.length){ E.err = 'Não achei nenhuma linha no formato "chave | nome | peso | data".'; desenha(); return; }
-  for(const a of E.avs) if(a.orig && !novas.some(n => n.orig === a.orig)) E.del.push(a.orig);
-  E.avs = novas; E.obs = obs; E.err = ''; desenha(); toast(`${novas.length} avaliações coladas <small>confira e salve</small>`);
+  const r = lerResposta(txt, E.avs);
+  if(!r.novas.length){ E.err = 'Não achei nenhuma linha no formato "chave | nome | peso | data".'; desenha(); return; }
+  E.del.push(...r.del); E.avs = r.novas; E.obs = r.obs; E.err = ''; desenha(); toast(`${r.novas.length} avaliações coladas <small>confira e salve</small>`);
 }
-function soma(){ return E.avs.reduce((s, a) => s + (HJ.numBR(a.w) || 0), 0); }
+const soma = () => somaDe(E.avs);
+const somaOk = sm => E.livre ? sm >= 99.99 : sm === 100;
+const somaTxt = sm => `pesos somam ${fmtSoma(sm)}%${somaOk(sm) ? ' ✓' : E.livre ? ' (precisa ser 100 ou mais)' : ' (precisa ser 100)'}`;
 function desenha(){
   let bg = document.getElementById('ce'); if(!bg){ bg = document.createElement('div'); bg.id = 'ce'; bg.className = 'wz-bg'; document.body.appendChild(bg); }
   const sm = Math.round(soma() * 100) / 100;
   bg.innerHTML = `<div class="wz" role="dialog" aria-modal="true" aria-labelledby="ce-t">
     <div class="wz-top"><span class="av" style="--s:42px">${ic(E.boss.ic)}</span><div><h2 id="ce-t">${esc(E.boss.n)} · ${esc(E.d)}</h2><p>Avaliações e notas desta disciplina</p></div></div>
     <div class="wz-body">
-      <p>Cada avaliação é uma prova, um trabalho ou uma lista. <b>Peso</b> em % (os pesos somam 100). <b>Contínua</b> = várias notas parciais que viram uma média (ex.: listas). <b>Estimada</b> = peso ou data ainda não confirmados no plano de ensino. A <b>palavra-chave</b> liga as tarefas com ela no texto a esta avaliação.</p>
+      <p>Cada avaliação é uma prova, um trabalho ou uma lista. <b>Peso</b> em % (os pesos somam 100; com ponto extra, marque "pode passar de 100%"). <b>Contínua</b> = várias notas parciais que viram uma média (ex.: listas). <b>Estimada</b> = peso ou data ainda não confirmados no plano de ensino. A <b>palavra-chave</b> liga as tarefas com ela no texto a esta avaliação.</p>
       <div class="wz-disc">${E.avs.map((a, i) => `<div class="ce-row">
         <label>Chave<input data-ce="${i}:k" value="${esc(a.k)}" maxlength="8" placeholder="P1"></label>
         <label>Nome<input data-ce="${i}:n" value="${esc(a.n)}" maxlength="50" placeholder="Prova 1"></label>
@@ -99,7 +152,8 @@ function desenha(){
         <div class="op"><label><input type="checkbox" data-ce="${i}:cont"${a.cont ? ' checked' : ''}> contínua</label><label><input type="checkbox" data-ce="${i}:est"${a.est ? ' checked' : ''}> estimada</label>
           <label>palavra-chave <input type="text" data-ce="${i}:kw" value="${esc(a.kw)}" maxlength="60" placeholder="ex.: avl, árvore" title="palavras que aparecem nas tarefas desta avaliação, separadas por vírgula"></label></div></div>`).join('')}</div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button type="button" class="btn" data-ceadd>+ avaliação</button>
-        <span class="ce-soma ${sm === 100 ? 'ok' : 'ruim'}">pesos somam ${String(sm).replace('.', ',')}%${sm === 100 ? ' ✓' : ' (precisa ser 100)'}</span></div>
+        <span class="ce-soma ${somaOk(sm) ? 'ok' : 'ruim'}">${somaTxt(sm)}</span>
+        <label class="ce-livre" title="para planos com ponto extra ou bônus: a vida do chefão continua caindo com média 6"><input type="checkbox" data-celivre${E.livre ? ' checked' : ''}> pode passar de 100% (pontos extras)</label></div>
       ${E.obs && E.obs.length ? `<div class="ce-obs"><b>Observações da IA</b> (ficam no plano como comentário; confira os itens estimados):<ul>${E.obs.map(o => `<li>${esc(o)}</li>`).join('')}</ul></div>` : ''}
       ${iaSec()}
       <div class="ce-sec"><h3>Notas lançadas</h3>
@@ -142,13 +196,7 @@ async function rodaIA(tipo){
   } catch(err){ if(E){ E.err = 'A IA não respondeu: ' + err.message; desenha(); } else toast('A IA não respondeu: ' + esc(err.message)); }
 }
 function valida(){
-  const ks = E.avs.map(a => a.k.trim());
-  if(!E.avs.length) return 'Deixe pelo menos uma avaliação.';
-  if(ks.some(k => !CHAVE.test(k))) return 'A chave tem de 1 a 8 letras ou números, sem espaço (ex.: P1, T2, L).';
-  if(new Set(ks.map(k => k.toUpperCase())).size !== ks.length) return 'Há duas avaliações com a mesma chave.';
-  const ruimD = E.avs.find(a => !HJ.isoData(a.dt, HOJE)); if(ruimD) return `${ruimD.k || 'Avaliação'}: ${HJ.dataRuim(ruimD.dt)}`;
-  if(E.avs.some(a => !(HJ.numBR(a.w) > 0))) return 'Todo peso precisa ser um número maior que zero.';
-  if(Math.abs(soma() - 100) > .01) return `Os pesos somam ${String(Math.round(soma() * 100) / 100).replace('.', ',')}%; precisam somar 100.`;
+  const e = validaAvs(E.avs, E.livre); if(e) return e;
   const nr = E.notas.find(n => !n.apaga && !(HJ.nota10(n.v) >= 0 && HJ.nota10(n.v) <= 10)); if(nr) return `Nota inválida em ${nr.k}: de 0 a 10, ou em pontos como 4/5.`;
   return '';
 }
@@ -159,13 +207,7 @@ async function salva(){
   const vivas = new Set(E.avs.map(a => a.orig).filter(Boolean)), perdem = E.notas.filter(n => !n.apaga && !vivas.has(n.k) && E.del.includes(n.k));
   const aviso = perdem.map(n => n.k).filter((k, i, v) => v.indexOf(k) === i).join(', ');
   if(aviso && E.confirma !== aviso){ E.confirma = aviso; E.err = `${aviso} tem nota lançada e a nota vai ser apagada junto. Clique em salvar de novo para confirmar.`; desenha(); return; }
-  const linhas = String(CTX.AV_TXT || '').split('\n'), b = bloco(linhas, E.d);
-  const novas = E.avs.map(a => escreveLinha({...a, k:a.k.trim(), n:a.n.trim()}));
-  const corpo = []; let j = 0;
-  for(const l of linhas.slice(b.ini + 1, b.fim)){ if(E.obs && /^\s*#\s*\(IA\)/.test(l)) continue; if(!ehAval(l)){ corpo.push(l); continue; } if(j === 0) corpo.push(...novas); j++; }   // comentários ficam no lugar
-  if(!j) corpo.push(...novas);
-  if(E.obs) corpo.unshift(...E.obs.map(o => '# (IA) ' + o.replace(/\n/g, ' ')));   // observações da última resposta da IA, logo abaixo do cabeçalho
-  const av = [...linhas.slice(0, b.ini + 1), ...corpo, ...linhas.slice(b.fim)].join('\n');
+  const av = montaAv(CTX.AV_TXT, E.d, E.avs, E.obs, E.livre);
   const nlin = String(CTX.NT_TXT || '').split('\n'), porIdx = new Map(E.notas.map(n => [n.idx, n]));
   const nt = nlin.flatMap((raw, idx) => { const n = porIdx.get(idx); if(!n) return [raw];
     const k = ren[n.k] || n.k; if(n.apaga || perdem.includes(n)) return [];
@@ -179,7 +221,8 @@ async function salva(){
 document.addEventListener('input', e => {
   if(!E) return; const t = e.target;
   if(t.dataset.ce){ const [i, c] = t.dataset.ce.split(':'); E.avs[+i][c] = t.type === 'checkbox' ? t.checked : t.value;
-    if(c === 'w'){ const s = document.querySelector('.ce-soma'), sm = Math.round(soma() * 100) / 100; s.className = 'ce-soma ' + (sm === 100 ? 'ok' : 'ruim'); s.textContent = `pesos somam ${String(sm).replace('.', ',')}%${sm === 100 ? ' ✓' : ' (precisa ser 100)'}`; } }
+    if(c === 'w'){ const s = document.querySelector('.ce-soma'), sm = Math.round(soma() * 100) / 100; s.className = 'ce-soma ' + (somaOk(sm) ? 'ok' : 'ruim'); s.textContent = somaTxt(sm); } }
+  if(t.matches('[data-celivre]')){ E.livre = t.checked; desenha(); }
   if(t.dataset.cen !== undefined) E.notas[+t.dataset.cen].v = t.value;
 });
 document.addEventListener('click', e => {
@@ -212,6 +255,6 @@ RENDER.b2 = S => { rB2_0(S); document.querySelectorAll('#b2-cols .col').forEach(
 RENDER.b = S => { rB_0(S); const d = document.querySelector('#b-bosses .bdet'); if(d && UI.bsel) d.insertAdjacentHTML('beforeend', `<p style="margin:10px 0 0"><button type="button" class="btn" data-cedit="${UI.bsel}">editar avaliações e notas</button></p>`); };
 /* "ler todos os planos" (ia.js): abre o editor com a resposta da IA já colada; aoSalvar marca o item como salvo */
 let aoSalvar = null;
-window.HJ_CHEFES = {abre, cola: (txt, fn) => { if(!E) return; E.lemb = []; aoSalvar = fn || null; cola(txt); }};
+window.HJ_CHEFES = {abre, livre, aplicaVarios, cola: (txt, fn) => { if(!E) return; E.lemb = []; aoSalvar = fn || null; cola(txt); }};
 if(CTX) tab(cur);
 })();

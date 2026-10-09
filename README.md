@@ -5,8 +5,8 @@ Um jogo (tema Hunter x Hunter) em cima do [todo.txt](https://github.com/todotxt/
 **Jenny** na loja. Roda no seu computador, sem conta e sem internet (só o Codeforces, se você ligar, consulta a API).
 Precisa apenas do Python 3.8 ou mais novo, no Linux, Windows ou Mac.
 
-> **Versão 0.2 (teste).** Testada no Linux. No Windows e no Mac ainda não foi testada (inclusive o instalador e o
-> início automático): se algo der errado, avise. O que está planejado fica em [`docs/PENDENCIAS.md`](docs/PENDENCIAS.md).
+> **Versão 0.3.** Testada no Linux por amigos, com foco em usabilidade. No Windows e no Mac ainda não foi testada
+> (inclusive o instalador e o início automático): se algo der errado, avise. O que está planejado fica em [`docs/PENDENCIAS.md`](docs/PENDENCIAS.md).
 > O desenho do modo em grupo (placar **Torre Trick**) está em [`docs/COLETIVO.md`](docs/COLETIVO.md) e ainda não existe.
 
 ## Instalação rápida (um comando)

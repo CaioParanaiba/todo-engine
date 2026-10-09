@@ -50,7 +50,7 @@ from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSAO = "0.2-dev"
+VERSAO = "0.3"
 REPO = Path(__file__).resolve().parent
 WEB = REPO / "web"
 DADOS = Path()   # definido em main()

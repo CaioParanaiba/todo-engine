@@ -3,7 +3,7 @@
 Lista viva do que falta e do que foi pensado para as próximas versões. O desenho do modo em grupo (placar Torre Trick)
 tem as pendências dele em [`COLETIVO.md`](COLETIVO.md).
 
-## Ideias para a v0.3 (anotadas em 09/10/2026)
+## Ideias para as próximas versões (anotadas em 09/10/2026; a v0.3 saiu no mesmo dia)
 
 1. **Textos pessoais viram escolha do jogador, sem ficar genéricos.** Muitos textos ainda são do jogo pessoal do autor
    (Killua, "transmutação estilo Killua", nomes e falas de personagens). Ideia: o jogador escolhe o personagem favorito
@@ -17,14 +17,13 @@ tem as pendências dele em [`COLETIVO.md`](COLETIVO.md).
    bônus.
 4. **Tradução para mais de um idioma.** Textos da página, do assistente, do servidor e dos pedidos para a IA. A opção de
    formato de data (dd/mm ou mm/dd) já existe e serviria de base.
-5. **Tutorial do Book: cartas que se usam são feitiços.** Onde o tutorial fala em "usar carta", trocar por
-   **feitiços** e explicar em poucas linhas o que são (de onde vêm, como se usam, quando expiram).
-6. **Conquistas criadas pela IA, além das fixas.** As 000–099 já são genéricas (gerais + quatro por disciplina, 060 em
+5. **Conquistas criadas pela IA, além das fixas.** As 000–099 já são genéricas (gerais + quatro por disciplina, 060 em
    diante). A IA poderia propor conquistas mais específicas, desde que num formato que o motor confere sozinho (ex.:
    "10 tarefas com a palavra sql", "hábito leitura em 14 dias"): a IA inventa o desafio e o nome, o jogo verifica.
-7. **Tutorial da loja (Masadora) mais completo:** explicar o que cada aba faz (aparência, mundo pixel, prêmios reais,
-   feitiços) e como a loja funciona (Jenny, compra por semana, equipar).
-8. **Ideias guardadas, fora do template para não complicar** (avaliar se interessam aos amigos):
+6. **Duolingo, como o Codeforces (ideia de um amigo).** Para quem usa: ligar a conta e o jogo conta os dias de
+   Duolingo sozinho (hábito automático, heatmap e conquistas), opcional como o handle do Codeforces. As dificuldades
+   (o Duolingo não tem API pública oficial; ver o que dá para ler e se é estável) ficam para avaliar depois.
+7. **Ideias guardadas, fora do template para não complicar** (avaliar se interessam aos amigos):
    - gravar o áudio da aula e transcrever no computador, gerando resumo e tarefas (o jogo do autor faz);
    - conferir datas de prova na agenda do Google.
 
@@ -32,7 +31,6 @@ tem as pendências dele em [`COLETIVO.md`](COLETIVO.md).
 
 - **Testar no Windows e no Mac:** `instalar.ps1`, início automático (`.vbs` na pasta Inicializar, LaunchAgent no Mac),
   `pythonw` sem janela, boas-vindas no terminal. Precisa de um amigo em cada sistema.
-- **Tag v0.2** depois do teste dos amigos (o código já diz `0.2-dev`).
 - **GitHub Pages:** no ar em https://caioparanaiba.github.io/todo-engine/ (atualiza a cada push que mexe em `web/`).
 - **Fotos de perfil:** as imagens de personagens não vão para o repositório (direitos). Decidir de onde vêm (avatares
   próprios ou livres, ou cada um coloca os seus em `~/.hunter-todo/avatares/`).

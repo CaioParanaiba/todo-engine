@@ -293,6 +293,8 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------- tutorial: destaca cada bloco e explica o que ele quer dizer ---------- */
+/* passos: [seletor, título, texto, 1 = destaca o card inteiro, antes()]. antes() troca a sub-aba (Book, Masadora) antes do passo */
+const vai = o => () => { Object.assign(UI, o); render(); };
 const TOURS = {
   l:[['.gnav','Abas do jogo','A <b>Lista</b> é onde você trabalha. As outras abas mostram o jogo. O botão <b>? tutorial</b> repete esta explicação na aba em que você estiver.'],
      ['#l-hud .l-me','Seu Hunter','Cada XP sobe a <b>Arena Celestial</b>: 251 andares, que zeram no fim do semestre. A barra mostra quanto falta para o próximo andar, e a meta do dia acompanha o seu ritmo.'],
@@ -319,22 +321,31 @@ const TOURS = {
   d2:[['#d2-months','O semestre inteiro','Cada quadradinho é um dia: azul com tarefas, roxo tracejado com Zetsu. Os anéis marcam as avaliações.'],
       ['#d2-ladder','Escada da temporada','Os marcos do semestre e onde você está.', 1],
       ['#d2-next','Próximas avaliações','As provas que vêm aí, com a preparação de cada uma.', 1]],
-  bk:[['#bk-prog','Progresso do Book','Quantas cartas você já tem. As de 000 a 099 são conquistas com regra fixa, conferidas pelo jogo: as gerais e quatro para cada disciplina (060 em diante).'],
-      ['#bk-tabs','Tipos de carta','Conquistas, cartas narradas (escritas por IA, se você usar) e os seus feitiços.'],
-      ['#bk-grid','A coleção','Clique numa carta para ver o que ela pede e quanto falta.'],
-      ['#bk-det','Detalhe','A regra da carta, ou o efeito do feitiço e o botão de usar.']],
-  ms:[['#ms-root .cats','Seções da loja','Aparência (fotos, cores, efeitos), mundo pixel, prêmios reais e feitiços.'],
-      ['#ms-root .lay7 > div:first-child','Itens','Compre com Jenny. Os itens comprados ficam seus para sempre e podem ser equipados a qualquer hora.'],
-      ['#ms-root .side7','Carteira','Quanto você tem, de onde veio e o que está usando agora.']],
+  bk:[['#bk-prog','Progresso do Book','Quantas cartas você já tem. As de 000 a 099 são conquistas com regra fixa, conferidas pelo jogo: as gerais e quatro para cada disciplina (060 em diante).', 0, vai({bk:'slot', bksel:'001'})],
+      ['#bk-tabs','Três tipos de carta','<b>Conquistas</b> (troféus por regra fixa), <b>narradas</b> (a história da sua semana ou mês, escrita por IA se você usar) e <b>feitiços</b>. Só os feitiços se usam: os outros dois são coleção.'],
+      ['#bk-grid','Conquistas','Cada carta pede algo: dias seguidos, tarefas no prazo, uma disciplina vencida. Clique numa delas para ver a regra e quanto falta. As apagadas ainda não são suas.'],
+      ['#bk-det','Detalhe da carta','A regra e o seu progresso. As conquistas se marcam sozinhas: não precisa fazer nada além de jogar.'],
+      ['#bk-grid','Feitiços: o que são','Cartas de efeito que você guarda na bolsa e usa quando quiser. O número em cada uma é quantas você tem.<br><b>Zetsu extra</b>: +1 folga no Ten · <b>Ko</b>: a próxima tarefa vale XP ×2 · <b>Acompanhar</b>: a próxima entrega vale ×2 · <b>Gyo</b>: você escolhe o atributo da missão da semana · <b>Ken</b>: adia um prazo em 1 dia sem perder o bônus · <b>Retorno</b>: conta a meta do Codeforces de ontem.', 0, vai({bk:'feit', bksel:'F:ko'})],
+      ['#bk-grid','De onde vêm','Três jeitos: <b>comprar</b> na Masadora (1 de cada por semana), fechar a <b>preparação completa</b> de uma avaliação antes da data e cumprir a <b>missão da semana</b>. Os dois últimos dão um <b>Feitiço à escolha</b>, que vira qualquer outro na hora de usar.'],
+      ['#bk-det','Como usar','Clique no feitiço e depois em <b>usar agora</b>. Alguns pedem uma escolha antes (o atributo do Gyo, a tarefa do Ken). O efeito vale a partir desse momento: o Ko dobra a próxima tarefa que você concluir. Os feitiços <b>expiram na volta às aulas</b> do próximo semestre, então não guarde demais.']],
+  ms:[['#ms-root .cats','Quatro seções','Aparência, mundo pixel, prêmios reais e feitiços. Tudo se paga com <b>Jenny</b>: cada XP vale 10 J, e nota ≥ 6 dá bônus. Gastar não baixa o seu andar.', 0, vai({cat:'aparencia', pedit:false})],
+      ['#ms-root .lay7 > div:first-child','Aparência','Fotos de perfil, paletas, fundos, efeitos, molduras e títulos. Comprou, é seu para sempre: <b>equipar</b> troca o que está usando sem pagar de novo. Alguns itens só abrem com uma conquista.'],
+      ['#ms-root .lay7 > div:first-child','Mundo pixel','O jogo em pixel art: mapa, ficha, Greed Island e uma Masadora pixel. Primeiro desbloqueie o mundo; depois compre peles para cada tela.', 0, vai({cat:'pixel'})],
+      ['#ms-root .lay7 > div:first-child','Prêmios reais','Recompensas da vida real que você se dá com Jenny: tempo livre, um jogo, um livro. Os que vêm com o jogo são só <b>exemplos</b>. Resgatou, a Jenny sai da carteira e o prêmio fica registrado.', 0, vai({cat:'premios', pedit:false})],
+      ['[data-pedit]','Personalize os seus','Aqui você troca os exemplos pela <b>sua lista</b>: nome, preço em Jenny e, se custar dinheiro, quanto sai do <b>cofre</b> (R$ por mês, que acumula). Também dá para mudar o valor do cofre ou voltar aos prêmios padrão.'],
+      ['#ms-root .lay7 > div:first-child > .sec7:last-child','Quanto vale cada preço','A régua usa o seu ritmo: quanto rende um dia produtivo, uma semana boa e um mês. Cada prêmio mostra o esforço que custa, para o preço não ficar fácil ou difícil demais.'],
+      ['#ms-root .lay7 > div:first-child','Feitiços','Cartas de efeito (cada uma explicada no Book). Na loja dá para comprar 1 de cada por semana; o comprado vai para a bolsa e se usa pelo <b>Book → Feitiços</b>.', 0, vai({cat:'feiticos'})],
+      ['#ms-root .side7','Carteira','Quanto você tem e de onde veio, o cofre do mês, o que está usando agora e os prêmios já resgatados.']],
   sys:[['#cfg','Seu jogo','Mude o básico sem refazer nada: nome, nickname, <b>hábitos</b> (adicionar ou remover), o <b>Codeforces</b> e o nome das tags. Clique em salvar.'],
        ['#sys-root > .card:nth-child(2)','Regras','Daqui para baixo, tudo o que o jogo considera. A fonte de verdade é o motor.js.']],
 };
 let TR = null;
 function tutorial(aba){
-  const passos = (TOURS[aba] || []).filter(p => document.querySelector(p[0]));
+  const t = TOURS[aba] || [], troca = t.some(p => p[4]);
+  const passos = troca ? t : t.filter(p => document.querySelector(p[0]));   // com troca de sub-aba, o passo sem bloco é pulado na hora
   if(!passos.length) return;
   fecha();
-  TR = {aba, passos, i:0};
+  TR = {aba, passos, i:0, dir:1};
   document.body.insertAdjacentHTML('beforeend', '<div class="tr-hole" id="tr-hole"></div><div class="tr-pop" id="tr-pop" role="dialog" aria-live="polite"></div>');
   passo();
 }
@@ -352,6 +363,8 @@ function posiciona(){
 }
 function passo(){
   const p = TR.passos[TR.i], ult = TR.i === TR.passos.length - 1;
+  if(p[4]) p[4]();
+  if(!alvo()){ TR.i += TR.dir; if(TR.i < 0 || TR.i >= TR.passos.length) fecha(); else passo(); return; }
   document.getElementById('tr-pop').innerHTML = `<span class="tr-k">${TR.i + 1} de ${TR.passos.length}</span><h4>${p[1]}</h4><p>${p[2]}</p>
     <div class="bt"><button class="btn pl" data-tr="x">pular</button>${TR.i ? '<button class="btn" data-tr="-1">← voltar</button>' : ''}<button class="btn v" data-tr="1">${ult ? 'entendi' : 'próximo →'}</button></div>`;
   const el = alvo(); const r = el.getBoundingClientRect();
@@ -364,7 +377,7 @@ function fecha(){
   TR = null; ['tr-hole','tr-pop'].forEach(id => { const e = document.getElementById(id); if(e) e.remove(); });
 }
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-tr]'); if(b){ const v = b.dataset.tr; if(v === 'x' || (v === '1' && TR.i === TR.passos.length - 1)) fecha(); else { TR.i += +v; passo(); } return; }
+  const b = e.target.closest('[data-tr]'); if(b){ const v = b.dataset.tr; if(v === 'x' || (v === '1' && TR.i === TR.passos.length - 1)) fecha(); else { TR.dir = +v; TR.i += +v; passo(); } return; }
   if(e.target.closest('[data-trq]')) tutorial(cur);
 });
 document.addEventListener('keydown', e => {

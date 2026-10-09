@@ -16,7 +16,7 @@ Serve a página do jogo (web/) em http://127.0.0.1:PORTA/ e grava os dados do jo
 
 Rotas (as mesmas que web/demo.js simula no modo demonstração):
   GET  /api/jogo                          tudo o que a página precisa
-  GET  /api/backup                        ZIP da pasta de dados (botão "baixar meus dados" na aba Regras)
+  GET  /api/backup                        ZIP da pasta de dados (botão "baixar meus dados" na aba Configurações)
   POST /api/act   {raw, action, value?}   done | reopen | delete | up | down | d1 | d7 | a1 | hoje | amanha | rmdue | setdate | edit
   POST /api/add   {text}                  linha no formato todo.txt; due:hoje|amanha|+N|DD/MM|AAAA-MM-DD
   POST /api/undo  {}                      desfaz a última operação deste servidor
@@ -56,7 +56,8 @@ from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSAO = "0.4"
+VERSAO = "0.4.1"
+VERSAO_NOME = "atualização da IA"   # nome da série 0.4 (aparece em Configurações → servidor)
 REPO = Path(__file__).resolve().parent
 WEB = REPO / "web"
 DADOS = Path()   # definido em main()
@@ -562,7 +563,7 @@ def api_cf_mao(d):
     Conta igual aos da API, para a meta do dia e o XP."""
     cf = cf_conf(jogador())
     if not cf:
-        raise Erro("ligue o Codeforces na aba Regras primeiro")
+        raise Erro("ligue o Codeforces na aba Configurações primeiro")
     dia, passo = hoje().isoformat(), -1 if d.get("menos") else 1
     with lock:
         cache = ler_json("cf.json", {})
@@ -619,7 +620,7 @@ def api_jogo_get():
     return {"ok": True, "hoje": hoje().isoformat(), "todo": todo, "done": done, "avaliacoes": ler_txt("avaliacoes.txt"),
             "notas": ler_txt("notas.txt"), "ajustes": ler_txt("ajustes.txt"), "estado": estado if isinstance(estado, dict) else {},
             "cf": cf, "avatares": avatares(), "narradas": narradas if isinstance(narradas, list) else [], "jogador": j,
-            "servidor": {"versao": VERSAO, "sistema": sistema(), "auto": auto_ligado(), "fundo": EXEC["fundo"], "dados": str(DADOS)}}
+            "servidor": {"versao": VERSAO, "nome": VERSAO_NOME, "sistema": sistema(), "auto": auto_ligado(), "fundo": EXEC["fundo"], "dados": str(DADOS)}}
 
 
 def acrescenta(nome, linha):
@@ -740,7 +741,7 @@ def backup():
 
 # ---------- IA integrada (opcional): o jogo chama o agente de terminal do jogador e só lê o texto que ele devolve ----------
 # A página monta o pedido (web/ia.js, o mesmo do modo chat) e confere a resposta; o agente roda sem poder gravar nada,
-# numa pasta temporária com o pedido e o anexo. Ligar e escolher o agente: aba Regras (jogador.json → "ia").
+# numa pasta temporária com o pedido e o anexo. Ligar e escolher o agente: aba Configurações (jogador.json → "ia").
 AGENTES = {
     "claude": {"nome": "Claude Code", "login": "claude   (na primeira vez ele pede o login)"},
     "codex": {"nome": "Codex", "login": "codex login"},
@@ -756,16 +757,40 @@ ia_lock = threading.Lock()   # um pedido por vez
 def caminhos_extra():
     """Pastas onde os instaladores costumam pôr os agentes. O serviço de início automático roda com um PATH curto."""
     h = Path.home()
-    extra = [h / ".local" / "bin", h / ".npm-global" / "bin", h / ".bun" / "bin", h / ".volta" / "bin", h / "bin",
-             Path("/usr/local/bin"), Path("/opt/homebrew/bin"), Path("/usr/bin")]
+    extra = [h / ".local" / "bin", h / ".npm-global" / "bin", h / ".bun" / "bin", h / ".volta" / "bin", h / ".cargo" / "bin",
+             h / ".local" / "share" / "pnpm", h / ".yarn" / "bin", h / "bin", Path("/usr/local/bin"), Path("/opt/homebrew/bin"),
+             Path("/home/linuxbrew/.linuxbrew/bin"), Path("/snap/bin"), Path("/usr/bin")]
     if sistema() == "windows":
         extra.append(Path(os.environ.get("APPDATA") or h / "AppData" / "Roaming") / "npm")
     extra += sorted((h / ".nvm" / "versions" / "node").glob("*/bin"), reverse=True)
+    extra += sorted((h / ".local" / "share" / "fnm" / "node-versions").glob("*/installation/bin"), reverse=True)
     return [str(p) for p in extra if p.is_dir()]
 
 
+_path_shell = {}
+
+
+def path_shell():
+    """PATH do terminal do usuário (lido uma vez): o serviço do início automático não carrega o .bashrc/.zshrc, onde o
+    nvm, o npm e outros instaladores costumam pôr os agentes."""
+    if "v" not in _path_shell:
+        _path_shell["v"] = ""
+        sh = os.environ.get("SHELL") or "/bin/sh"
+        if sistema() != "windows" and Path(sh).exists():
+            for flags in ("-lic", "-lc"):
+                try:
+                    r = subprocess.run([sh, flags, "echo __P__$PATH"], capture_output=True, text=True, timeout=8, stdin=subprocess.DEVNULL)
+                    m = re.search(r"__P__(\S+)", r.stdout or "")
+                    if m:
+                        _path_shell["v"] = m.group(1)
+                        break
+                except (OSError, subprocess.SubprocessError):
+                    pass
+    return _path_shell["v"]
+
+
 def path_agentes():
-    return os.pathsep.join([os.environ.get("PATH", "")] + caminhos_extra())
+    return os.pathsep.join(p for p in [os.environ.get("PATH", ""), path_shell()] + caminhos_extra() if p)
 
 
 def acha_agente(ag):
@@ -867,7 +892,7 @@ def api_ia_rodar(d):
         raise Erro("arquivo do plano não encontrado na pasta planos")
     ag = ia_conf()["agente"]
     if ag == "chat":
-        raise Erro("a IA não está ligada (aba Regras → IA)")
+        raise Erro("a IA não está ligada (aba Configurações → IA)")
     exe = acha_agente(ag)
     if not exe:
         raise Erro(f"não achei o {AGENTES[ag]['nome']} neste computador")
@@ -907,7 +932,7 @@ def api_ia_plano(d):
     return {"ok": True, "nome": nome, "planos": planos()}
 
 
-# ---------- iniciar com o computador (opcional: liga e desliga na aba Regras, ou com --instalar / --desinstalar) ----------
+# ---------- iniciar com o computador (opcional: liga e desliga na aba Configurações, ou com --instalar / --desinstalar) ----------
 SERVICO = "hunter-todo"
 EXEC = {"fundo": False, "porta": 8642, "srv": None, "passou": False, "systemd": None}
 
@@ -1083,7 +1108,7 @@ class H(BaseHTTPRequestHandler):
                     return self._arquivo(p / caminho[3:], "image/png", "max-age=3600")
             return self._json(404, {"ok": False, "error": "foto não encontrada"})
         if caminho == "/api/ping":
-            return self._json(200, {"ok": True, "app": "hunter-todo", "versao": VERSAO})
+            return self._json(200, {"ok": True, "app": "hunter-todo", "versao": VERSAO, "pid": os.getpid()})
         if caminho == "/api/backup":
             try:
                 corpo = backup()
@@ -1165,7 +1190,7 @@ Ele precisa estar ligado enquanto você joga. Você escolhe:
     é só abrir o endereço acima quando quiser jogar;
   - ou rodar só quando quiser, deixando esta janela aberta.
 
-Para mudar depois: aba Regras do jogo, ou no terminal
+Para mudar depois: aba Configurações do jogo, ou no terminal
   {comando()} --instalar      (inicia com o computador)
   {comando()} --desinstalar   (deixa de iniciar)
   {comando()} --help          (todas as opções)
@@ -1196,12 +1221,77 @@ Para mudar depois: aba Regras do jogo, ou no terminal
     return True
 
 
-def ja_rodando(porta):
+def ping(porta):
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{porta}/api/ping", timeout=2) as r:
-            return json.load(r).get("app") == "hunter-todo"
+            j = json.load(r)
+            return j if j.get("app") == "hunter-todo" else None
     except Exception:
+        return None
+
+
+def ja_rodando(porta):
+    return ping(porta) is not None
+
+
+def pid_na_porta(porta):
+    """Quem escuta na porta (Linux e Mac), para trocar um servidor antigo que não informa o pid no /api/ping."""
+    for cmd in (["ss", "-ltnpH", f"sport = :{porta}"], ["lsof", "-t", f"-iTCP:{porta}", "-sTCP:LISTEN"]):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        m = re.search(r"pid=(\d+)", r.stdout) or re.match(r"\s*(\d+)", r.stdout)
+        if m:
+            return int(m.group(1))
+    return None
+
+
+def troca_antigo(porta, info):
+    """Atualizou o jogo com o servidor antigo ainda ligado (em segundo plano): desliga o antigo para o novo assumir.
+    Devolve True se a porta ficou livre (ou se o serviço já subiu com o código novo)."""
+    log(f"servidor antigo ({info.get('versao')}) rodando na porta {porta}: trocando pelo {VERSAO}")
+    f = arquivo_auto()
+    try:
+        if f.suffix == ".service" and f.exists():
+            systemctl("restart", f.name)
+        elif f.suffix == ".plist" and f.exists():
+            subprocess.run(["launchctl", "kickstart", "-k", f"gui/{os.getuid()}/com.{SERVICO}.servidor"], capture_output=True, timeout=15)
+        else:
+            pid = info.get("pid") or pid_na_porta(porta)
+            if not pid:
+                return False
+            if sistema() == "windows":
+                subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True, timeout=15)
+            else:
+                import signal
+                os.kill(pid, signal.SIGTERM)
+    except (Erro, OSError, subprocess.SubprocessError) as e:
+        log("não consegui desligar o servidor antigo:", e)
         return False
+    for _ in range(40):
+        time.sleep(0.25)
+        p = ping(porta)
+        if p is None or p.get("versao") == VERSAO:
+            return True
+    return False
+
+
+def vigia_codigo():
+    """Atualizou o código (git pull, instalador) com o servidor ligado: ele se reinicia sozinho com o código novo."""
+    f = REPO / "servidor.py"
+    antes = f.stat().st_mtime
+    while True:
+        time.sleep(20)
+        try:
+            if f.stat().st_mtime != antes and not ia_lock.locked():
+                compile(f.read_text(encoding="utf-8"), str(f), "exec")   # só troca se o arquivo novo estiver inteiro
+                log("código novo do servidor: reiniciando")
+                EXEC["recarregar"] = True
+                EXEC["srv"].shutdown()
+                return
+        except (OSError, SyntaxError, ValueError):
+            pass
 
 
 def main():
@@ -1243,6 +1333,12 @@ def main():
         if not (DADOS / nome).exists():
             gravar_txt(nome, "")
     H.porta = a.porta
+    antigo = ping(a.porta)
+    if antigo and antigo.get("versao") != VERSAO and troca_antigo(a.porta, antigo) and ja_rodando(a.porta):
+        print(f"Hunter.todo atualizado para a {VERSAO} (o servidor em segundo plano foi reiniciado): {url}")
+        if not a.sem_navegador and not a.fundo:
+            webbrowser.open(url)
+        return
     if not ja_rodando(a.porta) and boas_vindas(a, url):
         return
     try:
@@ -1257,13 +1353,14 @@ def main():
             return
         sys.exit(f"A porta {a.porta} está ocupada por outro programa. Rode com outra: python3 servidor.py --porta 8643")
     EXEC["srv"] = srv
+    threading.Thread(target=vigia_codigo, daemon=True).start()
     arruma_dia()
-    print(f"Hunter.todo {VERSAO} em {url}")
+    print(f"Hunter.todo {VERSAO} ({VERSAO_NOME}) em {url}")
     print(f"Seus dados: {DADOS}")
     if not a.fundo:
         print("Deixe esta janela aberta enquanto joga. Para parar: Ctrl+C.")
         if not auto_ligado():
-            print(f"Dica: para não precisar abrir isto toda vez, ligue \"iniciar com o computador\" na aba Regras ou rode {comando()} --instalar")
+            print(f"Dica: para não precisar abrir isto toda vez, ligue \"iniciar com o computador\" na aba Configurações ou rode {comando()} --instalar")
     if not a.sem_navegador and not a.fundo:
         threading.Timer(0.6, webbrowser.open, args=(url,)).start()
     try:
@@ -1271,6 +1368,10 @@ def main():
     except KeyboardInterrupt:
         print("\nAté a próxima.")
         return
+    if EXEC.get("recarregar"):
+        srv.server_close()
+        args = [a for a in sys.argv[1:] if a != "--sem-navegador"] + ["--sem-navegador"]
+        os.execv(sys.executable, [sys.executable, str(REPO / "servidor.py")] + args)
     if EXEC["passou"]:
         srv.server_close()
         try:

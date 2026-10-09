@@ -1,7 +1,7 @@
 /* Hunter.todo · IA opcional. Dois jeitos, com os mesmos pedidos (prompt + os seus dados), explicados no IA.md (mantenha os
  * textos daqui e de lá iguais):
  *   copiar e colar: você cola o pedido numa IA qualquer (ChatGPT, Claude, Gemini...) e cola a resposta de volta;
- *   IA ligada (aba Regras → IA): o servidor chama o agente de terminal do jogador (Claude Code, Codex, Gemini CLI) com o
+ *   IA ligada (aba Configurações → IA): o servidor chama o agente de terminal do jogador (Claude Code, Codex, Gemini CLI) com o
  *   mesmo pedido e a resposta cai no mesmo lugar. O agente só devolve texto; quem confere e grava é o jogo.
  * Pedidos:
  *   plano de ensino → avaliações do chefão (o editor do chefão, em chefes.js, recebe a resposta)
@@ -158,9 +158,9 @@ function cartaHTML(){
   const ja = (CTX.NARRADAS || []).some(c => c.tipo === sel && c.periodo === P.periodo), lig = ligada();
   const novas = lig ? faltando(conf().desde || HOJE) : [], velhas = lig ? faltando(primeiroDia(), conf().desde || HOJE) : [];
   return `<div class="card ia-box" id="ia-carta" style="margin-top:14px"><h2><span class="c">~/</span>escrever carta com IA (opcional)</h2>
-    ${lig ? `<p class="sub" style="margin:0">IA ligada (${esc(nomeAg())}): ${conf().cartas ? 'as cartas que faltam são escritas sozinhas quando você abre o jogo' : 'cartas automáticas desligadas na aba Regras'}. Também dá para pedir uma agora.</p>
+    ${lig ? `<p class="sub" style="margin:0">IA ligada (${esc(nomeAg())}): ${conf().cartas ? 'as cartas que faltam são escritas sozinhas quando você abre o jogo' : 'cartas automáticas desligadas em Configurações'}. Também dá para pedir uma agora.</p>
       ${novas.length || velhas.length ? `<div class="linha">${novas.length ? `<button type="button" class="btn v" data-iafalta="novas">escrever as que faltam (${novas.length})</button>` : ''}${velhas.length ? `<button type="button" class="btn" data-iafalta="velhas">escrever cartas antigas (${velhas.length})</button><span class="sub">de antes de ligar a IA, desde ${br(primeiroDia())}</span>` : ''}</div>` : ''}`
-      : `<p class="sub" style="margin:0">1. Escolha o período e copie o pedido: ele já vai com os seus fatos (tarefas, hábitos, notas, Codeforces). 2. Cole numa IA. 3. Cole a resposta aqui. Ou ligue a IA na aba Regras e ela escreve sozinha.</p>`}
+      : `<p class="sub" style="margin:0">1. Escolha o período e copie o pedido: ele já vai com os seus fatos (tarefas, hábitos, notas, Codeforces). 2. Cole numa IA. 3. Cole a resposta aqui. Ou ligue a IA em Configurações e ela escreve sozinha.</p>`}
     <div class="togg" style="margin:0">${tipos.map(t => `<button data-iatipo="${t}" aria-pressed="${t === sel}">${NOME[t]}</button>`).join('')}</div>
     <div class="linha">${lig ? `<button type="button" class="btn v" data-iaescreve${IA_RODA ? ' disabled' : ''}>escrever com IA · ${P.periodo}</button>` : ''}<button type="button" class="btn${lig ? '' : ' v'}" data-iacarta>copiar pedido · ${P.periodo}</button>${ja ? '<span class="sub">já existe uma carta deste período: a nova substitui</span>' : ''}</div>
     <textarea id="ia-cj" placeholder='cole aqui a resposta da IA: {"tipo": ..., "titulo": ..., "texto": ...}'></textarea>
@@ -173,7 +173,7 @@ async function addCarta(){
   UI.bk = 'claude'; UI.bksel = 'N-' + P.periodo; render(); toast('Carta adicionada ao Book');
 }
 
-/* ---------- IA ligada: o servidor chama o agente de terminal do jogador (aba Regras → IA) ---------- */
+/* ---------- IA ligada: o servidor chama o agente de terminal do jogador (aba Configurações → IA) ---------- */
 let IAS = null, IA_RODA = null;   // GET /api/ia (agentes achados, planos); o pedido rodando agora
 const conf = () => Object.assign({agente:'chat', desde:'', cartas:true}, CTX.JOG.ia || {});
 const ligada = () => !!CTX.SRV && conf().agente !== 'chat';
@@ -228,7 +228,7 @@ async function escreveUma(){
   UI.bk = 'claude'; UI.bksel = 'N-' + P.periodo; render(); toast('Carta adicionada ao Book');
 }
 
-/* ---------- aba Regras: ligar a IA ---------- */
+/* ---------- aba Configurações: ligar a IA ---------- */
 function iaHTML(){
   if(!CTX.SRV) return '';
   const c = conf(), ags = (IAS && IAS.agentes) || [], achados = ags.filter(a => a.achado);
@@ -236,7 +236,7 @@ function iaHTML(){
   return `<div class="card wz" id="cfg-ia" style="box-shadow:none;border-radius:14px"><h2><span class="c">~/</span>IA · opcional</h2>
     <div class="wz-body ia-box" style="padding:4px 0 0">
       <p>O jogo funciona inteiro sem IA. Ligada, o próprio jogo chama a IA de terminal instalada neste computador para <b>ler planos de ensino</b>, <b>aplicar a caixa de entrada</b> e <b>escrever as cartas do Book</b>. Ela só devolve texto: planos e lembretes você confere antes de salvar. Os dados de cada pedido vão para a empresa da IA escolhida.</p>
-      ${!IAS ? '<p class="sub">procurando as IAs instaladas...</p>' : !IAS.ok ? `<p class="sub">${esc(IAS.error || 'não deu para consultar o servidor')}</p>` : `
+      ${!IAS ? '<p class="sub">procurando as IAs instaladas...</p>' : !IAS.ok ? `<p class="sub" style="color:var(--red)">${IAS.error === 'não encontrado' ? 'O servidor do jogo está numa versão antiga, sem a IA. Rode o instalador de novo (ou reinicie o computador) e recarregue a página.' : esc(IAS.error || 'não deu para consultar o servidor')}</p>` : `
       <div class="ia-ags">
         <label><input type="radio" name="ia-ag" data-iaag="chat"${c.agente === 'chat' ? ' checked' : ''}> <span><b>Copiar e colar</b> <small>sem IA instalada: o jogo monta o pedido e você cola numa IA de chat</small></span></label>
         ${ags.map(a => `<label${a.achado ? '' : ' class="off"'}><input type="radio" name="ia-ag" data-iaag="${a.id}"${c.agente === a.id ? ' checked' : ''}${a.achado ? '' : ' disabled'}> <span><b>${esc(a.nome)}</b> <small>${a.achado ? 'encontrado neste computador' : 'não encontrado'}</small></span>${a.achado && c.agente === a.id ? `<button type="button" class="btn" data-iatesta${IA_RODA ? ' disabled' : ''}>testar</button>` : ''}</label>`).join('')}
@@ -244,7 +244,7 @@ function iaHTML(){
       ${achados.length ? '' : '<p class="sub">Nenhuma IA de terminal encontrada. Instale uma (Claude Code, Codex ou Gemini CLI), entre na conta pelo terminal e clique em <b>procurar de novo</b>.</p>'}
       ${teste ? `<p class="sub" role="status">${teste}</p>` : ''}
       <div class="linha"><label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font:14px var(--f-ui);color:var(--ink)"><input type="checkbox" data-iacartas${c.cartas ? ' checked' : ''}${c.agente === 'chat' ? ' disabled' : ''}> escrever sozinho as cartas do Book que faltam, ao abrir o jogo</label>
-        <button type="button" class="btn" data-iaprocura style="margin-left:auto">procurar de novo</button></div>
+        <span style="display:flex;gap:8px;margin-left:auto">${c.agente !== 'chat' ? '<button type="button" class="btn" data-iatour>tutorial da IA</button>' : ''}<button type="button" class="btn" data-iaprocura>procurar de novo</button></span></div>
       <p class="sub" style="margin:0">Planos de ensino: <span class="mono">${esc(IAS.pasta)}</span> · ${IAS.planos.length ? IAS.planos.length + ' arquivo(s)' : 'vazia'}. Ponha os PDFs lá ou envie pelo editor do chefão.</p>`}
     </div></div>`;
 }
@@ -326,16 +326,22 @@ async function addTarefas(){
 }
 
 /* ---------- encaixe nas abas ---------- */
-const rBK0 = RENDER.bk, rL0 = RENDER.l, rSys0 = RENDER.sys;
+const rBK0 = RENDER.bk, rL0 = RENDER.l, rSys0 = RENDER.cfg;
 RENDER.bk = S => { rBK0(S); const v = document.getElementById('ia-carta'); if(v) v.remove(); if(UI.bk === 'claude') document.getElementById('bk-det').insertAdjacentHTML('beforeend', cartaHTML()); };
 RENDER.l = S => { rL0(S); const v = document.getElementById('ia-lote'); if(v) v.remove(); document.getElementById('l-add').insertAdjacentHTML('afterend', loteHTML()); };
 const rB2i = RENDER.b2;
 RENDER.b2 = S => { rB2i(S); const v = document.getElementById('ia-planos'); if(v) v.remove(); const a = document.getElementById('b2-inbox'); if(a) a.insertAdjacentHTML('beforebegin', loteHTML2()); };
-RENDER.sys = S => { rSys0(S); const v = document.getElementById('cfg-ia'); if(v) v.remove(); const a = document.getElementById('cfg-srv') || document.getElementById('cfg');
-  if(a) a.insertAdjacentHTML('afterend', iaHTML()); if(!IAS && CTX.SRV) carregaIA().then(() => { if(cur === 'sys') render(); }); };
+RENDER.cfg = S => { rSys0(S); const v = document.getElementById('cfg-ia'); if(v) v.remove(); const a = document.getElementById('cfg');
+  if(a) a.insertAdjacentHTML('afterend', iaHTML()); if(!IAS && CTX.SRV) carregaIA().then(() => { if(cur === 'cfg') render(); }); };
 async function salvaConf(d){
+  const antes = conf().agente;
   try { const r = await post('/api/ia/config', d); CTX.JOG.ia = r.conf; } catch(err){ toast('Não salvou: ' + esc(err.message)); }
   UI.iaTeste = ''; render();
+  if(antes === 'chat' && conf().agente !== 'chat'){   // acabou de ligar: oferece o tutorial da IA
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+    const to = document.createElement('div'); to.className = 'toast'; to.innerHTML = `${esc(nomeAg())} ligado <small>clique em testar para conferir o login</small><button class="l-undo" data-iatour>ver o que a IA faz</button>`;
+    document.body.appendChild(to); setTimeout(() => to.remove(), 9000);
+  }
 }
 document.addEventListener('change', e => {
   const ag = e.target.closest('[data-iaag]'); if(ag){ salvaConf({agente:ag.dataset.iaag}); return; }
@@ -350,6 +356,7 @@ document.addEventListener('click', e => {
   if(q('[data-iaescreve]')){ escreveUma(); return; }
   const fa = q('[data-iafalta]'); if(fa){ escreveCartas(fa.dataset.iafalta === 'novas' ? faltando(conf().desde || HOJE) : faltando(primeiroDia(), conf().desde || HOJE)); return; }
   if(q('[data-iatesta]')){ testa(); return; }
+  if(q('[data-iatour]')){ const t = q('.toast'); if(t) t.remove(); window.HJ_GUIA.tutorial('ia'); return; }
   if(q('[data-ialertodos]')){ lerTodos(); return; }
   const rv = q('[data-iarev]'); if(rv){ const it = LOTE.itens[+rv.dataset.iarev]; window.HJ_CHEFES.abre(it.d); window.HJ_CHEFES.cola(it.texto, () => { it.estado = 'salvo'; }); return; }
   const nv = q('[data-ianova]'); if(nv){ const it = LOTE.novas[+nv.dataset.ianova]; window.HJ_GUIA.abreDisciplinas({d:it.d, n:it.n}); return; }

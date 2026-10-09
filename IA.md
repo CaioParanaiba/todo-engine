@@ -7,12 +7,12 @@ Há três jeitos de usar:
 
 | Jeito | Exemplos | Como funciona |
 |---|---|---|
-| **IA ligada no jogo** (recomendado) | Codex, Claude Code, Gemini CLI instalados no computador | Aba **Regras → IA**: o jogo acha a IA instalada e você liga com um clique. Os botões do jogo chamam a IA sozinhos. |
+| **IA ligada no jogo** (recomendado) | Codex, Claude Code, Gemini CLI instalados no computador | Aba **Configurações → IA**: o jogo acha a IA instalada e você liga com um clique. Os botões do jogo chamam a IA sozinhos. |
 | **IA de chat** (só conversa) | ChatGPT, Claude, Gemini no navegador | O jogo monta o pedido, você cola na IA e cola a resposta de volta. |
 | **Conversar com a IA de terminal** | os mesmos da primeira linha | Abra-a na pasta do jogo e peça coisas soltas: *"adie a lista para sexta"*, *"tirei 4 de 5 na P1 de CALC2"*. |
 
 **IA ligada no jogo.** Instale uma IA de terminal, entre na conta dela pelo terminal uma vez e, no jogo, vá em
-**Regras → IA**, escolha a IA e clique em **testar**. A partir daí:
+**Configurações → IA**, escolha a IA e clique em **testar**. A partir daí:
 
 - **Plano de ensino:** ponha os PDFs em `~/.hunter-todo/planos/` (ou use *enviar arquivo* no editor do chefão). Em
   **Chefões**, *ler todos os planos* liga cada arquivo à disciplina, lê um por um e deixa cada resultado para você
@@ -24,7 +24,7 @@ Há três jeitos de usar:
   como aplicados.
 - **Cartas do Book:** as que faltam são escritas sozinhas quando você abre o jogo (semana fechada na segunda, mês no
   dia 1, semestre no dia seguinte ao fim da temporada, ano em 1º de janeiro). As de antes de ligar a IA saem pelo
-  botão *escrever cartas antigas* no Book. Dá para desligar as automáticas em Regras.
+  botão *escrever cartas antigas* no Book. Dá para desligar as automáticas em Configurações.
 
 A IA só devolve texto e não tem permissão para gravar nada: quem confere e grava é o jogo. Os dados de cada pedido vão
 para a empresa da IA escolhida.
@@ -41,7 +41,7 @@ código da página para entender os dados ou como gravar.
 
 **Na primeira resposta**, seja curto: em até 5 linhas, diga o que você pode fazer (tabela abaixo) e pergunte o que o
 jogador quer. Não repita este arquivo para ele. Se a IA ainda não está ligada no jogo (`jogador.json` sem `"ia"` ou com
-`"agente": "chat"`), diga numa linha que dá para ligar em **Regras → IA**, para os botões do jogo usarem você sozinhos.
+`"agente": "chat"`), diga numa linha que dá para ligar em **Configurações → IA**, para os botões do jogo usarem você sozinhos.
 
 **Qual modo usar:** se você consegue rodar comandos ou ler arquivos neste computador, use o **modo agente** (logo
 abaixo). Se não, use o **modo chat** (no fim): o jogador cola um pedido do jogo e você responde só no formato pedido.
@@ -55,7 +55,7 @@ abaixo). Se não, use o **modo chat** (no fim): o jogador cola um pedido do jogo
 | Montar e atualizar o plano de avaliação de uma disciplina já cadastrada | Mexer no `estado.json` (loja, carteira, feitiços): é trapaça e quebra o jogo |
 | Lançar notas que o jogador informou | Inventar data, peso, nota ou acontecimento |
 | Aplicar a caixa de entrada e marcar o lembrete como aplicado | Apagar o histórico (`done.txt`) |
-| Escrever cartas narradas no Book | Criar ou remover disciplina, hábito ou mudar o semestre: peça ao jogador para usar a aba **Regras** |
+| Escrever cartas narradas no Book | Criar ou remover disciplina, hábito ou mudar o semestre: peça ao jogador para usar a aba **Configurações** |
 
 **O que o jogo não tem** (diga isso em vez de improvisar e não ofereça): aulas de qualquer tipo (cadastrar aula,
 grade horária, transformar anotações, áudio ou transcrição de aula em tarefas), agenda do Google, lembretes por
@@ -66,7 +66,7 @@ notificação.
 **Não crie nada:** nada de rotina agendada, timer, cron, serviço do sistema, skill, script ou programa próprio. A
 automação já vem no jogo, e cada computador precisa ficar igual para dar suporte. Responda em poucas linhas:
 
-1. Confira se o servidor está ligado (`/api/ping`) e diga ao jogador para abrir **Regras → IA**, escolher a IA dele e
+1. Confira se o servidor está ligado (`/api/ping`) e diga ao jogador para abrir **Configurações → IA**, escolher a IA dele e
    clicar em **testar**. Se o teste acusar falta de login, mostre o comando de login da IA.
 2. Explique o que passa a acontecer sozinho: as cartas do Book que faltam, ao abrir o jogo (semana na segunda, mês no
    dia 1, semestre no dia seguinte ao fim da temporada, ano em 1º/jan). Não pergunte essas datas: são regras do jogo.
@@ -209,7 +209,7 @@ aplicar, a mesma linha vira `aplicado`.
 
 **Plano de ensino → avaliações.** O jogador manda o PDF (ou o caminho dele) e diz a disciplina.
 1. `GET /api/jogo`; ache o bloco `[SIGLA]` no `avaliacoes`. Se a disciplina não existe, peça para cadastrá-la em
-   **Regras** antes.
+   **Configurações** antes.
 2. Leia o plano de ensino e monte as linhas (regras do formato acima). Mantenha as chaves que já existem.
 3. Resolva sozinho o que dá para deduzir (fórmula → pesos, data pela semana, regra confusa): marque com `?` e explique
    numa linha `# ...`. Só pergunte se não der para fechar 100 ou se o plano se contradiz de um jeito que muda muito a
@@ -260,9 +260,9 @@ texto: `Ctrl+A` e `Ctrl+C`.
 **Para a IA de chat:** quando receber um destes pedidos, responda **só** no formato que ele pede, sem explicação
 antes ou depois (o jogo lê a resposta direto). Dúvidas vão dentro do formato (linha com `#` no plano de avaliação).
 
-Com a IA ligada no jogo (Regras → IA), os botões mandam estes mesmos pedidos para a IA de terminal, e a resposta cai no
+Com a IA ligada no jogo (Configurações → IA), os botões mandam estes mesmos pedidos para a IA de terminal, e a resposta cai no
 mesmo lugar. Os pedidos abaixo são os mesmos que o jogo monta (o código está em `web/ia.js`; ao mudar um, mude o outro). Os trechos
-entre `{chaves}` o jogo preenche com os seus dados. As datas saem no formato escolhido na aba Regras (dd/mm/aaaa ou
+entre `{chaves}` o jogo preenche com os seus dados. As datas saem no formato escolhido na aba Configurações (dd/mm/aaaa ou
 mm/dd/aaaa); os exemplos abaixo estão em dd/mm/aaaa.
 
 ### 1. Plano de ensino → provas e trabalhos

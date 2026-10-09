@@ -20,7 +20,7 @@ o Pages atualiza a cada push.
 
 **v0.3.1** publicada em 09/10/2026: prioridade no formulário e seta de descer na Lista, e o `IA.md` com o modo agente.
 
-**v0.4** publicada em 09/10/2026 (tag `v0.4`, falta o teste dos amigos). Entraram nela:
+**v0.4 · "atualização da IA"** publicada em 09/10/2026 (tag `v0.4`, falta o teste dos amigos). Entraram nela:
 1. **Prioridade das tarefas.** O formulário tem os botões `o jogo decide · A · B · C · sem` (`(A)` digitado no começo do
    texto passa na frente dos botões). "O jogo decide" usa `sugerePri()` em `web/motor.js`: avaliação ligada chegando
    (até 3 dias 50, até 7 dias 35, até 14 dias 15), prazo (até 1 dia 50, até 3 dias 35, até 7 dias 15), chefão em fúria
@@ -38,6 +38,22 @@ o Pages atualiza a cada push.
    heatmap pede confirmação e soma 1 problema hoje (`POST /api/cf/mao`; `manual` no `cf.json`, somado ao `por_dia` em
    `cf_soma()`). Sem limite nem conferência: vale a palavra do jogador. Conta igual para a meta do dia e o XP; o
    heatmap mostra "(n à mão)" no dia. O aviso tem *desfazer*. No modo em grupo vale o combinado entre amigos.
+
+**v0.4.1** (09/10/2026, ainda da "atualização da IA", depois do teste de um amigo em que a IA não apareceu, mesmo com Codex e Gemini instalados).
+Causa: o instalador rodava `servidor.py`, que via o servidor antigo ligado em segundo plano e só abria o navegador; a
+página vinha nova (lida do disco) e o servidor ficava velho, sem as rotas da IA. Correções:
+- **Troca do servidor antigo** (`troca_antigo()`): versão diferente na porta → reinicia o serviço (systemd, LaunchAgent)
+  ou derruba o processo (pid do `/api/ping`, ou `ss`/`lsof` para os antigos) e o novo assume.
+- **Servidor se reinicia sozinho** quando o `servidor.py` muda (`vigia_codigo()`, a cada 20 s, com `os.execv`).
+- **Aviso amarelo na página** quando a versão do servidor difere da página (`VERSAO_PAGINA` no `index.html`: **mude junto
+  com o `VERSAO` do servidor**).
+- **IA achada pelo PATH do terminal** (`path_shell()`: o serviço não carrega o `.bashrc`/`.zshrc`), mais pastas do
+  cargo, pnpm, yarn, fnm, snap e linuxbrew.
+- **Aba Configurações** separada de Regras: seu jogo, IA, servidor, efeitos e backup. Regras ficou só com as regras.
+- **✋ do Codeforces também no card "hábitos de hoje"**; "quanto vale" no topo da lateral, ao lado do formulário.
+- **Tutoriais:** o da Lista explica o Codeforces automático e o ✋; a aba Configurações tem tutorial próprio; ao ligar
+  uma IA aparece "ver o que a IA faz" (tutorial `ia` em `web/guia.js`, que passa por Configurações, Chefões, Lista e
+  Book), também no botão *tutorial da IA*.
 
 ## Planejado para a v0.5
 
@@ -57,7 +73,7 @@ coisas que o jogo deveria decidir. Cada computador ficaria de um jeito. Decisão
 que o jogador já tem; a IA só devolve texto, e o jogo confere e grava.**
 
 O que entrou:
-- **Regras → IA** (`iaHTML()` em `web/ia.js`): o servidor acha `claude`, `codex` e `gemini` (PATH + pastas comuns, porque
+- **Configurações → IA** (`iaHTML()` em `web/ia.js`): o servidor acha `claude`, `codex` e `gemini` (PATH + pastas comuns, porque
   o serviço do início automático roda com PATH curto), o jogador escolhe e clica em *testar*. Fica em `jogador.json` →
   `"ia": {"agente", "desde", "cartas"}` (`POST /api/ia/config`; o `/api/config` do assistente preserva o campo).
 - **Rota única** `POST /api/ia/rodar {pedido, anexo?}` → `{id}`; a página consulta `GET /api/ia/rodar?id=`. Um pedido por

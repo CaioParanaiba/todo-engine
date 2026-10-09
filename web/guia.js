@@ -302,11 +302,12 @@ const TOURS = {
      ['#l-hud > .card:nth-child(2)','Ten','Dias seguidos com pelo menos uma tarefa feita. O <b>Zetsu</b> é uma folga guardada: um dia vazio não quebra a sequência. Você ganha outra a cada 7 dias ativos.'],
      ['#l-hud > .card:nth-child(3)','Missão da semana','O seu tipo de Nen mais fraco na semana passada. As tarefas dele valem <b>×1,5</b> até domingo, e 3 dias com ele dão um feitiço.'],
      ['#l-hud > .card:nth-child(4)','Jenny','A moeda da loja. Cada XP vale 10 J, e nota ≥ 6 dá bônus. Gastar não baixa o andar.'],
-     ['#l-add','Adicionar tarefa','Escreva o que é e escolha o <b>tipo</b>, a <b>disciplina</b>, o <b>prazo</b> e a <b>prioridade</b> (em "o jogo decide", ele sugere pela prova chegando, pelo prazo e pela fúria do chefão). Embaixo aparecem quanto ela vai valer e a linha exata que vai para o todo.txt.'],
+     ['#l-add','Adicionar tarefa','Escreva o que é: o jogo sugere o <b>tipo</b> pelas palavras (o <b>?</b> mostra o que encaixa em quê; clique noutro tipo para trocar). Escolha a <b>disciplina</b>, o <b>prazo</b> e a <b>prioridade</b> (em "o jogo decide", ele sugere pela prova chegando, pelo prazo e pela fúria do chefão). Embaixo aparecem quanto ela vai valer e a linha exata que vai para o todo.txt.'],
      ['#l-groups','Suas tarefas','Separadas por prazo. O quadrado conclui; o número verde é o XP que ela dá agora. Passe o mouse para <b>adiar</b>, subir ou descer a <b>prioridade</b>, <b>editar</b> ou <b>remover</b>. Errou? O aviso embaixo tem "desfazer".'],
      ['#l-golpes','Rende mais agora','As 3 tarefas que mais valem neste momento: prazo perto, missão, fúria, prioridade.', 1],
      ['#l-bosses','Chefões','A barra vermelha é a <b>vida</b> do chefão, e ela só cai com nota. Clique para abrir o quadro e registrar notas.', 1],
-     ['#l-hab','Hábitos de hoje','Os hábitos aparecem sozinhos todo dia. Marque à mão quando fizer. O <b>Codeforces</b> não se marca: o jogo conta os problemas aceitos no seu handle. Para mudar a lista, use a aba <b>Regras</b>.', 1],
+     ['#l-hab','Hábitos de hoje','Os hábitos aparecem sozinhos todo dia. Marque à mão quando fizer. Para mudar a lista, use a aba <b>Configurações</b>.', 1],
+     ['#l-hab .l-hb','Codeforces','Quem liga o Codeforces (Configurações, com o seu handle) não marca nada: o jogo conta sozinho os problemas aceitos no dia, e bater a meta conclui o hábito. O <b>✋</b> é para o que o site não mostra (<b>ITMO Academy</b>, contest de <b>grupo privado</b>): cada clique pede confirmação e soma 1 problema hoje, valendo igual para a meta e o XP. Também fica ao lado do Codeforces no heatmap.', 0],
      ['#l-heat','Constância','Três heatmaps, um quadrado por dia: o <b>Ten</b> (dia ativo ou salvo pelo Zetsu), os <b>hábitos</b> (quanto mais cheio, mais hábitos feitos) e o <b>Codeforces</b> (problemas no dia; a cor forte é a meta batida).', 1],
      ['#l-vale','Quanto vale','O XP de cada tipo e as tags que marcam cada um. Os bônus de ×1,5 se multiplicam.', 1]],
   b:[['#b-tower','A torre','Seu andar na Arena Celestial e a <b>projeção</b> de onde você chega no fim do semestre, no ritmo atual. No topo (251) abre o Torneio contra a Guarda Real.'],
@@ -323,7 +324,7 @@ const TOURS = {
       ['#d2-ladder','Escada da temporada','Os marcos do semestre e onde você está.', 1],
       ['#d2-next','Próximas avaliações','As provas que vêm aí, com a preparação de cada uma.', 1]],
   bk:[['#bk-prog','Progresso do Book','Quantas cartas você já tem. As de 000 a 099 são conquistas com regra fixa, conferidas pelo jogo: as gerais e quatro para cada disciplina (060 em diante).', 0, vai({bk:'slot', bksel:'001'})],
-      ['#bk-tabs','Três tipos de carta','<b>Conquistas</b> (troféus por regra fixa), <b>narradas</b> (a história da sua semana ou mês, escrita por IA se você usar; com a IA ligada em Regras, sai sozinha) e <b>feitiços</b>. Só os feitiços se usam: os outros dois são coleção.'],
+      ['#bk-tabs','Três tipos de carta','<b>Conquistas</b> (troféus por regra fixa), <b>narradas</b> (a história da sua semana ou mês, escrita por IA se você usar; com a IA ligada em Configurações, sai sozinha) e <b>feitiços</b>. Só os feitiços se usam: os outros dois são coleção.'],
       ['#bk-grid','Conquistas','Cada carta pede algo: dias seguidos, tarefas no prazo, uma disciplina vencida. Clique numa delas para ver a regra e quanto falta. As apagadas ainda não são suas.'],
       ['#bk-det','Detalhe da carta','A regra e o seu progresso. As conquistas se marcam sozinhas: não precisa fazer nada além de jogar.'],
       ['#bk-grid','Feitiços: o que são','Cartas de efeito que você guarda na bolsa e usa quando quiser. O número em cada uma é quantas você tem.<br><b>Zetsu extra</b>: +1 folga no Ten · <b>Ko</b>: a próxima tarefa vale XP ×2 · <b>Acompanhar</b>: a próxima entrega vale ×2 · <b>Gyo</b>: você escolhe o atributo da missão da semana · <b>Ken</b>: adia um prazo em 1 dia sem perder o bônus · <b>Retorno</b>: conta a meta do Codeforces de ontem.', 0, vai({bk:'feit', bksel:'F:ko'})],
@@ -337,8 +338,17 @@ const TOURS = {
       ['#ms-root .lay7 > div:first-child > .sec7:last-child','Quanto vale cada preço','A régua usa o seu ritmo: quanto rende um dia produtivo, uma semana boa e um mês. Cada prêmio mostra o esforço que custa, para o preço não ficar fácil ou difícil demais.'],
       ['#ms-root .lay7 > div:first-child','Feitiços','Cartas de efeito (cada uma explicada no Book). Na loja dá para comprar 1 de cada por semana; o comprado vai para a bolsa e se usa pelo <b>Book → Feitiços</b>.', 0, vai({cat:'feiticos'})],
       ['#ms-root .side7','Carteira','Quanto você tem e de onde veio, o cofre do mês, o que está usando agora e os prêmios já resgatados.']],
-  sys:[['#cfg','Seu jogo','Mude o básico sem refazer nada: nome, nickname, <b>hábitos</b> (adicionar ou remover), o <b>Codeforces</b> e o nome das tags. Clique em salvar.'],
-       ['#sys-root > .card:nth-child(2)','Regras','Daqui para baixo, tudo o que o jogo considera. A fonte de verdade é o motor.js.']],
+  cfg:[['#cfg','Seu jogo','Mude o básico sem refazer nada: nome, nickname, <b>hábitos</b> (adicionar ou remover), o <b>Codeforces</b> e o nome das tags. Clique em salvar.'],
+       ['#cfg-ia','IA (opcional)','Se você tem uma IA de terminal (Claude Code, Codex, Gemini CLI), ligue aqui: o jogo passa a usá-la sozinho. Depois de ligar, o botão <b>tutorial da IA</b> mostra tudo o que ela faz.'],
+       ['#cfg-srv','Servidor','O programa que guarda as suas tarefas. Ligado com o computador, você só abre o endereço do jogo.'],
+       ['#cfg-root > .card:last-child','Backup','Um ZIP com todos os seus dados, para guardar ou levar para outro computador.']],
+  sys:[['#sys-root > .card:first-child','Regras','Tudo o que o jogo considera: XP, Ten, torre, chefões, Jenny. A fonte de verdade é o motor.js. Nome, hábitos, IA e backup ficam em <b>Configurações</b>.']],
+  /* tutorial da IA: aparece ao ligar uma IA (ou pelo botão "tutorial da IA" em Configurações); troca de aba a cada passo */
+  ia:[['#cfg-ia','IA ligada','A partir de agora o jogo chama a IA sozinho. Ela <b>só devolve texto</b>: quem confere e grava é o jogo, e planos e lembretes você revisa antes de salvar.', 0, () => tab('cfg')],
+      ['#ia-planos','Planos de ensino','Ponha os PDFs na pasta <b>planos</b> (ou use <b>enviar arquivo</b> no editor de um chefão) e clique em <b>ler todos os planos</b>: a IA liga cada arquivo à disciplina e monta as avaliações. Você revisa e salva cada uma; disciplina que ainda não existe vira o botão <b>cadastrar</b>.', 0, () => tab('b2')],
+      ['#b2-inbox','Caixa de entrada','Anotou que a prova mudou de data? No editor da disciplina, <b>aplicar lembretes com IA</b> atualiza o plano e marca o lembrete como aplicado.', 0, () => tab('b2')],
+      ['[data-ltipoia]','Tipo da tarefa','Ficou na dúvida se é entrega, estudo ou projeto? Escreva a tarefa e clique em <b>IA?</b>: ela responde em segundos, com o modelo mais leve.', 0, () => tab('l')],
+      ['#ia-carta','Cartas do Book','As cartas da semana, do mês, do semestre e do ano que faltam são escritas <b>sozinhas quando você abre o jogo</b>. As de antes de ligar a IA saem pelo botão <b>escrever cartas antigas</b>.', 0, () => { tab('bk'); UI.bk = 'claude'; render(); }]],
 };
 let TR = null;
 function tutorial(aba){
@@ -398,7 +408,7 @@ tab = t => {
   abaReal(t);
   if(CTX && !(EST.tour || {})[cur] && TOURS[cur]) setTimeout(() => { if(!TR) tutorial(cur); }, 300);
 };
-/* ---------- aba Regras: "Seu jogo" (nome, nickname, hábitos, Codeforces, tags) ---------- */
+/* ---------- aba Configurações: "Seu jogo" (nome, nickname, hábitos, Codeforces, tags) ---------- */
 let CF2 = null;   // rascunho; null = sem edição em andamento
 function rascunhoCfg(){
   const j = CTX.JOG;
@@ -424,19 +434,19 @@ function cfgHTML(){
         <span class="sub" style="color:var(--red)" role="alert">${esc(c.err)}</span><button type="button" class="btn" data-wzdiscabre style="margin-left:auto">editar disciplinas e datas</button></div>
     </div></div>`;
 }
-const rSys0 = RENDER.sys;
+const rSys0 = RENDER.cfg;
 /* iniciar com o computador: só aparece com o servidor de verdade (no modo demonstração não há servidor) */
 function srvHTML(){
   const s = CTX.SRV; if(!s) return '';
   const onde = {linux:'um serviço do usuário (systemd)', windows:'um atalho na pasta Inicializar do Windows', mac:'um LaunchAgent do macOS'}[s.sistema] || '';
-  return `<div class="card wz" id="cfg-srv" style="box-shadow:none;border-radius:14px"><h2><span class="c">~/</span>servidor · versão ${esc(s.versao)}</h2>
+  return `<div class="card wz" id="cfg-srv" style="box-shadow:none;border-radius:14px"><h2><span class="c">~/</span>servidor · versão ${esc(s.versao)}${s.nome ? ` · ${esc(s.nome)}` : ''}</h2>
     <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
       <label style="display:flex;gap:8px;align-items:center;font:14px var(--f-ui);color:var(--ink)"><input type="checkbox" data-srvauto${s.auto ? ' checked' : ''}> Iniciar com o computador</label>
       <span class="sub" style="flex:1;min-width:240px;margin:0">${s.auto
         ? `Ligado: o servidor roda em segundo plano e você só abre <b>${esc(location.origin)}</b> (vale salvar nos favoritos). Desligue quando quiser.`
         : `Desligado: é preciso rodar <code>servidor.py</code> toda vez. Ligado, ele inicia sozinho com o computador (${onde}) e gasta quase nada parado.`}</span></div></div>`;
 }
-RENDER.sys = S => { rSys0(S); document.getElementById('sys-root').insertAdjacentHTML('afterbegin', cfgHTML() + srvHTML()); };
+RENDER.cfg = S => { rSys0(S); document.getElementById('cfg-root').insertAdjacentHTML('afterbegin', cfgHTML() + srvHTML()); };
 document.addEventListener('change', async e => {
   if(!e.target.matches('[data-srvauto]')) return;
   const ligar = e.target.checked; e.target.disabled = true;

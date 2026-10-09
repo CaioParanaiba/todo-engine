@@ -44,8 +44,19 @@ tem as pendências dele em [`COLETIVO.md`](COLETIVO.md).
 - **Testes automáticos** do `servidor.py` (hoje os testes são scripts soltos e o Firefox controlado por script).
 - **Caixa de entrada:** marcar um lembrete como aplicado pela página (hoje só editando `ajustes.txt`).
 - **Calendário do Semestre:** os meses da aba Semestre estão fixos (ago/2026 a fev/2027); devem sair da temporada.
-- **Prioridade na Lista:** o formulário de adicionar não tem seletor de prioridade (só digitando `(A)` no começo). Avaliar
-  um botão A/B/C ao lado do prazo.
+- **Prioridade na Lista:**
+  - a seta de prioridade só sobe: falta a de descer (o servidor já tem a ação `down`);
+  - escolher a prioridade (A, B, C ou nenhuma) já no formulário de adicionar (hoje só digitando `(A)` no começo);
+  - **prioridade recomendada antes de enviar:** o formulário sugere uma prioridade pela disciplina (prova chegando, chefão
+    em fúria ou com mais tarefas atrasadas), pelo prazo e por algum outro fator a definir. O jogador aceita a sugestão e
+    envia, ou escolhe outra, ou nenhuma.
+- **Aba Lista, bloco "constância":** sobra muito espaço entre os heatmaps (20 semanas) e a borda direita. Avaliar: mais
+  semanas conforme a largura, quadradinhos maiores, ou outra coisa ao lado (resumo dos números, por exemplo).
+
+## Perguntas para responder depois
+
+- **Como as tarefas se ligam às avaliações para a preparação, sem IA?** Já existe uma regra automática no motor
+  (`liga()` em `web/motor.js`), e a pergunta é se ela basta ou como melhorar. Responder ao Caio com exemplos.
 
 ## Decisões em aberto
 

@@ -8,13 +8,14 @@ Serve a página do jogo (web/) em http://127.0.0.1:PORTA/ e grava os dados do jo
   todo.txt, done.txt        tarefas no formato todo.txt (as concluídas de dias anteriores vão para o done.txt)
   jogador.json              nome, tags, hábitos, disciplinas e Codeforces (o assistente da primeira entrada grava)
   avaliacoes.txt, notas.txt plano de avaliação das disciplinas e notas lançadas
-  estado.json               loja, carteira e o que está equipado
+  estado.json               loja, carteira, o que está equipado e os prêmios reais do jogador
   ajustes.txt, narradas.json caixa de entrada e cartas narradas (opcionais)
   avatares/*.png            fotos de perfil extras
   cf.json                   cache do Codeforces (problemas aceitos por dia)
 
 Rotas (as mesmas que web/demo.js simula no modo demonstração):
   GET  /api/jogo                          tudo o que a página precisa
+  GET  /api/backup                        ZIP da pasta de dados (botão "baixar meus dados" na aba Regras)
   POST /api/act   {raw, action, value?}   done | reopen | delete | up | down | d1 | d7 | a1 | hoje | amanha | rmdue | setdate | edit
   POST /api/add   {text}                  linha no formato todo.txt; due:hoje|amanha|+N|DD/MM|AAAA-MM-DD
   POST /api/undo  {}                      desfaz a última operação deste servidor
@@ -23,7 +24,7 @@ Rotas (as mesmas que web/demo.js simula no modo demonstração):
   POST /api/autostart {ligar}             liga ou desliga o início junto com o computador
   POST /api/jogo/narrada {carta}         carta narrada colada da IA (aba Book) em narradas.json
   POST /api/jogo/planos {avaliacoes, notas} editor do chefão: grava os dois arquivos (o anterior fica em .bak)
-  POST /api/jogo/nota {disc, aval, nota, parcial?} · /api/jogo/ajuste {texto} · /api/jogo/estado {estado}
+  POST /api/jogo/nota {disc, aval, nota, parcial?} · /api/jogo/ajuste {texto} ou {quando, texto, aplicado} · /api/jogo/estado {estado}
 
 Todo dia o servidor cria as recorrentes de hoje (um hábito por linha, rec:ID:DATA, e a do Codeforces se houver handle),
 tira as que ficaram abertas de dias anteriores e conclui sozinho a do Codeforces quando a meta do dia é batida. Se a meta foi
@@ -43,7 +44,9 @@ import time
 import urllib.parse
 import urllib.request
 import webbrowser
+import zipfile
 from datetime import date, timedelta
+from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -577,7 +580,7 @@ def api_jogo_get():
     return {"ok": True, "hoje": hoje().isoformat(), "todo": todo, "done": done, "avaliacoes": ler_txt("avaliacoes.txt"),
             "notas": ler_txt("notas.txt"), "ajustes": ler_txt("ajustes.txt"), "estado": estado if isinstance(estado, dict) else {},
             "cf": cf, "avatares": avatares(), "narradas": narradas if isinstance(narradas, list) else [], "jogador": j,
-            "servidor": {"versao": VERSAO, "sistema": sistema(), "auto": auto_ligado(), "fundo": EXEC["fundo"]}}
+            "servidor": {"versao": VERSAO, "sistema": sistema(), "auto": auto_ligado(), "fundo": EXEC["fundo"], "dados": str(DADOS)}}
 
 
 def acrescenta(nome, linha):
@@ -600,6 +603,18 @@ def api_jogo_nota(d):
 
 
 def api_jogo_ajuste(d):
+    if "quando" in d:   # marca um lembrete como aplicado (ou volta a pendente): acha a linha pela data/hora e pelo texto
+        quando, texto, novo = str(d.get("quando", "")), str(d.get("texto", "")), "aplicado" if d.get("aplicado") else "pendente"
+        with lock:
+            linhas = ler_txt("ajustes.txt").split("\n")
+            for i, l in enumerate(linhas):
+                p = [x.strip() for x in l.split("|")]
+                if not l.strip().startswith("#") and len(p) >= 3 and p[0] == quando and p[2] == texto:
+                    p[1] = novo
+                    linhas[i] = " | ".join(p)
+                    gravar_txt("ajustes.txt", "\n".join(linhas))
+                    return {"ok": True}
+        raise Erro("lembrete não encontrado (o ajustes.txt mudou?)", 404)
     t = " ".join(str(d.get("texto", "")).split()).replace("|", "/")
     if not 1 <= len(t) <= 500:
         raise Erro("escreva de 1 a 500 caracteres")
@@ -656,16 +671,32 @@ def api_jogo_estado(d):
     if not isinstance(e, dict):
         raise Erro("estado inválido")
     ok = {"spent": (int, float), "cofreUsado": (int, float), "own": list, "resg": list, "bought": dict, "usados": dict, "usos": list,
-          "equip": dict, "tour": dict}
+          "equip": dict, "tour": dict, "premios": list, "cofreMes": (int, float)}
     for k, v in e.items():
         if k not in ok or not isinstance(v, ok[k]):
             raise Erro(f"campo inválido no estado: {k}")
+    for x in e.get("premios", []):   # prêmios reais do jogador (Masadora → editar meus prêmios)
+        if not (isinstance(x, dict) and isinstance(x.get("n"), str) and 0 < len(x["n"]) <= 80
+                and all(isinstance(x.get(c, 0), (int, float)) and x.get(c, 0) >= 0 for c in ("p", "rs"))):
+            raise Erro("prêmio inválido: precisa de nome (até 80 letras) e preço")
+    if len(e.get("premios", [])) > 60 or e.get("cofreMes", 0) < 0:
+        raise Erro("prêmios demais (máx. 60) ou cofre negativo")
     corpo = json.dumps(e, ensure_ascii=False, indent=1)
     if len(corpo) > 60000:
         raise Erro("estado grande demais", 413)
     with lock:
         gravar_txt("estado.json", corpo + "\n")
     return {"ok": True}
+
+
+def backup():
+    """ZIP com tudo o que está na pasta de dados (menos o log do servidor), para guardar ou levar para outro computador."""
+    buf = BytesIO()
+    with lock, zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in sorted(DADOS.rglob("*")):
+            if f.is_file() and f.name != "servidor.log":
+                z.write(f, f.relative_to(DADOS).as_posix())
+    return buf.getvalue()
 
 
 # ---------- iniciar com o computador (opcional: liga e desliga na aba Regras, ou com --instalar / --desinstalar) ----------
@@ -844,6 +875,19 @@ class H(BaseHTTPRequestHandler):
             return self._json(404, {"ok": False, "error": "foto não encontrada"})
         if caminho == "/api/ping":
             return self._json(200, {"ok": True, "app": "hunter-todo", "versao": VERSAO})
+        if caminho == "/api/backup":
+            try:
+                corpo = backup()
+            except OSError as e:
+                log("erro no backup:", repr(e))
+                return self._json(500, {"ok": False, "error": "não consegui ler a pasta de dados"})
+            self.send_response(200)
+            self.send_header("Content-Type", "application/zip")
+            self.send_header("Content-Disposition", f'attachment; filename="hunter-todo-dados-{hoje().isoformat()}.zip"')
+            self.send_header("Content-Length", str(len(corpo)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            return self.wfile.write(corpo)
         if caminho == "/api/jogo":
             try:
                 return self._json(200, api_jogo_get())

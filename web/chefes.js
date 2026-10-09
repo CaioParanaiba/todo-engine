@@ -85,7 +85,7 @@ function desenha(){
         <label>Data<input class="dt" data-ce="${i}:dt" value="${esc(a.dt)}" inputmode="numeric" maxlength="10" placeholder="${HJ.fmtTxt()}"></label>
         <button type="button" class="wz-x" data-cedel="${i}" aria-label="remover ${esc(a.n || a.k)}">✕</button>
         <div class="op"><label><input type="checkbox" data-ce="${i}:cont"${a.cont ? ' checked' : ''}> contínua</label><label><input type="checkbox" data-ce="${i}:est"${a.est ? ' checked' : ''}> estimada</label>
-          <label>palavra-chave <input type="text" data-ce="${i}:kw" value="${esc(a.kw)}" maxlength="30" placeholder="ex.: avl"></label></div></div>`).join('')}</div>
+          <label>palavra-chave <input type="text" data-ce="${i}:kw" value="${esc(a.kw)}" maxlength="60" placeholder="ex.: avl, árvore" title="palavras que aparecem nas tarefas desta avaliação, separadas por vírgula"></label></div></div>`).join('')}</div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button type="button" class="btn" data-ceadd>+ avaliação</button>
         <span class="ce-soma ${sm === 100 ? 'ok' : 'ruim'}">pesos somam ${String(sm).replace('.', ',')}%${sm === 100 ? ' ✓' : ' (precisa ser 100)'}</span></div>
       <div class="ce-sec"><h3>Com IA (opcional)</h3>

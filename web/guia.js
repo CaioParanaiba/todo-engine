@@ -319,7 +319,7 @@ const TOURS = {
   d2:[['#d2-months','O semestre inteiro','Cada quadradinho é um dia: azul com tarefas, roxo tracejado com Zetsu. Os anéis marcam as avaliações.'],
       ['#d2-ladder','Escada da temporada','Os marcos do semestre e onde você está.', 1],
       ['#d2-next','Próximas avaliações','As provas que vêm aí, com a preparação de cada uma.', 1]],
-  bk:[['#bk-prog','Progresso do Book','Quantas cartas você já tem. As de 000 a 099 são conquistas com regra fixa.'],
+  bk:[['#bk-prog','Progresso do Book','Quantas cartas você já tem. As de 000 a 099 são conquistas com regra fixa, conferidas pelo jogo: as gerais e quatro para cada disciplina (060 em diante).'],
       ['#bk-tabs','Tipos de carta','Conquistas, cartas narradas (escritas por IA, se você usar) e os seus feitiços.'],
       ['#bk-grid','A coleção','Clique numa carta para ver o que ela pede e quanto falta.'],
       ['#bk-det','Detalhe','A regra da carta, ou o efeito do feitiço e o botão de usar.']],

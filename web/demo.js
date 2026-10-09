@@ -142,6 +142,7 @@ function rota(url, body){
   if(url === '/api/autostart') throw new Error('no modo demonstração não há servidor');
   if(url === '/api/jogo/nota'){ notas += `\n${HOJE} | ${body.disc} | ${body.aval} | ${String(body.nota).replace('.', ',')}${body.parcial ? ' | parcial' : ''}`; return {ok:true}; }
   if(url === '/api/jogo/estado'){ estado = JSON.parse(JSON.stringify(body.estado)); return {ok:true}; }
+  if(url === '/api/jogo/ajuste' && body.quando){ ajustes = ajustes.split('\n').map(l => { const p = l.split('|').map(x => x.trim()); return p[0] === body.quando && p[2] === body.texto ? [p[0], body.aplicado ? 'aplicado' : 'pendente', ...p.slice(2)].join(' | ') : l; }).join('\n'); return {ok:true}; }
   if(url === '/api/jogo/ajuste'){ ajustes += `\n${HOJE} 12:00 | pendente | ${body.texto}`; return {ok:true}; }
   throw new Error('rota desconhecida');
 }

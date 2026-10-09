@@ -37,7 +37,7 @@ Regras:
 - chave: de 1 a 8 letras ou números, sem espaço (ex.: P1, P2, T1, L).
 - peso: quanto a avaliação vale na nota final, em %, só o número. Os pesos somam 100. Se o plano usar fórmula (ex.: NF = 0,4·N1 + 0,6·N2, com N1 = média de P1 e T1), faça a conta para chegar ao peso de cada avaliação na nota final.
 - data: dd/mm/aaaa. Sem data exata no plano, estime pela semana ou aula indicada e ponha ? no fim (ex.: 15/10/2026?). Peso incerto também leva ? (ex.: 20?).
-- palavra-chave: uma palavra que vai aparecer nas tarefas de estudo dessa avaliação (ex.: integral, avl, sql). Pode ficar vazia.
+- palavra-chave: de 1 a 3 palavras que vão aparecer nas tarefas de estudo só dessa avaliação, separadas por vírgula (ex.: integral, derivada). Pode ficar vazia.
 - contínua: escreva contínua quando forem várias entregas que viram uma média (listas semanais, participação). Senão, deixe vazio.
 - Recuperação, prova substitutiva e exame opcional ficam de fora.
 - Para me avisar de algo (dúvida, regra especial), use uma linha começando com #.

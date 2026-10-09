@@ -86,7 +86,7 @@ Tudo o que é seu fica numa pasta separada do código:
 | `avatares/` | coloque arquivos PNG aqui para ter mais fotos de perfil |
 | `servidor.log` | o que o servidor anotou quando roda em segundo plano |
 
-Para fazer backup, copie essa pasta. Para usar outra pasta: `python3 servidor.py --dados CAMINHO`.
+Para fazer backup, use o botão **baixar meus dados** na aba Regras (um ZIP da pasta) ou copie a pasta. Para usar outra pasta: `python3 servidor.py --dados CAMINHO`.
 
 ## Atualizar
 

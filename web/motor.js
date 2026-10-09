@@ -21,7 +21,7 @@ const NEN = [
   {k:'man', n:'Manipulação',    c:'hábitos',  f:'+rotina',         s:'Controle de si: hábitos diários, como a digitação.'},
   {k:'emi', n:'Emissão',        c:'entregas', f:'@entrega',              s:'Pôr para fora: listas, trabalhos e atividades entregues.'},
 ];
-const GUARDA = [{ic:'cat',n:'Neferpitou',r:'Ten de 14 dias'},{ic:'wing',n:'Shaiapouf',r:'2 semanas sem atraso'},{ic:'horn',n:'Menthuthuyoupi',r:'uma semana acima de 300 XP'},{ic:'crown',n:'Meruem',r:'os cinco chefões derrotados'}];
+const GUARDA = [{ic:'cat',n:'Neferpitou',r:'Ten de 14 dias'},{ic:'wing',n:'Shaiapouf',r:'2 semanas sem atraso'},{ic:'horn',n:'Menthuthuyoupi',r:'uma semana acima de 300 XP'},{ic:'crown',n:'Meruem',r:'todos os chefões derrotados'}];
 const SPELLS = [
   {k:'zetsu',   n:'Zetsu extra', e:'+1 folga guardada no Ten (máx. 2).',            p:1200, ic:'moon'},
   {k:'ko',      n:'Ko',          e:'A próxima tarefa vale XP ×2.',                   p:2000, ic:'int'},
@@ -77,7 +77,7 @@ const COS = [
   {id:'tt-transm', cat:'title', n:'Título: Transmutador', d:'Aparece embaixo do seu andar.', p:300, eq:{title:'Transmutador'}},
   {id:'tt-cacador', cat:'title', n:'Título: Caçador de Aranhas', d:'Para a temporada do Genei Ryodan.', p:300, eq:{title:'Caçador de Aranhas'}},
   {id:'tt-zetsu', cat:'title', n:'Título: Mestre do Zetsu', d:'Para quem sabe descansar sem perder o ritmo.', p:500, eq:{title:'Mestre do Zetsu'}},
-  {id:'tt-godspeed', cat:'title', n:'Título: Godspeed', d:'Só para quem tem a carta Godspeed (30 dias de digitação).', p:600, eq:{title:'Godspeed'}, lock:S => S.digi < 30, why:'carta Godspeed'},
+  {id:'tt-godspeed', cat:'title', n:'Título: Segunda Natureza', d:'Só para quem tem a carta Segunda natureza (um hábito em 30 dias).', p:600, eq:{title:'Segunda Natureza'}, lock:S => S.hab.max < 30, why:'carta Segunda natureza'},
   {id:'tt-floor', cat:'title', n:'Título: Floor Master', d:'Só para quem chegou ao andar 200.', p:800, eq:{title:'Floor Master'}, lock:S => S.a.n < 200, why:'chegue ao andar 200'},
   {id:'th-killua', cat:'full', n:'Tema Killua completo', d:'Paleta Killua + céu da Arena + barra elétrica + aura do avatar.', p:6000, eq:{theme:'killua', bg:'ceu'}, fxs:['shim','aura'], parts:['pal-killua','tx-ceu','fx-shim','fx-aura']},
   {id:'th-hisoka', cat:'full', n:'Tema Hisoka', d:'Rosa e amarelo, losangos de baralho no fundo, fúria que treme e avisos com clarão.', p:8000, eq:{theme:'hisoka', bg:'cartas'}, fxs:['shake','zap'], parts:['pal-hisoka','tx-cartas','fx-shake','fx-zap']},
@@ -101,13 +101,42 @@ function expandeOwn(own){ for(const it of COS) if(it.parts && own.has(it.id)) it
 function catalogo(avatares){
   return COS.concat((avatares||[]).map(f => ({id:'av-'+f, cat:'avatar', n:avNome(f), d:'Foto de perfil das páginas do jogo.', p: AV_GRATIS.includes(f) ? 0 : 1000, eq:{avatar:f}})));
 }
-/* prêmios reais padrão (cada jogador troca os seus no jogador.conf, seção [premios]); [nome, ícone, R$ do cofre] */
+/* prêmios reais padrão, por faixa [faixa, preço em J, [[nome, ícone, R$ do cofre]]]. Cada jogador troca os seus na Masadora
+   (editar meus prêmios), que grava a lista em estado.json (premios: [{n, p, rs, ic}]) e o cofre por mês (cofreMes). */
 const REAIS = [
   ['pequeno',250,[['1h de videogame num dia de semana','tra',0],['Contest virtual só por diversão','tra',0],['30 min de leitura de lazer','scroll',0],['1h de série ou vídeo sem culpa','esp',0]]],
   ['médio',1300,[['Pular uma recorrente sem perder o Ten','moon',0],['Manhã de sábado livre','moon',0],['Tarde de projeto 100% pessoal','con',0],['2–3h de videogame no fim de semana','tra',0],['Item pequeno','coin',20]]],
   ['grande',5000,[['Dia inteiro de projeto pessoal','con',0],['Sábado inteiro de videogame','tra',0],['Livro ou mangá físico','scroll',60],['Jogo novo','tra',60],['Upgrade pequeno de setup','coin',80]]],
   ['épico',20000,[['Upgrade grande de setup (cofre acumulado)','coin',500],['Curso por gosto','int',300],['Uma semana sem nenhuma tarefa','moon',0]]],
 ];
+
+const PREMIOS_PADRAO = REAIS.flatMap(([, p, list]) => list.map(([n, ic, rs]) => ({n, p, rs, ic})));
+const premios = EST => Array.isArray(EST && EST.premios) ? EST.premios.filter(x => x && x.n) : PREMIOS_PADRAO;
+const cofreMes = EST => EST && typeof EST.cofreMes === 'number' && EST.cofreMes >= 0 ? EST.cofreMes : COFRE_MES;
+/* régua de esforço em Jenny, tirada do próprio jogo (últimas 4 semanas): um dia produtivo = a média dos dias com XP;
+   uma semana boa = a melhor das últimas 4; um mês = 4 semanas na média das jogadas. Com menos de 5 dias jogados, uma estimativa. */
+function esforco(xpDia, HOJE){
+  const ds = Array.from({length:28}, (_,i) => addD(HOJE, -i)), ativos = ds.filter(d => xpDia[d] > 0);
+  if(ativos.length < 5) return {dia:1000, semana:5000, mes:20000, est:true};
+  const r50 = x => Math.max(50, Math.round(x/50)*50);
+  const sem = [0,1,2,3].map(k => ds.slice(k*7, k*7+7).reduce((s,d) => s + (xpDia[d]||0)*10, 0));
+  const dia = r50(ativos.reduce((s,d) => s + xpDia[d]*10, 0) / ativos.length);
+  const semana = Math.max(dia, r50(Math.max(...sem)));
+  const jogadas = sem.filter(x => x > 0);   // semanas sem nada não puxam o mês para baixo (quem começou agora)
+  return {dia, semana, mes: Math.max(semana, r50(jogadas.reduce((a,b) => a+b, 0) / jogadas.length * 4)), est:false};
+}
+/* quanto esforço um preço representa, em palavras, e a faixa em que o prêmio aparece na loja */
+function esforcoTxt(p, E){
+  if(p <= E.dia*.6) return 'menos de um dia';
+  if(p <= E.dia*1.2) return '≈ um dia produtivo';
+  if(p < E.semana*.8) return `≈ ${Math.max(2, Math.round(p/E.dia))} dias produtivos`;
+  if(p <= E.semana*1.3) return '≈ uma semana boa';
+  if(p < E.mes*.8) return `≈ ${Math.max(2, Math.round(p/E.semana))} semanas boas`;
+  if(p <= E.mes*1.3) return '≈ um mês';
+  return Math.round(p/E.mes) < 2 ? 'mais de um mês' : `≈ ${Math.round(p/E.mes)} meses`;
+}
+const faixaDe = (p, E) => p <= E.dia*1.2 ? 0 : p <= E.semana*1.3 ? 1 : p <= E.mes*1.3 ? 2 : 3;
+const FAIXAS = ['Até um dia', 'Até uma semana', 'Até um mês', 'Mais de um mês'];
 
 /* ---------- utilidades ---------- */
 const mins = e => { if(!e) return 0; const m = String(e).match(/^(?:(\d+)h)?(?:(\d+)m?)?$/); return m ? (+(m[1]||0))*60 + (+(m[2]||0)) : 0; };
@@ -180,7 +209,7 @@ function parseAvaliacoes(txt){
     if(!cur) continue;
     const p = l.split('|').map(x => x.trim());
     if(p.length < 4) continue;
-    out.aval[cur].push({k:p[0], n:p[1], w:numBR(p[2]), dt:p[3].replace('?',''), real: !p[2].includes('?') && !p[3].includes('?'), kw: p[4] ? norm(p[4]) : '', cont: /cont/i.test(p[5]||'')});
+    out.aval[cur].push({k:p[0], n:p[1], w:numBR(p[2]), dt:p[3].replace('?',''), real: !p[2].includes('?') && !p[3].includes('?'), kw: p[4] ? norm(p[4]) : '', kws: norm(p[4]||'').split(/[,;]/).map(x => x.trim()).filter(Boolean), cont: /cont/i.test(p[5]||'')});
   }
   return out;
 }
@@ -241,23 +270,30 @@ function ten(set, first, HOJE, zetsuExtra){
   }
   return {cur, max, zet, st};
 }
-function liga(t, avs, ref){
-  if(t.av){ const a = avs.find(a => norm(a.k) === norm(t.av)); if(a) return a; }
-  if(t.prova){ const a = avs.find(a => a.dt === t.prova); if(a) return a; }
+/* liga uma tarefa da disciplina a uma avaliação e diz por quê: av:CHAVE · prova:DATA · palavra-chave do plano · entrega → contínua ·
+   a próxima avaliação a partir da referência (o dia em que foi feita; aberta: o prazo, se houver, senão hoje) */
+const palavra = (s, kw) => new RegExp('(^|[^a-z0-9])' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(s);
+function ligaCom(t, avs, ref){
+  if(t.av){ const a = avs.find(a => norm(a.k) === norm(t.av)); if(a) return [a, 'av:' + a.k]; }
+  if(t.prova){ const a = avs.find(a => a.dt === t.prova); if(a) return [a, 'prova:']; }
   const s = norm(t.txt);
-  const kws = avs.filter(a => a.kw && s.includes(a.kw));          // a mesma palavra em N1 e N2: vale a do período da tarefa
-  if(kws.length) return kws.find(a => a.dt >= ref) || kws[kws.length-1];
-  if(isEnt(t)){ const c = avs.find(a => a.cont); if(c) return c; }
+  const kws = avs.map(a => [a, (a.kws||[]).find(k => palavra(s, k))]).filter(x => x[1]);   // a mesma palavra em N1 e N2: vale a do período da tarefa
+  if(kws.length){ const x = kws.find(x => x[0].dt >= ref) || kws[kws.length-1]; return [x[0], `palavra "${x[1]}"`]; }
+  if(isEnt(t)){ const c = avs.find(a => a.cont); if(c) return [c, 'entrega → contínua']; }
   const provas = avs.filter(a => !a.cont && !/^AI$/i.test(a.k));    // reserva: a próxima avaliação pontual (nunca a AI)
   const prox = l => l.filter(a => a.dt >= ref).sort((p,q) => p.dt.localeCompare(q.dt))[0];
-  return prox(provas) || prox(avs.filter(a => a.cont)) || provas[provas.length-1] || avs[avs.length-1];   // sem prova no plano: a contínua do período
+  const por = !t.done && t.due && t.due === ref ? 'a próxima a partir do prazo' : 'a próxima';
+  return [prox(provas) || prox(avs.filter(a => a.cont)) || provas[provas.length-1] || avs[avs.length-1], por];   // sem prova no plano: a contínua do período
 }
+const refDe = (t, HOJE) => t.done || (t.due && t.due > HOJE ? t.due : HOJE);
+const liga = (t, avs, ref) => ligaCom(t, avs, ref)[0];
 function chefoes(C, feitas, abertas){
   return C.BOSSES.map(B => {
     const avs = (C.AVAL[B.d]||[]).map(a => ({...a, feitas:[], abertas:[]})).sort((p,q) => p.dt.localeCompare(q.dt));
-    if(!avs.length) return {...B, avs, pts:0, rest:1000, tot:1000, dead:false, fury:false, need:null, st:'', open:[]};
+    if(!avs.length) return {...B, avs, pts:0, rest:1000, tot:1000, dead:false, fury:false, need:null, st:'', open:[], lig:new Map()};
+    const lig = new Map();   // tarefa aberta → {k, por}: a página mostra a que avaliação cada uma ficou ligada e por quê
     for(const t of feitas) if(discOf(t,C) === B.d) liga(t, avs, t.done).feitas.push(t);
-    for(const t of abertas) if(discOf(t,C) === B.d) liga(t, avs, C.HOJE).abertas.push(t);
+    for(const t of abertas) if(discOf(t,C) === B.d){ const [a, por] = ligaCom(t, avs, refDe(t, C.HOJE)); a.abertas.push(t); lig.set(t, {k:a.k, por}); }
     let pts = 0, wrest = 0;
     for(const a of avs){
       a.tot = a.feitas.length + a.abertas.length; a.ok = a.feitas.length;
@@ -271,7 +307,7 @@ function chefoes(C, feitas, abertas){
     }
     const need = wrest ? (60 - pts)/wrest*10 : null;
     const dead = pts >= 60, fury = !dead && avs.some(a => a.nota != null) && need > MEDIA;
-    return {...B, avs, pts, rest: 1000 - pts*10, tot:1000, dead, fury, need, st: dead ? 'dead' : fury ? 'hurt' : '', open: avs.flatMap(a => a.abertas)};
+    return {...B, avs, pts, rest: 1000 - pts*10, tot:1000, dead, fury, need, st: dead ? 'dead' : fury ? 'hurt' : '', open: avs.flatMap(a => a.abertas), lig};
   });
 }
 /* marca curta de uma linha do todo (para lembrar o que já estava feito quando um feitiço foi usado) */
@@ -350,39 +386,94 @@ function estado(C){
   for(const u of F.usos) inv[u.k] = (inv[u.k]||0) - 1;
   for(const k in inv) if(inv[k] <= 0) delete inv[k];
   const espera = bs.flatMap(b => b.avs.filter(a => a.st === 'wait' && !a.cont).map(a => ({b,a})));
-  const digi = feitas.filter(t => (t.rec||'').startsWith('digi') || /digita/i.test(t.txt)).length;
+  // hábitos: em quantos dias diferentes cada um foi feito (o Codeforces conta à parte); as conquistas usam o maior
+  const habDias = {}; for(const t of feitas) if(isRec(t) && t.done && !(t.rec||'').startsWith('cf')){ const k = t.rec ? t.rec.split(':')[0] : norm(t.txt);
+    (habDias[k] = habDias[k] || {n:t.txt, d:new Set()}).d.add(t.done); }
+  const hab = Object.values(habDias).reduce((m,h) => h.d.size > m.max ? {max:h.d.size, nome:h.n} : m, {max:0, nome:''});
   const sem = {n: Math.floor(dias(TEMP.ini,HOJE)/7)+1, tot: Math.ceil(dias(TEMP.ini,TEMP.fim)/7)};
   return {total, a:andar(total, C.dif), attr, porDia, xpDia, set, first, ten:ten(set,first,HOJE,F.zetsu), hojeXP: xpDia[HOJE]||0, xs, n:D.feitas.length, ritmo,
     proj: andar(Math.round(total + ritmo*Math.max(0,dias(HOJE,TEMP.fim))/7), C.dif), bs, fraco, missDias, missoes, rot, golpes, ganho, bonusNotas, jenny: ganho - (EST.spent||0),
-    inv, prepBonus, espera, digi, sem, cfHoje, cfXP, usos: F.usos, metaDia: Math.max(20, Math.round(ritmo/5/5)*5),
-    cofre: COFRE_MES*(Math.floor(Math.max(0,dias(TEMP.ini,HOJE))/30)+1) - (EST.cofreUsado||0)};
+    inv, prepBonus, espera, hab, sem, cfHoje, cfXP, usos: F.usos, metaDia: Math.max(20, Math.round(ritmo/5/5)*5),
+    cofre: cofreMes(EST)*(Math.floor(Math.max(0,dias(TEMP.ini,HOJE))/30)+1) - (EST.cofreUsado||0)};
 }
+/* conquistas 000–099: regras fixas, conferidas pelo motor. Gerais (001–059, 090–099) e, para cada disciplina do plano
+   de avaliação, quatro geradas pela sigla (060–087, até 7 disciplinas). As narradas (100+) vêm da IA, em narradas.json. */
 function cartas(C, S){
-  const {D} = C, cnt = p => D.feitas.filter(t => has(t,'proj',p)).length, maxDia = Math.max(0, ...Object.values(S.porDia));
-  const noPrazo = D.feitas.filter(t => t.due && t.done <= t.due).length;
-  return [
-    {no:'001',rk:'H',o:'slot',n:'Primeiro passo',d:'Concluir a primeira tarefa.',on:S.n>0,ic:'card'},
-    {no:'007',rk:'G',o:'slot',n:'Dia cheio',d:`5 tarefas num dia. Recorde: ${maxDia}.`,on:maxDia>=5,ic:'flame'},
-    {no:'013',rk:'F',o:'slot',n:'Mestre de POO',d:`10 tarefas de POO. Você tem ${cnt('fac.poo')}.`,on:cnt('fac.poo')>=10,ic:'copy'},
-    {no:'021',rk:'E',o:'slot',n:'Ten de 7 dias',d:`7 dias seguidos. Recorde: ${S.ten.max}.`,on:S.ten.max>=7,ic:'flame'},
-    {no:'024',rk:'F',o:'slot',n:'Dedos Rápidos',d:`7 dias de treino de digitação. Você tem ${S.digi}.`,on:S.digi>=7,ic:'man'},
-    {no:'025',rk:'D',o:'slot',n:'Godspeed',d:`30 dias de treino de digitação. Você tem ${S.digi}.`,on:S.digi>=30,ic:'tra'},
-    {no:'026',rk:'B',o:'slot',n:'Kanmuru',d:'100 dias de treino de digitação. A técnica do Killua.',on:S.digi>=100,ic:'tra'},
-    {no:'034',rk:'D',o:'slot',n:'Pontual',d:`10 entregas até o due. Você tem ${noPrazo}.`,on:noPrazo>=10,ic:'scroll'},
-    {no:'042',rk:'C',o:'slot',n:'Preparado',d:'Fechar toda a preparação de uma avaliação antes da data.',on:S.prepBonus>0,ic:'int'},
-    {no:'050',rk:'B',o:'slot',n:'Aranha abatida',d:'Derrotar um chefão (média ≥ 6).',on:S.bs.some(b => b.dead),ic:'spider'},
-    {no:'055',rk:'B',o:'slot',n:'Andar 100',d:'Passar do centésimo andar.',on:S.a.n>=100,ic:'tower'},
-    {no:'077',rk:'A',o:'slot',n:'Floor Master',d:'Chegar ao andar 200.',on:S.a.n>=200,ic:'tower'},
-    {no:'090',rk:'A',o:'slot',n:'Neferpitou',d:'Torneio: vencer a 1ª guarda (Ten de 14 dias).',on:false,ic:'cat'},
-    {no:'091',rk:'A',o:'slot',n:'Shaiapouf',d:'Torneio: vencer a 2ª guarda (2 semanas sem atraso).',on:false,ic:'wing'},
-    {no:'092',rk:'A',o:'slot',n:'Menthuthuyoupi',d:'Torneio: vencer a 3ª guarda (uma semana acima de 300 XP).',on:false,ic:'horn'},
-    {no:'093',rk:'SS',o:'slot',n:'Rei Meruem',d:'Torneio: vencer o Rei (os cinco chefões derrotados).',on:false,ic:'crown'},
-    {no:'099',rk:'SS',o:'slot',n:'Licença Hunter',d:'Derrotar os cinco chefões no semestre.',on:S.bs.length>0 && S.bs.every(b => b.dead),ic:'crown'},
-  ].concat((C.NARRADAS||[]).map(c => ({no:c.no, tipo:c.tipo, periodo:c.periodo, n:c.titulo, d:c.texto, cron:c.cronica||'', escrita:c.escrita, ic:c.ic||'scroll',
+  const {D, HOJE} = C, feitas = D.feitas, maxDia = Math.max(0, ...Object.values(S.porDia));
+  const noPrazo = feitas.filter(t => t.due && t.done <= t.due).length;
+  const notas = S.bs.flatMap(b => b.avs.filter(a => a.nota != null && !a.cont).map(a => a.nota));
+  const atrib = S.attr.filter(x => x >= 100).length;
+  // semana (seg–dom) com mais XP
+  const xpSem = {}; for(const d in S.xpDia){ const w = addD(d, -dow(d)); xpSem[w] = (xpSem[w]||0) + S.xpDia[d]; }
+  const melhorSem = Math.max(0, ...Object.values(xpSem));
+  // 14 dias seguidos sem atraso (com pelo menos 3 tarefas com prazo dentro deles): atraso = prazo vencido sem a tarefa feita
+  const atraso = new Set(feitas.filter(t => t.due && t.done > t.due).map(t => t.due).concat(D.abertas.filter(t => t.due && t.due < HOJE).map(t => t.due)));
+  let semAtraso = false;
+  if(S.first) for(let d = addD(S.first, 13); d <= HOJE && !semAtraso; d = addD(d, 1)){
+    const ini = addD(d, -13); let ok = true, k = 0;
+    for(let x = ini; x <= d; x = addD(x, 1)) if(atraso.has(x)){ ok = false; break; }
+    if(ok) k = feitas.filter(t => t.due && t.due >= ini && t.due <= d).length;
+    semAtraso = ok && k >= 3;
+  }
+  // Codeforces (só aparece com o handle ligado): maior sequência de dias com problema aceito e o total
+  const cfDia = (D.cf && D.cf.por_dia) || {}, cfOn = !!(C.JOG && C.JOG.cf && C.JOG.cf.handle);
+  let cfSeq = 0; { let cur = 0, ant = ''; for(const d of Object.keys(cfDia).filter(d => cfDia[d] > 0).sort()){ cur = ant && addD(ant, 1) === d ? cur + 1 : 1; ant = d; cfSeq = Math.max(cfSeq, cur); } }
+  const cfTot = Object.values(cfDia).reduce((a,b) => a + (b||0), 0);
+  const todos = S.bs.length > 0 && S.bs.every(b => b.dead);
+  const h = S.hab, hn = h.nome ? ` Seu melhor: ${h.nome}, ${h.max}.` : '';
+  const c = (no, rk, n, d, on, ic) => ({no, rk, o:'slot', n, d, on:!!on, ic});
+  const gerais = [
+    c('001','H','Primeiro passo','Concluir a primeira tarefa.', S.n > 0, 'card'),
+    c('002','H','Dez feitas',`10 tarefas concluídas. Você tem ${S.n}.`, S.n >= 10, 'card'),
+    c('003','E','Cem feitas',`100 tarefas concluídas. Você tem ${S.n}.`, S.n >= 100, 'scroll'),
+    c('004','B','Quinhentas',`500 tarefas concluídas. Você tem ${S.n}.`, S.n >= 500, 'crown'),
+    c('007','G','Dia cheio',`5 tarefas num dia. Recorde: ${maxDia}.`, maxDia >= 5, 'flame'),
+    c('008','D','Maratona',`10 tarefas num dia. Recorde: ${maxDia}.`, maxDia >= 10, 'flame'),
+    c('021','E','Ten de 7 dias',`7 dias seguidos. Recorde: ${S.ten.max}.`, S.ten.max >= 7, 'flame'),
+    c('022','D','Ten de 14 dias',`14 dias seguidos. Recorde: ${S.ten.max}.`, S.ten.max >= 14, 'flame'),
+    c('023','B','Ten de 30 dias',`30 dias seguidos. Recorde: ${S.ten.max}.`, S.ten.max >= 30, 'flame'),
+    c('024','F','Constância','Um mesmo hábito feito em 7 dias.' + hn, h.max >= 7, 'man'),
+    c('025','D','Segunda natureza','Um mesmo hábito feito em 30 dias.' + hn, h.max >= 30, 'man'),
+    c('026','B','Parte de você','Um mesmo hábito feito em 100 dias.' + hn, h.max >= 100, 'man'),
+  ].concat(cfOn ? [
+    c('027','E','Codeforces: 10 dias seguidos',`10 dias seguidos com problema aceito. Recorde: ${cfSeq}.`, cfSeq >= 10, 'tra'),
+    c('028','C','Codeforces: 30 dias seguidos',`30 dias seguidos com problema aceito. Recorde: ${cfSeq}.`, cfSeq >= 30, 'tra'),
+    c('029','C','Codeforces: 100 problemas',`100 problemas aceitos na temporada. Você tem ${cfTot}.`, cfTot >= 100, 'tra'),
+  ] : []).concat([
+    c('034','D','Pontual',`10 tarefas feitas até o prazo. Você tem ${noPrazo}.`, noPrazo >= 10, 'scroll'),
+    c('035','B','Relógio suíço',`50 tarefas feitas até o prazo. Você tem ${noPrazo}.`, noPrazo >= 50, 'scroll'),
+    c('040','D','Equilíbrio',`Os seis tipos de Nen com 100 XP ou mais. Você tem ${atrib} de 6.`, atrib >= 6, 'esp'),
+    c('041','F','Missão cumprida','Cumprir uma missão da semana (3 dias no atributo mais fraco).', S.missoes >= 1, 'esp'),
+    c('042','C','Preparado','Fechar toda a preparação de uma avaliação antes da data.', S.prepBonus > 0, 'int'),
+    c('043','B','Sempre pronto',`Preparação completa em 5 avaliações. Você tem ${S.prepBonus}.`, S.prepBonus >= 5, 'int'),
+    c('045','E','Andar 50','Passar do quinquagésimo andar.', S.a.n >= 50, 'tower'),
+    c('050','B','Aranha abatida','Derrotar um chefão (média ≥ 6).', S.bs.some(b => b.dead), 'spider'),
+    c('051','C','Acima da média',`5 notas de 6 para cima. Você tem ${notas.filter(n => n >= MEDIA).length}.`, notas.filter(n => n >= MEDIA).length >= 5, 'int'),
+    c('052','A','Nota 10','Tirar 10 numa avaliação.', notas.some(n => n >= 10), 'crown'),
+    c('055','B','Andar 100','Passar do centésimo andar.', S.a.n >= 100, 'tower'),
+    c('077','A','Floor Master','Chegar ao andar 200.', S.a.n >= 200, 'tower'),
+    c('090','A','Neferpitou',`Torneio: vencer a 1ª guarda (Ten de 14 dias). Recorde: ${S.ten.max}.`, S.ten.max >= 14, 'cat'),
+    c('091','A','Shaiapouf','Torneio: vencer a 2ª guarda (14 dias seguidos sem atraso, com pelo menos 3 prazos neles).', semAtraso, 'wing'),
+    c('092','A','Menthuthuyoupi',`Torneio: vencer a 3ª guarda (uma semana acima de 300 XP). Melhor semana: ${melhorSem}.`, melhorSem > 300, 'horn'),
+    c('093','SS','Rei Meruem','Torneio: vencer o Rei (todos os chefões derrotados).', todos, 'crown'),
+    c('099','SS','Licença Hunter','Derrotar todos os chefões no semestre.', todos, 'crown'),
+  ]);
+  // por disciplina: 060 + 4×i (estudante, mestre, preparado, derrotado)
+  const porDisc = S.bs.slice(0, 7).flatMap((b, i) => {
+    const n = feitas.filter(t => discOf(t, C) === b.d).length, no = k => String(60 + 4*i + k).padStart(3, '0');
+    return [
+      c(no(0),'G',`Estudante de ${b.d}`,`10 tarefas de ${b.n}. Você tem ${n}.`, n >= 10, 'card'),
+      c(no(1),'C',`Mestre de ${b.d}`,`30 tarefas de ${b.n}. Você tem ${n}.`, n >= 30, 'copy'),
+      c(no(2),'D',`Pronto para ${b.d}`,`Preparação completa de uma avaliação de ${b.n} antes da data.`, b.avs.some(a => a.prepOk), 'int'),
+      c(no(3),'B',`${b.n} derrotado`,`Passar em ${b.n}: média 6 ou mais.`, b.dead, 'spider'),
+    ];
+  });
+  return gerais.concat(porDisc).sort((p,q) => p.no.localeCompare(q.no))
+    .concat((C.NARRADAS||[]).map(c => ({no:c.no, tipo:c.tipo, periodo:c.periodo, n:c.titulo, d:c.texto, cron:c.cronica||'', escrita:c.escrita, ic:c.ic||'scroll',
     rk:{semana:'C', mes:'B', semestre:'A', ano:'SS'}[c.tipo] || 'C', o:'claude', on:true})));
 }
 
-window.HJ = {TAGS, configura, isTre, MEDIA, DIF, COFRE_MES, ALLFX, NEN, GUARDA, SPELLS, TK, PALS, palStyle, COS, catalogo, REAIS,
+window.HJ = {TAGS, configura, isTre, MEDIA, DIF, COFRE_MES, ALLFX, NEN, GUARDA, SPELLS, TK, PALS, palStyle, COS, catalogo, REAIS, PREMIOS_PADRAO, premios, cofreMes, esforco, esforcoTxt, faixaDe, FAIXAS,
   mins, has, isRec, isFac, isEst, isEnt, norm, addD, dias, dow, semanaISO, numBR, brData, brDatas, isoData, semanalDe, fmtData, fmtTxt, curta, dataRuim,
-  expandeOwn, marca, cfExtra, efeitos, parseLinha, parseAvaliacoes, parseNotas, carregar, xpDe, nenDe, discOf, custo, andar, xpAte, ten, liga, chefoes, estado, cartas};
+  expandeOwn, marca, cfExtra, efeitos, parseLinha, parseAvaliacoes, parseNotas, carregar, xpDe, nenDe, discOf, custo, andar, xpAte, ten, liga, ligaCom, refDe, chefoes, estado, cartas};
 })();

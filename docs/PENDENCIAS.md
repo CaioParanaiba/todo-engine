@@ -19,16 +19,12 @@ tem as pendências dele em [`COLETIVO.md`](COLETIVO.md).
    formato de data (dd/mm ou mm/dd) já existe e serviria de base.
 5. **Tutorial do Book: cartas que se usam são feitiços.** Onde o tutorial fala em "usar carta", trocar por
    **feitiços** e explicar em poucas linhas o que são (de onde vêm, como se usam, quando expiram).
-6. **Rever o que entra nas conquistas 000–099** do Book: quais conquistas fazem sentido para qualquer jogador (hoje
-   várias vêm do jogo pessoal do autor).
+6. **Conquistas criadas pela IA, além das fixas.** As 000–099 já são genéricas (gerais + quatro por disciplina, 060 em
+   diante). A IA poderia propor conquistas mais específicas, desde que num formato que o motor confere sozinho (ex.:
+   "10 tarefas com a palavra sql", "hábito leitura em 14 dias"): a IA inventa o desafio e o nome, o jogo verifica.
 7. **Tutorial da loja (Masadora) mais completo:** explicar o que cada aba faz (aparência, mundo pixel, prêmios reais,
    feitiços) e como a loja funciona (Jenny, compra por semana, equipar).
-8. **Prêmios reais fáceis de personalizar.** Um jeito simples de o jogador cadastrar os próprios prêmios (nome e preço
-   em Jenny), com uma referência de quanto custa cada faixa de preço em esforço: por exemplo, "até X J ≈ um dia
-   produtivo", "até Y J ≈ uma semana boa". Assim ele sabe se o preço que escolheu é fácil ou difícil.
-9. **Aba Torre Trick ("em breve") abrir uma explicação:** ao clicar, mostrar o que vem no modo em grupo (placar entre
-   amigos, Trick Coin, chefão do grupo; ver [`COLETIVO.md`](COLETIVO.md)), em vez de não fazer nada.
-10. **Ideias guardadas, fora do template para não complicar** (avaliar se interessam aos amigos):
+8. **Ideias guardadas, fora do template para não complicar** (avaliar se interessam aos amigos):
    - gravar o áudio da aula e transcrever no computador, gerando resumo e tarefas (o jogo do autor faz);
    - conferir datas de prova na agenda do Google.
 
@@ -40,9 +36,7 @@ tem as pendências dele em [`COLETIVO.md`](COLETIVO.md).
 - **GitHub Pages:** no ar em https://caioparanaiba.github.io/todo-engine/ (atualiza a cada push que mexe em `web/`).
 - **Fotos de perfil:** as imagens de personagens não vão para o repositório (direitos). Decidir de onde vêm (avatares
   próprios ou livres, ou cada um coloca os seus em `~/.hunter-todo/avatares/`).
-- **Backup:** botão "baixar meus dados" (ZIP da pasta de dados) na aba Regras.
 - **Testes automáticos** do `servidor.py` (hoje os testes são scripts soltos e o Firefox controlado por script).
-- **Caixa de entrada:** marcar um lembrete como aplicado pela página (hoje só editando `ajustes.txt`).
 - **Calendário do Semestre:** os meses da aba Semestre estão fixos (ago/2026 a fev/2027); devem sair da temporada.
 - **Prioridade na Lista:**
   - a seta de prioridade só sobe: falta a de descer (o servidor já tem a ação `down`);
@@ -53,13 +47,17 @@ tem as pendências dele em [`COLETIVO.md`](COLETIVO.md).
 - **Aba Lista, bloco "constância":** sobra muito espaço entre os heatmaps (20 semanas) e a borda direita. Avaliar: mais
   semanas conforme a largura, quadradinhos maiores, ou outra coisa ao lado (resumo dos números, por exemplo).
 
-## Perguntas para responder depois
+## Renomear para `feito` (decidido em 09/10/2026, fazer depois)
 
-- **Como as tarefas se ligam às avaliações para a preparação, sem IA?** Já existe uma regra automática no motor
-  (`liga()` em `web/motor.js`), e a pergunta é se ela basta ou como melhorar. Responder ao Caio com exemplos.
+O nome definitivo é **`feito`**: a tarefa feita e o feito (façanha), sem depender do tema. Um repositório só; o servidor
+do modo em grupo entra como pasta (`grupo/`, serviço `feito-grupo`). O que muda:
 
-## Decisões em aberto
+- repositório `todo-engine` → `feito` (o GitHub redireciona o nome antigo; atualizar o link do Pages e do instalador);
+- pasta de dados `~/.hunter-todo/` → `~/.feito/`, com **migração automática** (o servidor move a pasta antiga na primeira
+  vez) e a variável `HUNTER_DADOS` → `FEITO_DADOS` (aceitar as duas por um tempo);
+- serviço do início automático `hunter-todo` → `feito` (desligar o antigo e ligar o novo sem pedir nada ao jogador);
+- pasta do instalador `~/todo-engine` → `~/feito`, nome do ZIP de backup e o `server_version`/`app` do `/api/ping`;
+- textos "Hunter.todo" na página, no README e no `IA.md`.
 
-- **Nome definitivo do projeto** (o tema vai mudar, então não pode ser "hunter"). Junto com ele mudam: o repositório
-  (`todo-engine`), a pasta de dados (`~/.hunter-todo/`, precisa de migração automática), o nome do serviço do início
-  automático (`hunter-todo`) e a pasta do instalador (`~/todo-engine`).
+Cuidado para não repetir a migração: no código, nomes neutros (`grupo`, `placar`, `moeda`); os nomes do tema
+(Associação Hunter, Torre Trick, Trick Coin) ficam só no texto que aparece na tela.

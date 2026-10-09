@@ -18,6 +18,9 @@ O `guia.js` roda num escopo fechado: no roteiro, abra o tutorial clicando em `[d
 numa chamada separada. Depois de mexer em `web/`, rode `python3 ferramentas/standalone.py` (gera o `docs/prototipo.html`);
 o Pages atualiza a cada push.
 
+**v0.3.1** publicada em 09/10/2026: prioridade no formulário ("o jogo decide", A, B, C, sem) e seta de descer na Lista
+(item 1 abaixo), e o `IA.md` com o modo agente para IA de terminal (Codex, Claude Code).
+
 ## Planejado para a v0.4 (em ordem de prioridade)
 
 1. ✅ **Prioridade das tarefas** (feito, falta o teste dos amigos). O formulário tem os botões `o jogo decide · A · B · C ·

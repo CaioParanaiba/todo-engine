@@ -1274,8 +1274,11 @@ function sync(api){
   if(!BOSSES.some(b => b.d === UI.bsel)) UI.bsel = BOSSES[0] ? BOSSES[0].d : '';
   if(!BOSSES.some(b => b.d === UI.mapsel)) UI.mapsel = UI.bsel;
 }
+const SEM_SERVIDOR = 'o servidor do jogo não está respondendo. Ele foi fechado? Rode o jogo de novo (python3 servidor.py) e recarregue esta página; o que você preencheu aqui precisa ser refeito.';
 async function post(url, body){
-  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json', 'X-Painel':'1'}, body:JSON.stringify(body)});
+  let r;
+  try { r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json', 'X-Painel':'1'}, body:JSON.stringify(body)}); }
+  catch(e){ throw new Error(SEM_SERVIDOR); }   // conexão recusada: o servidor.py foi fechado (ou o PC reiniciou sem o início automático)
   const j = await r.json().catch(() => ({ok:false, error:'resposta inválida do servidor'}));
   if(!j.ok) throw new Error(j.error || 'erro');
   return j;

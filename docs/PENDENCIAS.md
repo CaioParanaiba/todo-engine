@@ -20,15 +20,12 @@ o Pages atualiza a cada push.
 
 ## Planejado para a v0.4 (em ordem de prioridade)
 
-1. **Prioridade das tarefas** (reforçado pelo Caio: ainda não existe e é o primeiro da fila).
-   - **No formulário de adicionar:** escolher a prioridade (A, B, C, ...), **"o jogo decide"** ou **sem prioridade**.
-     Hoje só dá digitando `(A)` no começo do texto.
-   - **"O jogo decide":** sugere uma prioridade pela disciplina (prova chegando, chefão em fúria ou com mais tarefas
-     atrasadas), pelo prazo e por algum outro fator a definir. Mostrar a sugestão antes de enviar; o jogador aceita,
-     troca ou tira. Dá para reaproveitar a pontuação dos "golpes" de `estado()` (prova perto, prazo, fúria) e o
-     `ligaCom()` para saber a avaliação da tarefa.
-   - **Na Lista:** hoje só existe a seta de subir a prioridade; falta a de **descer** (o servidor já tem a ação `down`
-     em `POST /api/act`).
+1. ✅ **Prioridade das tarefas** (feito, falta o teste dos amigos). O formulário tem os botões `o jogo decide · A · B · C ·
+   sem` (`(A)` digitado no começo do texto continua valendo e passa na frente dos botões). "O jogo decide" usa
+   `sugerePri()` em `web/motor.js`: avaliação ligada chegando (até 3 dias 50, até 7 dias 35, até 14 dias 15), prazo (até
+   1 dia 50, até 3 dias 35, até 7 dias 15), chefão em fúria 20, 2+ atrasadas na disciplina 15, entrega 10; 70+ = A,
+   40+ = B, 20+ = C. A sugestão e os motivos aparecem na prévia, e a letra volta para "o jogo decide" depois de
+   adicionar. Na Lista, ▲ e ▼ (cada seta some no limite). Pesos **a calibrar** com o uso.
 2. **Codeforces marcado à mão, para ninguém ser penalizado.** Um botão para contar o Codeforces do dia quando os
    problemas foram feitos onde a API não enxerga: **ITMO Academy (EDU) e contests de grupos privados**. Teste de
    09/10/2026 com o handle do Caio: o `user.status` traz contests, problemset, virtuais e gyms públicos (todos os 13 gyms

@@ -91,6 +91,7 @@ function transformar(l, a, v){
   if(a === 'reopen'){ if(!feita) throw new Error('a tarefa não está concluída'); return l.replace(DONE_RE, ''); }
   if(feita) throw new Error('tarefa concluída: reabra antes de alterar');
   if(a === 'up'){ const m = l.match(PRI), i = m && ORDEM.includes(m[1]) ? ORDEM.indexOf(m[1]) : ORDEM.length - 1; if(i <= 0) throw new Error('prioridade já está no limite'); return `(${ORDEM[i-1]}) ` + l.replace(PRI, ''); }
+  if(a === 'down'){ const m = l.match(PRI), i = m && ORDEM.includes(m[1]) ? ORDEM.indexOf(m[1]) : ORDEM.length - 1; if(i >= ORDEM.length - 1) throw new Error('prioridade já está no limite'); return (ORDEM[i+1] ? `(${ORDEM[i+1]}) ` : '') + l.replace(PRI, ''); }
   if(a === 'd1'){ const m = l.match(DUE), base = m && m[2] > HOJE ? m[2] : HOJE, d = new Date(base + 'T12:00:00'); d.setDate(d.getDate() + 1);
     return m ? l.replace(DUE, `$1due:${iso(d)}`) : `${l} due:${iso(d)}`; }
   if(a === 'edit'){ const m = l.match(/^(\([A-Z]\) )?(\d{4}-\d\d-\d\d )?/); return (m[1]||'') + (m[2]||'') + String(v).trim(); }
@@ -107,7 +108,7 @@ function rota(url, body){
     if(body.action === 'delete'){ const antes = todo.splice(i, 1)[0]; undo.push({from:antes, to:null}); return {ok:true}; }
     const nova = transformar(todo[i], body.action, body.value); undo.push({from:todo[i], to:nova}); todo[i] = nova; return {ok:true};
   }
-  if(url === '/api/add'){ const t = String(body.text||'').trim(); if(!t) throw new Error('texto vazio'); const l = HOJE + ' ' + t; todo.splice(todo.length - 1, 0, l); undo.push({from:null, to:l}); return {ok:true}; }
+  if(url === '/api/add'){ const t = String(body.text||'').trim(); if(!t) throw new Error('texto vazio'); const p = t.match(/^\(([A-Za-z])\)\s+/), l = (p ? `(${p[1].toUpperCase()}) ` : '') + HOJE + ' ' + (p ? t.slice(p[0].length) : t); todo.splice(todo.length - 1, 0, l); undo.push({from:null, to:l}); return {ok:true}; }
   if(url === '/api/undo'){ const op = undo.pop(); if(!op) throw new Error('nada para desfazer');
     if(op.done){ const i = done.indexOf(op.to); if(i >= 0) done.splice(i, 1); return {ok:true}; }
     if(op.to === null) todo.splice(todo.length - 1, 0, op.from); else { const i = todo.indexOf(op.to); if(i < 0) throw new Error('a linha mudou'); if(op.from === null) todo.splice(i, 1); else todo[i] = op.from; }

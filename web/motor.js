@@ -286,6 +286,21 @@ function ligaCom(t, avs, ref){
   return [prox(provas) || prox(avs.filter(a => a.cont)) || provas[provas.length-1] || avs[avs.length-1], por];   // sem prova no plano: a contínua do período
 }
 const refDe = (t, HOJE) => t.done || (t.due && t.due > HOJE ? t.due : HOJE);
+/* "o jogo decide": prioridade sugerida para uma tarefa nova, com os motivos. Pontos: avaliação ligada chegando, prazo,
+   fúria do chefão, atrasadas da disciplina e entrega; 70+ = A, 40+ = B, 20+ = C, abaixo disso sem prioridade */
+function sugerePri(t, bs, HOJE, C){
+  let sc = 0; const por = [], d = discOf(t, C), b = bs.find(b => b.d === d);
+  if(b && b.avs.length){ const a = liga(t, b.avs, refDe(t, HOJE)), k = a && a.dt >= HOJE ? dias(HOJE, a.dt) : null;
+    const p = k == null ? 0 : k <= 3 ? 50 : k <= 7 ? 35 : k <= 14 ? 15 : 0;
+    if(p){ sc += p; por.push(`${a.k} ${k === 0 ? 'hoje' : k === 1 ? 'amanhã' : 'em ' + k + ' dias'}`); } }
+  if(t.due){ const k = dias(HOJE, t.due), p = k <= 1 ? 50 : k <= 3 ? 35 : k <= 7 ? 15 : 0;
+    if(p) { sc += p; por.push(k < 0 ? 'prazo vencido' : k === 0 ? 'prazo hoje' : k === 1 ? 'prazo amanhã' : `prazo em ${k} dias`); } }
+  if(b && b.fury){ sc += 20; por.push(`${b.d} em fúria`); }
+  const atr = b ? b.open.filter(x => x.due && x.due < HOJE).length : 0;
+  if(atr >= 2){ sc += 15; por.push(`${atr} atrasadas em ${b.d}`); }
+  if(isEnt(t)){ sc += 10; por.push('entrega'); }
+  return {pri: sc >= 70 ? 'A' : sc >= 40 ? 'B' : sc >= 20 ? 'C' : null, sc, por};
+}
 const liga = (t, avs, ref) => ligaCom(t, avs, ref)[0];
 function chefoes(C, feitas, abertas){
   return C.BOSSES.map(B => {
@@ -475,5 +490,5 @@ function cartas(C, S){
 
 window.HJ = {TAGS, configura, isTre, MEDIA, DIF, COFRE_MES, ALLFX, NEN, GUARDA, SPELLS, TK, PALS, palStyle, COS, catalogo, REAIS, PREMIOS_PADRAO, premios, cofreMes, esforco, esforcoTxt, faixaDe, FAIXAS,
   mins, has, isRec, isFac, isEst, isEnt, norm, addD, dias, dow, semanaISO, numBR, brData, brDatas, isoData, semanalDe, fmtData, fmtTxt, curta, dataRuim,
-  expandeOwn, marca, cfExtra, efeitos, parseLinha, parseAvaliacoes, parseNotas, carregar, xpDe, nenDe, discOf, custo, andar, xpAte, ten, liga, ligaCom, refDe, chefoes, estado, cartas};
+  expandeOwn, marca, cfExtra, efeitos, parseLinha, parseAvaliacoes, parseNotas, carregar, xpDe, nenDe, discOf, custo, andar, xpAte, ten, liga, ligaCom, refDe, sugerePri, chefoes, estado, cartas};
 })();

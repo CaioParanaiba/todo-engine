@@ -82,7 +82,7 @@ const COS = [
   {id:'th-killua', cat:'full', n:'Tema Killua completo', d:'Paleta Killua + céu da Arena + barra elétrica + aura do avatar.', p:6000, eq:{theme:'killua', bg:'ceu'}, fxs:['shim','aura'], parts:['pal-killua','tx-ceu','fx-shim','fx-aura']},
   {id:'th-hisoka', cat:'full', n:'Tema Hisoka', d:'Rosa e amarelo, losangos de baralho no fundo, fúria que treme e avisos com clarão.', p:8000, eq:{theme:'hisoka', bg:'cartas'}, fxs:['shake','zap'], parts:['pal-hisoka','tx-cartas','fx-shake','fx-zap']},
   {id:'th-meruem', cat:'full', n:'Tema Meruem', d:'Verde-escuro e ouro real, névoa de Nen e aura ambiente.', p:10000, eq:{theme:'meruem', bg:'nen'}, fxs:['aura','drift'], parts:['pal-meruem','tx-nen','fx-aura','fx-drift']},
-  {id:'th-lenda', cat:'full', n:'Lendário · tema exclusivo', d:'Desenhado com o Claude só para você: paleta, fundo e efeito próprios.', p:20000, lend:true},
+  {id:'th-lenda', cat:'full', n:'Lendário · tema exclusivo', d:'Desenhado só para você: paleta, fundo e efeito próprios.', p:20000, lend:true},
   {id:'px-unlock', cat:'px', n:'Mundo pixel', d:'Abre o mapa, a ficha, o Greed Island e a Masadora pixel, com as peles padrão.', p:8000, sw:['#5FA35A','#3E7CC9','#F3E6C8','#EFEAF7','#2A2140']},
   {id:'px-map-tarde', cat:'px', n:'Mapa · Tarde', d:'Pele do mapa.', p:1500, need:'px-unlock', skin:['map','tarde'], sw:['#E8A35A','#C9974A','#C7517A','#F3D9A0','#2A1830']},
   {id:'px-map-noite', cat:'px', n:'Mapa · Noite', d:'Pele do mapa.', p:1500, need:'px-unlock', skin:['map','noite'], sw:['#1F3A3A','#14205A','#7C8BB8','#070A18','#FFD45E']},
@@ -138,6 +138,24 @@ const dias = (a,b) => Math.round((new Date(b+'T12:00:00Z') - new Date(a+'T12:00:
 const dow = iso => (new Date(iso+'T12:00:00Z').getUTCDay()+6)%7;
 const semanaISO = iso => { const d = new Date(iso+'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 3 - (d.getUTCDay()+6)%7); const y = d.getUTCFullYear(), w1 = new Date(Date.UTC(y,0,4)); return y + '-W' + String(1 + Math.round(((d - w1)/864e5 - 3 + (w1.getUTCDay()+6)%7)/7)).padStart(2,'0'); };
 const numBR = s => parseFloat(String(s).replace(',','.'));
+/* datas na tela: dd/mm/aaaa (padrão) ou mm/dd/aaaa, à escolha do jogador (jogador.json, "datas": "dmy" | "mdy", aba Regras).
+   Nos arquivos continuam AAAA-MM-DD (formato do todo.txt). */
+let MDY = false;
+const fmtData = f => { MDY = f === 'mdy'; };
+const fmtTxt = () => MDY ? 'mm/dd/aaaa' : 'dd/mm/aaaa';
+const curta = iso => MDY ? iso.slice(5,7)+'/'+iso.slice(8,10) : iso.slice(8,10)+'/'+iso.slice(5,7);
+const brData = iso => /^\d{4}-\d\d-\d\d/.test(iso || '') ? `${curta(iso)}/${iso.slice(0,4)}` : (iso || '');
+const brDatas = s => String(s || '').replace(/\b(\d{4})-(\d\d)-(\d\d)\b/g, (x, a, m, d) => MDY ? `${m}/${d}/${a}` : `${d}/${m}/${a}`);
+const dataRuim = x => `Data inválida${x ? `: "${x}"` : ''}. Use ${MDY ? 'mês/dia/ano' : 'dia/mês/ano'}, por exemplo ${brData('2026-10-09')}.`;
+function isoData(br, hoje){   // "9/10/2026", "09/10/26" ou "9/10" (ano de hoje) -> "2026-10-09" (ou 10 de setembro, em mm/dd); inválida -> ''
+  const m = String(br || '').trim().match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?$/); if(!m) return /^\d{4}-\d\d-\d\d$/.test(String(br||'').trim()) ? String(br).trim() : '';
+  const a = m[3] ? (m[3].length === 2 ? '20' + m[3] : m[3]) : String(hoje || new Date().toISOString()).slice(0,4);
+  const [dia, mes] = MDY ? [m[2], m[1]] : [m[1], m[2]];
+  const iso = `${a}-${mes.padStart(2,'0')}-${dia.padStart(2,'0')}`, d = new Date(iso + 'T12:00:00Z');
+  return isNaN(d) || d.toISOString().slice(0,10) !== iso ? '' : iso;
+}
+/* hábitos semanais: {id, n, semana:N} = N vezes por semana (seg a dom); sem "semana" = todo dia */
+const semanalDe = (jog, id) => { const h = ((jog && jog.habitos) || []).find(x => x.id === id); return h && h.semana ? +h.semana : 0; };
 
 /* ---------- leitura dos arquivos ---------- */
 function parseLinha(raw, n){
@@ -182,6 +200,7 @@ function parseAjustes(txt){
 }
 /* monta o contexto a partir da resposta do GET /api/jogo */
 function carregar(api){
+  fmtData(api.jogador && api.jogador.datas);
   configura(api.jogador && api.jogador.tags);
   const todo = (api.todo||[]).map((l,i) => ({l, n:i+1})).filter(o => o.l.trim());
   const feitas = (api.done||[]).filter(l => l.trim()).map(l => parseLinha(l, 0)).concat(todo.filter(o => o.l.startsWith('x ')).map(o => parseLinha(o.l, o.n)));
@@ -192,7 +211,7 @@ function carregar(api){
   const hoje = api.hoje || new Date().toISOString().slice(0,10);
   return {D:{feitas, abertas, cf:api.cf||null}, HOJE:hoje, TEMP: av.temp || {nome:'Temporada', ini:addD(hoje,-60), fim:addD(hoje,60), volta:addD(hoje,120)},
     BOSSES: av.bosses, AVAL: av.aval, NOTAS: nt.NOTAS, PARC: nt.PARC, NDATA: nt.NDATA, INBOX: parseAjustes(api.ajustes), EST: est, AVATARES: api.avatares||[],
-    NARRADAS: Array.isArray(api.narradas) ? api.narradas : [], JOG: Object.assign({nome:'Hunter'}, api.jogador||{}), AV_TXT: String(api.avaliacoes||''), dif:'normal'};
+    NARRADAS: Array.isArray(api.narradas) ? api.narradas : [], JOG: Object.assign({nome:'Hunter'}, api.jogador||{}), SRV: api.servidor||null, AV_TXT: String(api.avaliacoes||''), NT_TXT: String(api.notas||''), dif:'normal'};
 }
 
 /* ---------- regras ---------- */
@@ -364,6 +383,6 @@ function cartas(C, S){
 }
 
 window.HJ = {TAGS, configura, isTre, MEDIA, DIF, COFRE_MES, ALLFX, NEN, GUARDA, SPELLS, TK, PALS, palStyle, COS, catalogo, REAIS,
-  mins, has, isRec, isFac, isEst, isEnt, norm, addD, dias, dow, semanaISO, numBR,
+  mins, has, isRec, isFac, isEst, isEnt, norm, addD, dias, dow, semanaISO, numBR, brData, brDatas, isoData, semanalDe, fmtData, fmtTxt, curta, dataRuim,
   expandeOwn, marca, cfExtra, efeitos, parseLinha, parseAvaliacoes, parseNotas, carregar, xpDe, nenDe, discOf, custo, andar, xpAte, ten, liga, chefoes, estado, cartas};
 })();

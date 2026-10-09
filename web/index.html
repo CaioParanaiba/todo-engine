@@ -1032,6 +1032,7 @@ ul{list-style:none;margin:0;padding:0}
 .l-const{margin-top:16px}
 .l-hm{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px 14px;align-items:start}
 .l-hm .nm{font:600 12px var(--f-mono);color:var(--ink);padding-top:2px} .l-hm .nm small{display:block;font:11px var(--f-mono);color:var(--soft);margin-top:2px}
+.l-hg.sem{grid-template-rows:12px;min-height:30px;align-content:start}
 .l-hg{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);grid-auto-columns:12px;gap:3px;overflow-x:auto;padding:2px}
 .l-hg i{border-radius:3px;background:var(--track)}
 .l-hg i.h1{background:color-mix(in srgb,var(--c) 30%,var(--track))} .l-hg i.h2{background:color-mix(in srgb,var(--c) 55%,var(--track))}
@@ -1047,6 +1048,8 @@ ul{list-style:none;margin:0;padding:0}
 .l-hb.ok .l-ck{background:var(--c);border-color:var(--c)}
 .l-slots{display:flex;gap:3px;align-items:center} .l-slots i{width:12px;height:12px;border-radius:3px;border:1.5px solid var(--n2)} .l-slots i.on{background:var(--n2)}
 .l-slots i.bn{border-style:dashed;opacity:.7} .l-slots .sep{width:6px}
+.l-ontb{margin-top:8px;font-size:12px}
+.l-ont{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--hair)} .l-ont .sub{width:100%;margin:0;font-size:12px}
 .l-auto{grid-column:1/-1;font:11px var(--f-mono);color:var(--faint);margin-top:-3px}
 
 .l-hud{display:grid;grid-template-columns:minmax(0,1.9fr) repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
@@ -1072,6 +1075,7 @@ ul{list-style:none;margin:0;padding:0}
 .l-seg{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
 .l-seg>span{font:600 10.5px var(--f-mono);color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-right:2px}
 .l-chip{border:1px solid var(--hair);background:none;border-radius:99px;padding:3px 10px;cursor:pointer;font:500 12.5px var(--f-ui);color:var(--soft);display:inline-flex;align-items:center;gap:6px}
+#l-date{border:1px solid var(--hair);background:none;border-radius:99px;padding:3px 10px;width:112px;font:500 12.5px var(--f-mono);color:var(--ink)} #l-date::placeholder{color:var(--faint)}
 .l-chip .d{width:8px;height:8px;border-radius:50%;background:var(--c,var(--faint))}
 .l-chip[aria-pressed="true"]{color:var(--ink);border-color:var(--c,var(--volt));background:color-mix(in srgb,var(--c,var(--volt)) 14%,transparent)}
 .l-seg select,.l-seg input[type=date]{background:var(--panel2);border:1px solid var(--hair);border-radius:99px;padding:3px 10px;font:12.5px var(--f-ui);color:var(--ink)}
@@ -1298,7 +1302,7 @@ const pct = (a,b) => b ? Math.max(0, Math.min(100, a/b*100)) : 0;
 const fmt = n => Math.round(n).toLocaleString('pt-BR');
 const nf = n => (Math.round(n*10)/10).toLocaleString('pt-BR');
 const lvA = x => Math.floor(Math.sqrt(x/4));
-const ddmm = iso => iso.slice(8,10)+'/'+iso.slice(5,7);
+const ddmm = iso => HJx.curta(iso);   // dd/mm ou mm/dd, conforme a opção de datas
 const ic = n => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const NC = i => `var(--n${i+1})`;
 const avNen = (i,s) => `<span class="av" style="--c:${NC(i)}${s?';--s:'+s+'px':''}" title="${esc(NEN[i].n)}">${ic(NEN[i].k)}</span>`;
@@ -1346,7 +1350,7 @@ function avList(b, where, withField){
     ${a.cont && a.parts.length ? `<span class="prt">${a.parts.map((p,i) => `<span>${a.k}${i+1}: ${nf(p)}</span>`).join('')}</span>` : ''}
     ${withField && a.cont ? `<span class="nf"><label class="sub" for="n-${b.d}-${a.k}-${where}">parcial</label><input id="n-${b.d}-${a.k}-${where}" inputmode="decimal" placeholder="8"><button data-nota="${b.d}:${a.k}" data-in="n-${b.d}-${a.k}-${where}" data-cont="1">+ parcial</button></span>` : withField && a.nota == null && a.dt <= HOJE ? `<span class="nf"><label class="sub" for="n-${b.d}-${a.k}-${where}">nota</label><input id="n-${b.d}-${a.k}-${where}" inputmode="decimal" placeholder="7,5"><button data-nota="${b.d}:${a.k}" data-in="n-${b.d}-${a.k}-${where}">registrar</button></span>` : ''}</div>`).join('');
 }
-const OG = {slot:'conquista', claude:'narrada pelo Claude'};
+const OG = {slot:'conquista', claude:'narrada com IA'};
 const PXCLS = {map:'map8', p1:'c8', p3:'gi', p3b:'shop8'};
 function rPX(S){
   const k = UI.px;
@@ -1401,7 +1405,7 @@ function rB2(S){
     <label class="sub" for="inbox-txt">Anote mudanças do plano de ensino (data, peso, avaliação nova). Ficam em ajustes.txt: aplique no avaliacoes.txt ou peça a uma IA (veja IA.md).</label>
     <textarea id="inbox-txt" placeholder="ex.: ARQ1: a P2 virou dois trabalhos de 15"></textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span class="sub mono">grava em ajustes.txt</span><button class="btn v" data-inbox>enviar</button></div>
-    <div class="log">${INBOX.slice().reverse().map(m => `<div class="${m.st==='ok'?'':'p'}"><small>${m.d} · ${m.st==='ok'?'aplicado':'pendente'}</small>${esc(m.t)}${m.r?`<small>→ ${esc(m.r)}</small>`:''}</div>`).join('')}</div>`;
+    <div class="log">${INBOX.slice().reverse().map(m => `<div class="${m.st==='ok'?'':'p'}"><small>${HJx.brDatas(m.d)} · ${m.st==='ok'?'aplicado':'pendente'}</small>${esc(m.t)}${m.r?`<small>→ ${esc(m.r)}</small>`:''}</div>`).join('')}</div>`;
   document.getElementById('b2-leg').innerHTML = `<h2><span class="c">~/</span>como ler</h2><p style="margin:0;font-size:13.5px">A barra é a <b>vida</b> do chefão e só cai com nota: cada avaliação tira peso × nota. Passou da linha verde (média 6), ele cai. As tarefas enchem a <b>preparação</b> e dão XP. Preparação completa antes da data vale um feitiço, seja qual for a nota.</p>${SIM.size||Object.keys(NOTAS).length?'<button class="reset" data-reset style="margin-top:10px">desfazer simulação</button>':''}`;
 }
 /* ---------- D2 ---------- */
@@ -1454,7 +1458,7 @@ function rBK(S){
     det = `<div class="face" style="color:var(--aura);border-color:var(--aura)">${ic(s.ic)}</div><p class="cap">feitiço · na bolsa: ${q}</p><h3>${s.n}</h3><p>${s.e}</p><p class="sub">${s.noshop ? 'Vem da preparação completa antes de uma avaliação e de cada missão da semana cumprida.' : `Loja: ${fmt(s.p)} J (1 por semana). Também vem da preparação completa ou da missão da semana, como "à escolha".`} Expira em ${ddmm(TEMP.volta)}.</p>${q ? usoHTML(S, s) : ''}
       ${S.usos.length ? `<p class="cap" style="margin-top:14px">usados</p>${S.usos.slice(-5).reverse().map(u => `<div class="sub">${ddmm(u.d)} · ${spell(u.ef||u.k).n}${u.k==='escolha'?' (à escolha)':''}${u.ef==='gyo'?' → '+NEN[+u.alvo].n:''}${u.ef==='ken'?' → '+esc(String(u.alvo).slice(0,40)):''}</div>`).join('')}` : ''}`; }
   else { const c = C.find(c => c.no === UI.bksel) || (UI.bk === 'claude' ? narr[0] : C[0]);
-    det = !c ? `<p class="sub">Nenhuma carta narrada ainda. ${espera('semana')}.</p>` : `<div class="face"${c.o==='claude'?' style="color:var(--volt);border-color:var(--volt)"':''}>${ic(c.ic)}</div><p class="cap">${c.o==='claude' ? `${({semana:'semanal · comum',mes:'mensal',semestre:'semestral · rara',ano:'anual · lendária'})[c.tipo]||'narrada'} · ${esc(c.periodo||'')}` : `Nº ${c.no} · rank ${c.rk} · ${OG[c.o]}`}</p><h3>${esc(c.n)}</h3>${c.cron ? `<p class="cron" style="white-space:pre-line">${esc(c.cron)}</p><p class="cap" style="margin:14px 0 4px">o que aconteceu</p>` : ''}<p style="white-space:pre-line">${esc(c.d)}</p><p class="sub">${c.o==='slot' ? (c.on ? 'No livro.' : 'Ainda não.') : 'Escrita pelo Claude com o que aconteceu de verdade' + (c.escrita ? ` · ${ddmm(c.escrita)}` : '') + '.'}</p>`; }
+    det = !c ? `<p class="sub">Nenhuma carta narrada ainda. ${espera('semana')}.</p>` : `<div class="face"${c.o==='claude'?' style="color:var(--volt);border-color:var(--volt)"':''}>${ic(c.ic)}</div><p class="cap">${c.o==='claude' ? `${({semana:'semanal · comum',mes:'mensal',semestre:'semestral · rara',ano:'anual · lendária'})[c.tipo]||'narrada'} · ${esc(c.periodo||'')}` : `Nº ${c.no} · rank ${c.rk} · ${OG[c.o]}`}</p><h3>${esc(c.n)}</h3>${c.cron ? `<p class="cron" style="white-space:pre-line">${esc(c.cron)}</p><p class="cap" style="margin:14px 0 4px">o que aconteceu</p>` : ''}<p style="white-space:pre-line">${esc(c.d)}</p><p class="sub">${c.o==='slot' ? (c.on ? 'No livro.' : 'Ainda não.') : 'Narrada com IA a partir do que aconteceu de verdade' + (c.escrita ? ` · ${ddmm(c.escrita)}` : '') + '.'}</p>`; }
   document.getElementById('bk-det').innerHTML = det + `<p style="margin-top:14px"><button class="go" data-go="ms">ir para a Masadora →</button></p>`;
 }
 /* ---------- Masadora · loja de aparência ---------- */
@@ -1492,7 +1496,7 @@ function pvHTML(it){
 function itemHTML(S, it){
   const own = OWN.has(it.id), eq = own && equipado(it), lk = it.lock && it.lock(S), need = it.need && !OWN.has(it.need);
   let btn;
-  if(it.lend) btn = `<button class="btn" disabled>${S.jenny >= it.p ? 'falar com o Claude' : `faltam ${fmt(it.p - S.jenny)} J`}</button>`;
+  if(it.lend) btn = `<button class="btn" disabled>${S.jenny >= it.p ? 'sob encomenda' : `faltam ${fmt(it.p - S.jenny)} J`}</button>`;
   else if(own) btn = it.cat === 'px' && !it.skin ? '<span class="sub">desbloqueado</span>' : `<button class="btn v" data-equip="${it.id}">${eq ? (['pal','full','avatar'].includes(it.cat) ? 'equipado' : 'tirar') : 'equipar'}</button>`;
   else if(it.excl) btn = `<button class="btn" disabled>só no ${esc(COS.find(i => i.id === it.excl).n.replace('Tema ','tema '))}</button>`;
   else if(lk) btn = `<button class="btn" disabled>${it.why}</button>`;
@@ -1590,7 +1594,7 @@ function rP3(S){
       <div class="bx lic8"><h3>LICENÇA</h3><div class="fr" style="background-image:url(/jogo/k/killua.png)"></div><b>CAIO</b><dl class="kv"><dt>Andar</dt><dd>${S.a.n}</dd><dt>Jenny</dt><dd>${fmt(S.jenny)}</dd><dt>Ten</dt><dd>${tenTxt(S.ten)}</dd><dt>Modo</dt><dd>Arena</dd></dl></div>
       <div class="bx"><div class="pages">${pages.map((p,i) => `<button data-page="${i}" aria-pressed="${i===UI.page}">${p[0]==='narr'?'NARRADAS':p[0]==='feit'?'FEITIÇOS':String(p[0]).padStart(3,'0')+'-'+String(p[1]).padStart(3,'0')}</button>`).join('')}</div><div class="slots8">${slots}</div></div>
       <div class="bx det"><h3>CARTA</h3>${det}</div></div>
-    <div class="how"><div class="bx"><b style="color:var(--gold)">000–099 · CONQUISTAS</b><p>Regras fixas, escritas por você.</p></div><div class="bx"><b style="color:var(--v)">100+ · NARRADAS</b><p>O Claude escreve uma por semana, com fatos reais.</p></div><div class="bx"><b style="color:var(--a)">FEITIÇOS</b><p>Loja, preparação completa e missão. Expiram na volta às aulas.</p></div></div>`;
+    <div class="how"><div class="bx"><b style="color:var(--gold)">000–099 · CONQUISTAS</b><p>Regras fixas, escritas por você.</p></div><div class="bx"><b style="color:var(--v)">100+ · NARRADAS</b><p>Com IA (opcional): o jogo monta o pedido com os seus fatos reais e você cola a carta de volta.</p></div><div class="bx"><b style="color:var(--a)">FEITIÇOS</b><p>Loja, preparação completa e missão. Expiram na volta às aulas.</p></div></div>`;
 }
 /* ---------- P3b · Masadora pixel (peles, clicável) ---------- */
 function rP3b(S){
@@ -1617,21 +1621,17 @@ function gnav(cur){
 function rSys(S){
   document.getElementById('sys-root').innerHTML = `
     <div class="card"><h2><span class="c">~/</span>configurações deste computador</h2><div class="togg" style="margin:0"><span class="sub">efeitos:</span><button data-fxoff="0" aria-pressed="${!UI.fxOff}">os comprados</button><button data-fxoff="1" aria-pressed="${!!UI.fxOff}">nenhum (calmo)</button></div></div>
-    <div class="card"><h2><span class="c">~/</span>decidido</h2><div class="decided">${[['XP','por tipo · rotina metade · ×1,5 no prazo'],['Ten','com Zetsu'],['torre','normal, zera por semestre'],['atributos','Nen + missão do mais fraco'],['cartas','conquistas + narradas'],['topo','Guarda Real'],['chefão','um por disciplina; vida = nota'],['tarefas','XP + preparação (bônus = feitiço)'],['ligação','o Claude liga tarefa → avaliação'],['jenny','XP × 10 + bônus por nota ≥ 6'],['plano','caixa de entrada → Claude 12h/18h'],['fúria','×1,5, só isso'],['nota aguardando','fica até você preencher'],['contínuas','várias parciais; o Claude junta quando você pedir'],['feitiços','loja, preparação, missão; expiram na volta às aulas'],['média','6']].map(([b,t]) => `<span class="chip"><b>${b}</b>${t}</span>`).join('')}</div></div>
+    <div class="card"><h2><span class="c">~/</span>decidido</h2><div class="decided">${[['XP','por tipo · rotina metade · ×1,5 no prazo'],['Ten','com Zetsu'],['torre','normal, zera por semestre'],['atributos','Nen + missão do mais fraco'],['cartas','conquistas + narradas'],['topo','Guarda Real'],['chefão','um por disciplina; vida = nota'],['tarefas','XP + preparação (bônus = feitiço)'],['ligação','tarefa → avaliação: av:, prova:, palavra-chave ou a próxima'],['jenny','XP × 10 + bônus por nota ≥ 6'],['plano','editar no chefão, à mão ou colando da IA'],['fúria','×1,5, só isso'],['nota aguardando','fica até você preencher'],['contínuas','várias notas parciais viram uma média'],['feitiços','loja, preparação, missão; expiram na volta às aulas'],['média','6']].map(([b,t]) => `<span class="chip"><b>${b}</b>${t}</span>`).join('')}</div></div>
     <h2 class="h">O chefão em uma frase: a nota tira vida, a tarefa prepara</h2>
     <div class="three">
       <div class="card"><h2><span class="c">~/</span>vida = nota</h2><p style="margin:0;font-size:14px">Cada disciplina tem 100 pontos, divididos pelas avaliações do plano de ensino. Cada nota tira peso × nota/10. Ao passar de 60 (média 6), o chefão cai. Derrotar o chefão é passar na matéria. Tarefa nenhuma derruba chefão sozinha.</p></div>
-      <div class="card"><h2><span class="c">~/</span>tarefa = preparação</h2><p style="margin:0;font-size:14px">O Claude liga cada tarefa a uma avaliação (pela data de <span class="mono">prova:</span>, pelo nome ou pelo tipo). As tarefas dão XP e enchem a barra de preparação. Barra cheia antes da data dá <b>1 feitiço à escolha</b>, qualquer que seja a nota.</p></div>
+      <div class="card"><h2><span class="c">~/</span>tarefa = preparação</h2><p style="margin:0;font-size:14px">O jogo liga cada tarefa da disciplina a uma avaliação: pela chave (<span class="mono">av:P1</span>), pela data (<span class="mono">prova:</span>), pela palavra-chave da avaliação no texto ou, sem nada disso, pela próxima avaliação. As tarefas dão XP e enchem a barra de preparação. Barra cheia antes da data dá <b>1 feitiço à escolha</b>, qualquer que seja a nota.</p></div>
       <div class="card"><h2><span class="c">~/</span>nota baixa = fúria</h2><p style="margin:0;font-size:14px">Sem penalidade. O chefão mostra quanto você precisa no resto e entra em fúria: as tarefas dele rendem ×1,5 até a próxima avaliação. Reprovou no semestre: ele escapa, e volta como revanche se você refizer a matéria.</p></div>
     </div>
     <div class="two">
       <div class="card"><h2><span class="c">~/</span>jenny</h2><p style="margin:0 0 8px;font-size:14px">Cada XP vale 10 J. Cada nota ≥ ${MEDIA} dá bônus de nota × peso × 5. Um 7,5 numa prova de peso 25 dá ${fmt(7.5*25*5)} J. O esforço paga o dia a dia, e o resultado paga os prêmios grandes.</p><p class="sub" style="margin:0">Hoje: ${fmt(S.total*10)} J do XP + ${fmt(S.bonusNotas)} J de notas.</p></div>
-      <div class="card"><h2><span class="c">~/</span>caixa de entrada</h2><p style="margin:0;font-size:14px">Um campo no painel grava em <span class="mono">ajustes.txt</span>. Nas rodadas das 12h e das 18h, o Claude lê, muda o <span class="mono">avaliacoes.txt</span> (pesos, datas, avaliações novas) e responde na própria caixa o que fez. É o mais barato: não precisa de sessão nova.</p></div>
-    </div>
-    <div class="card"><h2><span class="c">~/</span>ainda em aberto</h2><ul class="ladder">
-      <li><span class="st">01</span><span>Onde o jogo entra no painel (aba "Onde fica").</span><span></span></li>
-      <li><span class="st">02</span><span>Tema e animação das telas limpas, e se o mundo pixel fica.</span><span></span></li>
-      <li><span class="st">03</span><span>Próximo: lista de prêmios, cartas e feitiços com preços.</span><span></span></li></ul></div>`;
+      <div class="card"><h2><span class="c">~/</span>plano de ensino</h2><p style="margin:0;font-size:14px">Em <b>Chefões → editar avaliações e notas</b> você cadastra provas, trabalhos e listas (peso e data), corrige ou apaga notas. Com IA (opcional): o botão <b>copiar prompt</b> monta o pedido, você anexa o PDF do plano de ensino numa IA qualquer e cola a resposta de volta. A caixa de entrada guarda lembretes de mudança. Detalhes no <span class="mono">IA.md</span>.</p></div>
+    </div>`;
 }
 
 
@@ -1658,7 +1658,7 @@ function prevL(){
   if(!CTX) return;
   const S = estado(), linha = rascunho(), t = HJx.parseLinha(HOJE + ' ' + linha, 0), v = valeL(t, S), nen = NEN[nenDe(t)];
   document.getElementById('l-btn').disabled = !document.getElementById('l-txt').value.trim();
-  document.getElementById('l-prev').innerHTML = `<span>vale <span class="l-xp">+${v.x} XP</span></span><span class="l-mult">${v.base} XP${v.ms.map(m => ' · ' + m + ' ×1,5').join('')}</span><span style="color:${NC(nenDe(t))}">${esc(nen.n)}</span><code title="como fica no todo.txt">${esc(HOJE + ' ' + linha)}</code>`;
+  document.getElementById('l-prev').innerHTML = `<span>vale <span class="l-xp">+${v.x} XP</span></span><span class="l-mult">${v.base} XP${v.ms.map(m => ' · ' + m + ' ×1,5').join('')}</span><span style="color:${NC(nenDe(t))}">${esc(nen.n)}</span><code title="como fica no todo.txt (no arquivo, as datas ficam como AAAA-MM-DD)">${esc(HJx.brDatas(HOJE + ' ' + linha))}</code>`;
 }
 function formL(){
   const tp = document.getElementById('l-tipo');
@@ -1666,8 +1666,9 @@ function formL(){
     tp.dataset.ok = 1;
     tp.insertAdjacentHTML('beforeend', LTIPOS.map(t => `<button type="button" class="l-chip" style="--c:${NC(t.c)}" data-ltipo="${t.k}" aria-pressed="${t.k === LA.tipo}" title="${esc(NEN[t.c].n)}${tagDe(t.k) ? ' · ' + tagDe(t.k) : ''}"><span class="d"></span>${t.n}</button>`).join(''));
     const sexta = addD(HOJE, (4 - dow(HOJE) + 7) % 7 || 7);
-    document.getElementById('l-due').insertAdjacentHTML('beforeend', [['sem',''],['hoje',HOJE],['amanhã',addD(HOJE,1)],['sexta',sexta]].map(([n,d]) => `<button type="button" class="l-chip" data-ldue="${d}" aria-pressed="${d === LA.due}">${n}</button>`).join('') + `<input type="date" id="l-date" aria-label="Outra data" min="${HOJE}">`);
+    document.getElementById('l-due').insertAdjacentHTML('beforeend', [['sem',''],['hoje',HOJE],['amanhã',addD(HOJE,1)],['sexta',sexta]].map(([n,d]) => `<button type="button" class="l-chip" data-ldue="${d}" aria-pressed="${d === LA.due}">${n}</button>`).join('') + `<input class="dt" inputmode="numeric" maxlength="10" placeholder="${HJx.fmtTxt()}" id="l-date" aria-label="Outra data (${HJx.fmtTxt()})">`);
   }
+  const ld = document.getElementById('l-date'); ld.placeholder = HJx.fmtTxt(); ld.setAttribute('aria-label', `Outra data (${HJx.fmtTxt()})`);   // a opção de datas pode mudar na aba Regras
   const sel = document.getElementById('l-disc'), opts = BOSSES.map(b => b.d).join(',');
   if(sel.dataset.opts !== opts){ const v = sel.value; sel.dataset.opts = opts; sel.innerHTML = '<option value="">nenhuma</option>' + BOSSES.map(b => `<option value="${b.d}">${b.d}</option>`).join(''); sel.value = v; }
   prevL();
@@ -1678,7 +1679,7 @@ function rowL(t, S, x){
   const corpo = t.raw.replace(/^x \d{4}-\d\d-\d\d (\d{4}-\d\d-\d\d )?/, '').replace(/^\([A-Z]\) /, '').replace(/^\d{4}-\d\d-\d\d /, '');
   return `<li class="l-task${feita ? ' done' : ''}" style="--c:${NC(nen)}" data-ln="${t.n}">
     <button class="l-ck" data-l="${feita ? 'reopen' : 'done'}" aria-label="${feita ? 'reabrir' : 'concluir'}: ${esc(t.txt)}">${feita ? '✓' : ''}</button>
-    <div class="l-body">${UI.ledit === t.n ? `<div class="l-edit"><input id="l-ed" value="${esc(corpo)}" aria-label="Editar tarefa"><button class="btn" data-l="save" type="button">salvar</button></div>`
+    <div class="l-body">${UI.ledit === t.n ? `<div class="l-edit"><input id="l-ed" value="${esc(HJx.brDatas(corpo))}" aria-label="Editar tarefa"><button class="btn" data-l="save" type="button">salvar</button></div>`
       : `<span class="l-txt">${t.pri && !feita ? `<span class="l-pri ${t.pri}">${t.pri}</span>` : ''}${esc(t.txt)}</span>`}
       <span class="l-tags"><span class="l-tag nen">${esc(NEN[nen].n)}</span>${d ? `<span class="l-tag">${esc(d)}</span>` : ''}${t.due ? `<span class="l-tag${dc}">${dueTxt(t.due)}</span>` : ''}${isRec(t) ? '<span class="l-tag">rotina</span>' : ''}</span></div>
     <div class="l-right">${v.ms.length ? `<span class="l-mult" title="${v.base} XP · ${v.ms.map(m => m + ' ×1,5').join(' · ')}">${v.ms.join(' + ')}</span>` : ''}<span class="l-xp" title="${v.base != null ? v.base + ' XP de base' : 'XP ganho'}">+${v.x}</span>
@@ -1720,6 +1721,10 @@ const isCF = t => (t.rec || '').startsWith('cf');
 function habitosL(S){
   const J = CTX.JOG, cf = J.cf && J.cf.handle ? J.cf : null, meta = (cf && cf.meta) || 3;
   const habs = S.rot.filter(t => !isCF(t)), cfT = S.rot.find(isCF);
+  /* hábitos semanais: quantas vezes cada um foi feito na semana (seg a dom) que começa em seg, pelo dia do hábito */
+  const recDia = t => (t.rec || '').split(':')[1] || t.done, recId = t => (t.rec || '').split(':')[0];
+  const naSemana = (id, seg) => D.feitas.filter(t => recId(t) === id && recDia(t) >= seg && recDia(t) <= addD(seg, 6)).length;
+  const SEG = addD(HOJE, -dow(HOJE)), sem = id => HJx.semanalDe(J, id);
   let h = '';
   if(cf || cfT){ const n = S.cfHoje, ok = n >= meta || (cfT && cfT.ok);
     h += `<div class="l-hb${ok ? ' ok' : ''}" style="--c:${NC(1)}"><span class="av" style="--c:${NC(1)};--s:22px">${ic('tra')}</span>
@@ -1727,19 +1732,35 @@ function habitosL(S){
       <span class="l-slots" title="${n} problema(s) hoje">${Array.from({length:meta}, (_,i) => `<i class="${n > i ? 'on' : ''}"></i>`).join('')}<span class="sep"></span>${[0,1,2].map(i => `<i class="bn${n > meta + i ? ' on' : ''}"></i>`).join('')}</span>
       <span class="l-auto">automático: conta os problemas aceitos no dia (+5 cada, até 6) · bater a meta dá +10</span></div>`; }
   h += habs.map(t => `<div class="l-hb${t.ok ? ' ok' : ''}" style="--c:${NC(4)}" data-ln="${t.n}"><button class="l-ck" style="--c:${NC(4)}" data-l="${t.ok ? 'reopen' : 'done'}" aria-label="${t.ok ? 'desmarcar' : 'marcar'}: ${esc(t.txt)}">${t.ok ? '✓' : ''}</button>
-      <span class="t">${esc(t.txt)}</span><span class="l-xp">+${xpDe({...t, done:HOJE})}</span></div>`).join('');
+      <span class="t">${esc(t.txt)}${sem(recId(t)) ? `<small>${sem(recId(t))}× por semana · ${naSemana(recId(t), SEG)}/${sem(recId(t))} nesta semana</small>` : ''}</span><span class="l-xp">+${xpDe({...t, done:HOJE})}</span></div>`).join('');
+  /* semanal com a meta da semana cumprida: o servidor não cria a linha de hoje; mostra como completo */
+  h += (J.habitos || []).filter(x => x.semana && !habs.some(t => recId(t) === x.id) && naSemana(x.id, SEG) >= x.semana).map(x => `<div class="l-hb ok" style="--c:${NC(4)}"><span class="l-ck" style="--c:${NC(4)}" aria-hidden="true">✓</span>
+      <span class="t">${esc(x.n)}<small>${x.semana}× por semana · semana completa</small></span><span></span></div>`).join('');
+  /* esqueci de marcar ontem: hábitos de hoje que não aparecem como feitos ontem; marcar conta para ontem (XP, Ten e heatmap) */
+  const ONT = addD(HOJE, -1), feitosOnt = new Set(D.feitas.filter(t => t.done === ONT && (t.rec||'').endsWith(':' + ONT)).map(t => t.rec.split(':')[0]));
+  const faltam = (J.habitos || []).filter(x => !feitosOnt.has(x.id) && !(x.semana && naSemana(x.id, addD(ONT, -dow(ONT))) >= x.semana));
+  if(faltam.length && D.feitas.some(t => t.done && t.done < HOJE)) h += UI.ontem   // quem começou hoje não tem ontem
+    ? `<div class="l-ont"><span class="sub">Marcar como feito <b>ontem</b>:</span>${faltam.map(x => `<button class="btn" data-ontem="${esc(x.id)}">${esc(x.n)}</button>`).join('')}<button class="go" data-ontemabre="0">fechar</button></div>`
+    : `<button class="go l-ontb" data-ontemabre="1">esqueci de marcar ontem</button>`;
   document.getElementById('l-hab').innerHTML = h || `<p class="sub" style="margin:0">Nenhum hábito. Adicione na aba Regras (digitação, leitura, exercício…) ou ligue o Codeforces.</p>`;
   /* heatmaps: 20 semanas, uma coluna por semana (seg → dom) */
   const ini = addD(HOJE, -dow(HOJE) - 7*19), DIAS = Array.from({length:140}, (_,i) => addD(ini, i));
   const grade = (cor, nivel, tt) => `<div class="l-hg" style="--c:${cor}">${DIAS.map(d => d > HOJE ? '<i class="fut"></i>' : `<i class="${nivel(d)}${d === HOJE ? ' hj' : ''}" title="${ddmm(d)} · ${tt(d)}"></i>`).join('')}</div>`;
-  const nh = Math.max(1, (J.habitos || []).length || new Set(D.feitas.filter(t => isRec(t) && !isCF(t)).map(t => (t.rec||'').split(':')[0])).size);
-  const hd = {}; for(const t of D.feitas) if(isRec(t) && !isCF(t) && t.done) hd[t.done] = (hd[t.done]||0) + 1;
+  /* "Hábitos" = só os diários (um quadradinho por dia); cada semanal ganha a sua linha, um quadradinho por semana */
+  const semanais = (J.habitos || []).filter(x => x.semana), ehSem = new Set(semanais.map(x => x.id));
+  const diarios = (J.habitos || []).filter(x => !x.semana);
+  const nh = Math.max(1, diarios.length || ((J.habitos || []).length ? 0 : new Set(D.feitas.filter(t => isRec(t) && !isCF(t)).map(recId)).size));
+  const hd = {}; for(const t of D.feitas) if(isRec(t) && !isCF(t) && t.done && !ehSem.has(recId(t))) hd[t.done] = (hd[t.done]||0) + 1;
+  const SEMS = Array.from({length:20}, (_,i) => addD(ini, 7*i));
+  const gradeSem = (x, cor) => `<div class="l-hg sem" style="--c:${cor}">${SEMS.map(s => { const n = naSemana(x.id, s), fut = s > HOJE;
+    return fut ? '<i class="fut"></i>' : `<i class="${lv(n / x.semana)}${s === SEG ? ' hj' : ''}" title="semana de ${ddmm(s)} · ${n} de ${x.semana}"></i>`; }).join('')}</div>`;
   const cfd = (D.cf && D.cf.por_dia) || {};
   const lv = r => r <= 0 ? '' : r < .34 ? 'h1' : r < .67 ? 'h2' : r < 1 ? 'h3' : 'h4';
   const leg = cor => `<div class="l-hl">menos ${['','h1','h2','h3','h4'].map(c => `<i style="background:${c ? `color-mix(in srgb,${cor} ${({h1:30,h2:55,h3:80,h4:100})[c]}%,var(--track))` : 'var(--track)'}"></i>`).join('')} mais</div>`;
   let H = `<div class="l-hm">
     <span class="nm">Ten<small>${S.ten.cur} dias · recorde ${S.ten.max}</small></span>${grade('var(--grn)', d => S.ten.st[d] === 'on' ? 'h4' : S.ten.st[d] === 'z' ? 'z' : '', d => S.ten.st[d] === 'on' ? 'ativo' : S.ten.st[d] === 'z' ? 'Zetsu' : 'vazio')}
-    <span class="nm">Hábitos<small>${nh} por dia</small></span>${grade(NC(4), d => lv((hd[d]||0)/nh), d => `${hd[d]||0} de ${nh}`)}`;
+    ${diarios.length || !(J.habitos || []).length ? `<span class="nm">Hábitos<small>${nh} por dia</small></span>${grade(NC(4), d => lv((hd[d]||0)/nh), d => `${hd[d]||0} de ${nh}`)}` : ''}
+    ${semanais.map(x => `<span class="nm">${esc(x.n)}<small>${x.semana}× por semana</small></span>${gradeSem(x, NC(4))}`).join('')}`;
   if(J.cf && J.cf.handle) H += `<span class="nm">Codeforces<small>${esc(J.cf.handle)} · meta ${meta}</small></span>${grade(NC(1), d => { const n = cfd[d]||0; return !n ? '' : n < meta ? (n < meta/2 ? 'h1' : 'h2') : n === meta ? 'h3' : 'h4'; }, d => `${cfd[d]||0} problema(s)`)}`;
   H += `</div>${leg('var(--soft)')}`;
   if(!(J.cf && J.cf.handle)) H += `<p class="sub" style="margin:10px 0 0">Faz Codeforces? Ligue em <button class="go" data-go="sys">Regras →</button> com o seu handle e ganhe o heatmap e o XP automáticos.</p>`;
@@ -1752,6 +1773,8 @@ document.addEventListener('click', async e => {
   const tp = q('[data-ltipo]'); if(tp){ LA.tipo = tp.dataset.ltipo; document.querySelectorAll('[data-ltipo]').forEach(b => b.setAttribute('aria-pressed', b === tp));
     if(LA.tipo === 'fac' && !document.getElementById('l-disc').value && BOSSES[0]) document.getElementById('l-disc').value = BOSSES[0].d; prevL(); return; }
   const du = q('[data-ldue]'); if(du){ LA.due = du.dataset.ldue; document.getElementById('l-date').value = ''; document.querySelectorAll('[data-ldue]').forEach(b => b.setAttribute('aria-pressed', b === du)); prevL(); return; }
+  const oa = q('[data-ontemabre]'); if(oa){ UI.ontem = oa.dataset.ontemabre === '1'; render(); return; }
+  const on = q('[data-ontem]'); if(on){ UI.ontem = false; acaoL(() => post('/api/ontem', {id:on.dataset.ontem}), 'Marcado como feito ontem'); return; }
   if(q('[data-lundo]')){ q('[data-lundo]').closest('.toast').remove(); acaoL(() => post('/api/undo', {}), ''); return; }
   if(q('#l-feitas summary')){ UI.ldone = !document.getElementById('l-feitas').open; return; }
   const b = q('[data-l]'); if(!b) return;
@@ -1775,10 +1798,16 @@ document.addEventListener('keydown', e => {
   if(e.key === 'Enter'){ e.preventDefault(); document.querySelector('[data-l="save"]').click(); }
   if(e.key === 'Escape'){ UI.ledit = null; render(); }
 });
-document.addEventListener('input', e => { if(e.target.id === 'l-txt') prevL(); });
+document.addEventListener('input', e => {
+  if(e.target.id === 'l-txt') prevL();
+  /* campos de data: dd/mm/aaaa, com as barras entrando sozinhas */
+  if(e.target.classList.contains('dt') && e.inputType && !e.inputType.startsWith('delete')){
+    const n = e.target.value.replace(/\D/g, '').slice(0, 8); e.target.value = n.length > 4 ? `${n.slice(0,2)}/${n.slice(2,4)}/${n.slice(4)}` : n.length > 2 ? `${n.slice(0,2)}/${n.slice(2)}` : n; }
+});
 document.addEventListener('change', e => {
   if(e.target.id === 'l-disc') prevL();
-  if(e.target.id === 'l-date'){ LA.due = e.target.value || ''; document.querySelectorAll('[data-ldue]').forEach(b => b.setAttribute('aria-pressed', false)); prevL(); }
+  if(e.target.id === 'l-date'){ const iso = HJx.isoData(e.target.value, HOJE); if(e.target.value.trim() && !iso){ toast(HJx.dataRuim('')); return; }
+    LA.due = iso; document.querySelectorAll('[data-ldue]').forEach(b => b.setAttribute('aria-pressed', false)); prevL(); }
 });
 document.getElementById('l-add').addEventListener('submit', async e => {
   e.preventDefault(); if(!document.getElementById('l-txt').value.trim()) return;
@@ -1880,4 +1909,6 @@ recarrega().then(() => tab((location.hash||'').slice(1))).catch(err => {
 });
 </script>
 <script src="guia.js"></script>
+<script src="chefes.js"></script>
+<script src="ia.js"></script>
 </body></html>

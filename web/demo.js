@@ -1,10 +1,10 @@
-/* Hunter.todo · modo demonstração. Só entra quando a página é aberta direto do arquivo (file://) ou com ?demo:
+/* Hunter.todo · modo demonstração. Só entra quando a página é aberta direto do arquivo (file://), com ?demo ou no GitHub Pages:
  * troca o fetch das rotas /api/... por um servidor de mentira na memória, com um jogador de exemplo.
  * Nada é gravado: recarregar a página volta ao começo. Com o servidor de verdade (servidor.py), este arquivo não faz nada.
  */
 (function(){
 'use strict';
-if(location.protocol !== 'file:' && !/[?&]demo\b/.test(location.search)) return;
+if(location.protocol !== 'file:' && !/[?&]demo\b/.test(location.search) && !/\.github\.io$/.test(location.hostname)) return;   // GitHub Pages: sempre demonstração
 
 const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const HOJE = iso(new Date());
@@ -53,8 +53,9 @@ for(let k = -45; k <= -1; k++){
   const n = 1 + Math.floor(rnd() * 4);
   for(let i = 0; i < n; i++) done.push(`x ${D(k)} ${D(k-2)} ${POOL[Math.floor(rnd() * POOL.length)]}`);
   if(rnd() < .75) done.push(`x ${D(k)} ${D(k)} Treino de digitação +rotina rec:h-a:${D(k)}`);
-  if(rnd() < .5) done.push(`x ${D(k)} ${D(k)} Leitura (20 min) +rotina rec:h-b:${D(k)}`);
+  if(rnd() < .5 && k !== -1) done.push(`x ${D(k)} ${D(k)} Leitura (20 min) +rotina rec:h-b:${D(k)}`);   // ontem sem leitura: mostra o "esqueci de marcar ontem"
   if(rnd() < .6) done.push(`x ${D(k)} ${D(k)} Codeforces 3 questões +rotina rec:cf:${D(k)}`);
+  if(rnd() < .3) done.push(`x ${D(k)} ${D(k)} Academia +rotina rec:h-c:${D(k)}`);   // semanal: 2× por semana
 }
 const cfDia = {}; for(let k = -40; k <= 0; k++) if(rnd() < .6) cfDia[D(k)] = 1 + Math.floor(rnd() * 5);
 
@@ -71,11 +72,12 @@ let todo = [
   `(A) ${HOJE} Codeforces 3 questões +rotina rec:cf:${HOJE}`,
   `(B) ${HOJE} Treino de digitação +rotina rec:h-a:${HOJE}`,
   `${HOJE} Leitura (20 min) +rotina rec:h-b:${HOJE}`,
+  `${HOJE} Academia +rotina rec:h-c:${HOJE}`,
   `x ${HOJE} ${D(-2)} Leitura: arquivos e streams em Java +fac.POO @estudo`,
   `x ${HOJE} ${D(-1)} Exercícios de séries de Taylor +fac.CALC2 @estudo`,
   '',
 ];
-let jogador = {configurado:false, tags:{}, habitos:[{id:'h-a', n:'Treino de digitação'}, {id:'h-b', n:'Leitura (20 min)'}], cf:{handle:'exemplo', meta:3}};   // começa sem configurar: a página abre o assistente da primeira entrada
+let jogador = {configurado:false, tags:{}, habitos:[{id:'h-a', n:'Treino de digitação'}, {id:'h-b', n:'Leitura (20 min)'}, {id:'h-c', n:'Academia', semana:2}], cf:{handle:'exemplo', meta:3}};   // começa sem configurar: a página abre o assistente da primeira entrada
 let notas = NOTAS, ajustes = '', estado = {spent:2500, own:['pal-simples','pal-gon'], equip:{theme:'simples'}, bought:{}, resg:[]};
 const narradas = [{no:'100', tipo:'semana', periodo:'semana passada', titulo:'O primeiro andar de verdade', texto:'Exemplo de carta narrada (com IA, opcional).', cronica:'Quem disse que a Arena se sobe de uma vez? Gon subiu de degrau em degrau, uma lista de cada vez.', escrita:D(-2), ic:'scroll'}];
 const undo = [];
@@ -88,7 +90,7 @@ function transformar(l, a, v){
   if(a === 'done'){ if(feita) throw new Error('a tarefa já está concluída'); return `x ${HOJE} ` + l.replace(PRI, ''); }
   if(a === 'reopen'){ if(!feita) throw new Error('a tarefa não está concluída'); return l.replace(DONE_RE, ''); }
   if(feita) throw new Error('tarefa concluída: reabra antes de alterar');
-  if(a === 'up'){ const m = l.match(PRI), i = ORDEM.indexOf(m ? m[1] : null); if(i <= 0) throw new Error('prioridade já está no limite'); return `(${ORDEM[i-1]}) ` + l.replace(PRI, ''); }
+  if(a === 'up'){ const m = l.match(PRI), i = m && ORDEM.includes(m[1]) ? ORDEM.indexOf(m[1]) : ORDEM.length - 1; if(i <= 0) throw new Error('prioridade já está no limite'); return `(${ORDEM[i-1]}) ` + l.replace(PRI, ''); }
   if(a === 'd1'){ const m = l.match(DUE), base = m && m[2] > HOJE ? m[2] : HOJE, d = new Date(base + 'T12:00:00'); d.setDate(d.getDate() + 1);
     return m ? l.replace(DUE, `$1due:${iso(d)}`) : `${l} due:${iso(d)}`; }
   if(a === 'edit'){ const m = l.match(/^(\([A-Z]\) )?(\d{4}-\d\d-\d\d )?/); return (m[1]||'') + (m[2]||'') + String(v).trim(); }
@@ -107,6 +109,7 @@ function rota(url, body){
   }
   if(url === '/api/add'){ const t = String(body.text||'').trim(); if(!t) throw new Error('texto vazio'); const l = HOJE + ' ' + t; todo.splice(todo.length - 1, 0, l); undo.push({from:null, to:l}); return {ok:true}; }
   if(url === '/api/undo'){ const op = undo.pop(); if(!op) throw new Error('nada para desfazer');
+    if(op.done){ const i = done.indexOf(op.to); if(i >= 0) done.splice(i, 1); return {ok:true}; }
     if(op.to === null) todo.splice(todo.length - 1, 0, op.from); else { const i = todo.indexOf(op.to); if(i < 0) throw new Error('a linha mudou'); if(op.from === null) todo.splice(i, 1); else todo[i] = op.from; }
     return {ok:true}; }
   if(url === '/api/config'){
@@ -122,13 +125,21 @@ function rota(url, body){
     todo = todo.map(l => primeira ? ajusta(l) : l); done.splice(0, done.length, ...done.map(l => primeira ? ajusta(l) : l).map(trocaH).filter(Boolean));
     const feitosHoje = new Set(todo.filter(l => DONE_RE.test(l)).map(l => (l.match(/rec:([\w-]+):/) || [])[1]).filter(Boolean));
     todo = todo.filter(l => !/rec:h-[\w-]+:/.test(l) || !l.includes(HOJE));
-    for(const h of habs) todo.splice(todo.length - 1, 0, (feitosHoje.has(h.id) ? `x ${HOJE} ` : '') + `${HOJE} ${h.n} ${hab} rec:${h.id}:${HOJE}`);
+    const seg = D(-((new Date(HOJE + 'T12:00:00').getDay() + 6) % 7)), naSem = id => done.filter(l => { const m = l.match(/rec:([\w-]+):(\S+)$/); return m && m[1] === id && m[2] >= seg; }).length;
+    for(const h of habs) if(!(h.semana && naSem(h.id) >= h.semana && !feitosHoje.has(h.id))) todo.splice(todo.length - 1, 0, (feitosHoje.has(h.id) ? `x ${HOJE} ` : '') + `${HOJE} ${h.n} ${hab} rec:${h.id}:${HOJE}`);
     if(!(j.cf && j.cf.handle)) todo = todo.filter(l => DONE_RE.test(l) || !l.includes(`rec:cf:${HOJE}`));
     else if(!todo.some(l => l.includes(`rec:cf:${HOJE}`))) todo.splice(todo.length - 1, 0, `(A) ${HOJE} Codeforces ${j.cf.meta} questões ${hab} rec:cf:${HOJE}`);
     if(body.avaliacoes != null){ AVALIACOES = String(body.avaliacoes); if(primeira) notas = ''; }
     jogador = JSON.parse(JSON.stringify(j));
     return {ok:true};
   }
+  if(url === '/api/ontem'){ const h = (jogador.habitos || []).find(x => x.id === body.id), o = D(-1); if(!h) throw new Error('hábito não encontrado');
+    if(done.some(l => l.includes(`rec:${h.id}:${o}`))) throw new Error('esse hábito já está marcado ontem');
+    const l = `x ${o} ${o} ${h.n} ${(jogador.tags && jogador.tags.hab) || '+rotina'} rec:${h.id}:${o}`; done.push(l); undo.push({from:null, to:l, done:true}); return {ok:true}; }
+  if(url === '/api/jogo/planos'){ if(body.avaliacoes != null) AVALIACOES = String(body.avaliacoes); if(body.notas != null) notas = String(body.notas); return {ok:true}; }
+  if(url === '/api/jogo/narrada'){ const c = body.carta || {}; if(!c.titulo || !c.texto) throw new Error('a carta precisa de título e texto');
+    const no = 'N-' + c.periodo, i = narradas.findIndex(x => x.no === no); const nova = {...c, no, escrita:HOJE, ic:c.ic || 'scroll'}; if(i >= 0) narradas[i] = nova; else narradas.push(nova); return {ok:true}; }
+  if(url === '/api/autostart') throw new Error('no modo demonstração não há servidor');
   if(url === '/api/jogo/nota'){ notas += `\n${HOJE} | ${body.disc} | ${body.aval} | ${String(body.nota).replace('.', ',')}${body.parcial ? ' | parcial' : ''}`; return {ok:true}; }
   if(url === '/api/jogo/estado'){ estado = JSON.parse(JSON.stringify(body.estado)); return {ok:true}; }
   if(url === '/api/jogo/ajuste'){ ajustes += `\n${HOJE} 12:00 | pendente | ${body.texto}`; return {ok:true}; }

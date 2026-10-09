@@ -69,6 +69,9 @@ const RYODAN = [['Chrollo','crown','O líder: rouba a técnica dos outros.'],['F
   ['Shizuku','vacuum','Aspira qualquer coisa e esquece o resto.'],['Kortopi','copy','Copia tudo, mas a cópia some.'],['Franklin','bullet','Rajada sem fim de exercícios.'],
   ['Phinks','wing','Cada giro do braço bate mais forte.'],['Pakunoda','spider','Lê as memórias: sabe o que você não estudou.'],['Bonolenov','cat','O som da batalha.']];
 const W = {editar:false, passo:0, nome:'', nick:'', av:'logo', tags:{}, habs:[], cfOn:false, cfH:'', cfM:3, disc:[], ini:'', fim:'', p1:40, p2:60, err:''};
+/* frequência do hábito: 0 = todo dia; 1 a 6 = vezes por semana (seg a dom) */
+const freqSel = (attr, v) => `<select ${attr} aria-label="Frequência">${[0,1,2,3,4,5,6].map(n => `<option value="${n}"${+v === n ? ' selected' : ''}>${n ? n + '× por semana' : 'todo dia'}</option>`).join('')}</select>`;
+const habsJSON = (nomes, freq) => nomes.map((n,i) => [String(n).trim(), +freq[i] || 0]).filter(([n]) => n).map(([n,f]) => f ? {id:slug(n), n, semana:f} : {id:slug(n), n});
 const slug = n => 'h-' + (norm(n).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 20) || 'habito');
 const HANDLE = /^[A-Za-z0-9_.-]{3,24}$/;
 function chefaoDe(d, i){
@@ -102,7 +105,8 @@ function iniciaW(){
   const [ini, fim] = j.semestre ? [j.semestre.ini, j.semestre.fim] : semestrePadrao();
   Object.assign(W, {passo:0, nome: j.nome && j.nome !== 'Hunter' ? j.nome : '', nick: j.nick || '', av: UI.avatar || 'logo', ini, fim, err:''});
   for(const t of TIPOS) if(!t.fixo) W.tags[t.k] = tagPadrao(t.k);
-  W.habs = (j.habitos && j.habitos.length ? j.habitos.map(h => h.n) : ['Treino de digitação', 'Leitura (20 min)']);
+  W.habs = (j.habitos && j.habitos.length ? j.habitos.map(h => h.n) : ['Treino de digitação', 'Leitura (20 min)', 'Academia']);
+  W.hf = (j.habitos && j.habitos.length ? j.habitos.map(h => h.semana || 0) : [0, 0, 2]);
   W.cfOn = !!(j.cf && j.cf.handle); W.cfH = (j.cf && j.cf.handle) || ''; W.cfM = (j.cf && j.cf.meta) || 3;
   W.disc = (j.disciplinas && j.disciplinas.length ? j.disciplinas : [{d:'', n:''}, {d:'', n:''}]).map(d => ({...d, n1: d.n1 || meio(ini, fim, .45), n2: d.n2 || meio(ini, fim, .95)}));
 }
@@ -138,8 +142,8 @@ function passoHTML(){
       <code>exemplo: ${esc(t.ex.replace('{tag}', tag || ''))}</code></div>`; }).join('')}</div>
     <p style="font-size:13px">Bônus: <b>×1,5</b> se concluir até o prazo (<span class="mono">due:</span>), ×1,5 na missão da semana e ×1,5 no chefão em fúria.</p>`;
   if(p === 3) return `<h3>Hábitos</h3>
-    <p>Hábitos são o que você quer fazer <b>todo dia</b>. Eles aparecem sozinhos na Lista a cada manhã, você marca à mão quando fizer, e cada um vale ${5} XP e conta para o Ten. Um heatmap mostra a sua constância.</p>
-    <div class="wz-disc">${W.habs.map((h,i) => `<div class="wz-row" style="grid-template-columns:minmax(0,1fr) 34px"><label>Hábito ${i + 1}<input id="wz-h-${i}" value="${esc(h)}" placeholder="ex.: Treino de digitação" maxlength="40"></label><button type="button" class="wz-x" data-wzhdel="${i}" aria-label="remover hábito">✕</button></div>`).join('')}</div>
+    <p>Hábitos são o que você quer fazer <b>todo dia</b> ou <b>algumas vezes por semana</b> (ex.: academia 2× por semana). Eles aparecem sozinhos na Lista, você marca à mão quando fizer, e cada um vale ${5} XP e conta para o Ten. O semanal aparece todo dia até você cumprir a meta da semana (seg a dom), e o heatmap dele conta por semana.</p>
+    <div class="wz-disc">${W.habs.map((h,i) => `<div class="wz-row" style="grid-template-columns:minmax(0,1fr) 150px 34px"><label>Hábito ${i + 1}<input id="wz-h-${i}" value="${esc(h)}" placeholder="ex.: Treino de digitação" maxlength="40"></label><label>Frequência${freqSel(`id="wz-hf-${i}"`, W.hf[i])}</label><button type="button" class="wz-x" data-wzhdel="${i}" aria-label="remover hábito">✕</button></div>`).join('')}</div>
     <div><button type="button" class="btn" data-wzhadd>+ hábito</button></div>
     <div class="wz-card" style="gap:10px">
       <b>${ic('tra')} Codeforces</b>
@@ -151,8 +155,8 @@ function passoHTML(){
   if(p === 4) return `<h3>Disciplinas do semestre</h3>
     <p>Cada disciplina vira um chefão do Genei Ryodan. Por enquanto, toda matéria tem duas avaliações: <b>N1</b> e <b>N2</b>. Depois você pode detalhar (provas, listas, trabalhos) no arquivo <span class="mono">avaliacoes.txt</span>.</p>
     <div class="wz-f" style="grid-template-columns:repeat(4,minmax(0,1fr))">
-      <label>Início do semestre<input type="date" id="wz-ini" value="${W.ini}"></label>
-      <label>Fim do semestre<input type="date" id="wz-fim" value="${W.fim}"></label>
+      <label>Início do semestre<input class="dt" inputmode="numeric" maxlength="10" placeholder="${HJ.fmtTxt()}" id="wz-ini" value="${HJ.brData(W.ini)}"></label>
+      <label>Fim do semestre<input class="dt" inputmode="numeric" maxlength="10" placeholder="${HJ.fmtTxt()}" id="wz-fim" value="${HJ.brData(W.fim)}"></label>
       <label>Peso da N1<input id="wz-p1" inputmode="numeric" value="${W.p1}"></label>
       <label>Peso da N2<input id="wz-p2" inputmode="numeric" value="${W.p2}"></label>
     </div>
@@ -160,14 +164,14 @@ function passoHTML(){
       <label>Sigla<input id="wz-d-${i}" value="${esc(d.d)}" placeholder="CALC2" maxlength="8"${d.det ? ' readonly title="disciplina com plano detalhado: a sigla fica"' : ''}></label>
       <label>Nome<input id="wz-n-${i}" value="${esc(d.n)}" placeholder="Cálculo II" maxlength="50"></label>
       ${d.det ? `<span class="sub" style="grid-column:span 2;align-self:center">plano detalhado (${d.det} avaliações): datas e pesos ficam no <span class="mono">avaliacoes.txt</span></span>`
-        : `<label>Data da N1<input type="date" id="wz-n1-${i}" value="${d.n1}"></label>
-      <label>Data da N2<input type="date" id="wz-n2-${i}" value="${d.n2}"></label>`}
+        : `<label>Data da N1<input class="dt" inputmode="numeric" maxlength="10" placeholder="${HJ.fmtTxt()}" id="wz-n1-${i}" value="${HJ.brData(d.n1)}"></label>
+      <label>Data da N2<input class="dt" inputmode="numeric" maxlength="10" placeholder="${HJ.fmtTxt()}" id="wz-n2-${i}" value="${HJ.brData(d.n2)}"></label>`}
       <button type="button" class="wz-x" data-wzdel="${i}" title="remover" aria-label="remover disciplina">✕</button>
       <span class="boss">chefão: ${r[0]} · ${esc(r[2])}${d.notas ? ` · <b style="color:var(--amb)">${d.notas} nota(s) registrada(s)</b>` : ''}</span></div>`; }).join('')}</div>
     <div><button type="button" class="btn" data-wzadd>+ disciplina</button></div>
     <p style="font-size:13px">A sigla vira a tag da disciplina: <span class="mono">+fac.SIGLA</span>. Não sabe a data da prova ainda? Deixe a sugerida e ajuste quando souber.</p>`;
   return `<h3>Tudo pronto, ${esc(W.nome.split(' ')[0] || 'Hunter')}</h3>
-    <p>Você começa no andar 1, com a paleta Simples, ${W.disc.filter(d => d.d).length} chefões pela frente e ${W.habs.filter(Boolean).length + (W.cfOn ? 1 : 0)} hábitos por dia. Anote as tarefas na <b>Lista</b>, conclua, e veja a Arena subir.</p>
+    <p>Você começa no andar 1, com a paleta Simples, ${W.disc.filter(d => d.d).length} chefões pela frente e ${W.habs.filter(Boolean).length + (W.cfOn ? 1 : 0)} hábitos. Anote as tarefas na <b>Lista</b>, conclua, e veja a Arena subir.</p>
     <p>Quer um tour rápido? Ele mostra o que cada bloco de cada aba quer dizer. Dá para rever a qualquer hora pelo botão <b>? tutorial</b>.</p>`;
 }
 function coleta(){
@@ -176,12 +180,14 @@ function coleta(){
   else if(W.passo === 0){ W.nome = (v('wz-nome')||'').trim(); W.nick = (v('wz-nick')||'').trim().toLowerCase(); }
   if(!W.editar && W.passo === 2) for(const t of TIPOS) if(!t.fixo) W.tags[t.k] = limpaTag(t.k, v('wz-tag-' + t.k));
   if(!W.editar && W.passo === 3){
-    W.habs = W.habs.map((h,i) => (v('wz-h-' + i) || '').trim());
+    W.habs = W.habs.map((h,i) => (v('wz-h-' + i) || '').trim()); W.hf = W.habs.map((h,i) => +(v('wz-hf-' + i) || 0));
     const cf = document.getElementById('wz-cf'); W.cfOn = !!(cf && cf.checked); W.cfH = (v('wz-cfh') || '').trim(); W.cfM = parseInt(v('wz-cfm')) || 0;
   }
   if(W.passo === 4 || W.editar){
-    W.ini = v('wz-ini') || W.ini; W.fim = v('wz-fim') || W.fim; W.p1 = +v('wz-p1') || 0; W.p2 = +v('wz-p2') || 0;
-    W.disc = W.disc.map((d,i) => ({...d, d:(v('wz-d-'+i)||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,''), n:(v('wz-n-'+i)||'').trim(), n1:v('wz-n1-'+i)||d.n1, n2:v('wz-n2-'+i)||d.n2}));
+    const dt = (id, antes) => { const x = v(id); if(x == null) return antes; const r = HJ.isoData(x, HOJE); if(!r) W.dtRuim = x; return r || antes; };
+    W.dtRuim = '';
+    W.ini = dt('wz-ini', W.ini); W.fim = dt('wz-fim', W.fim); W.p1 = +v('wz-p1') || 0; W.p2 = +v('wz-p2') || 0;
+    W.disc = W.disc.map((d,i) => ({...d, d:(v('wz-d-'+i)||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,''), n:(v('wz-n-'+i)||'').trim(), n1:dt('wz-n1-'+i, d.n1), n2:dt('wz-n2-'+i, d.n2)}));
   }
 }
 function valida(){
@@ -203,6 +209,7 @@ function valida(){
   }
   if(W.passo === 4 || W.editar){
     const ds = W.disc.filter(d => d.d);
+    if(W.dtRuim) return HJ.dataRuim(W.dtRuim);
     if(!ds.length) return 'Cadastre pelo menos uma disciplina (a sigla basta).';
     if(new Set(ds.map(d => d.d)).size !== ds.length) return 'Há duas disciplinas com a mesma sigla.';
     if(!(W.ini < W.fim)) return 'O fim do semestre precisa ser depois do início.';
@@ -251,7 +258,7 @@ function abreDisciplinas(){
 }
 async function salvaW(tour){
   const jogador = {configurado:true, nome:W.nome, nick:W.nick, tags:W.tags, semestre:{ini:W.ini, fim:W.fim},
-    disciplinas:W.disc.filter(d => d.d).map(d => ({d:d.d, n:d.n, n1:d.n1, n2:d.n2})), habitos:W.habs.filter(Boolean).map(n => ({id:slug(n), n})), cf: W.cfOn ? {handle:W.cfH, meta:W.cfM} : null};
+    disciplinas:W.disc.filter(d => d.d).map(d => ({d:d.d, n:d.n, n1:d.n1, n2:d.n2})), habitos:habsJSON(W.habs, W.hf), cf: W.cfOn ? {handle:W.cfH, meta:W.cfM} : null};
   try { await post('/api/config', {jogador, avaliacoes: avaliacoesTxt()}); await recarrega(); }
   catch(e){ W.err = 'Não salvou: ' + e.message; desenhaW(); return; }
   UI.avatar = W.av; EST.tour = tour ? {} : Object.fromEntries(['l','b','b2','d2','bk','ms','sys'].map(k => [k,1])); salvaUI();
@@ -266,8 +273,8 @@ document.addEventListener('click', e => {
   const av = q('[data-wzav]'); if(av){ coleta(); W.av = av.dataset.wzav; desenhaW(); return; }
   if(q('[data-wzadd]')){ coleta(); const n = W.disc.length; W.disc.push({d:'', n:'', n1:meio(W.ini, W.fim, .45), n2:meio(W.ini, W.fim, .95)}); desenhaW(); const i = document.getElementById('wz-d-' + n); if(i) i.focus(); return; }
   const dl = q('[data-wzdel]'); if(dl){ coleta(); W.disc.splice(+dl.dataset.wzdel, 1); if(!W.disc.length) W.disc.push({d:'', n:'', n1:meio(W.ini, W.fim, .45), n2:meio(W.ini, W.fim, .95)}); desenhaW(); return; }
-  if(q('[data-wzhadd]')){ coleta(); W.habs.push(''); desenhaW(); const i = document.getElementById('wz-h-' + (W.habs.length - 1)); if(i) i.focus(); return; }
-  const hd = q('[data-wzhdel]'); if(hd){ coleta(); W.habs.splice(+hd.dataset.wzhdel, 1); desenhaW(); return; }
+  if(q('[data-wzhadd]')){ coleta(); W.habs.push(''); W.hf.push(0); desenhaW(); const i = document.getElementById('wz-h-' + (W.habs.length - 1)); if(i) i.focus(); return; }
+  const hd = q('[data-wzhdel]'); if(hd){ coleta(); W.habs.splice(+hd.dataset.wzhdel, 1); W.hf.splice(+hd.dataset.wzhdel, 1); desenhaW(); return; }
   if(e.target.id === 'wz-cf'){ ['wz-cfh','wz-cfm'].forEach(id => document.getElementById(id).disabled = !e.target.checked); if(e.target.checked) document.getElementById('wz-cfh').focus(); return; }
   if(q('[data-wzsair]')){ document.getElementById('wz').remove(); W.editar = false; return; }
   if(q('[data-wzdisc]')){ coleta(); W.err = valida(); if(W.err){ desenhaW(); return; }
@@ -381,16 +388,17 @@ tab = t => {
 let CF2 = null;   // rascunho; null = sem edição em andamento
 function rascunhoCfg(){
   const j = CTX.JOG;
-  return CF2 || (CF2 = {nome:j.nome || '', nick:j.nick || '', habs:(j.habitos || []).map(h => h.n), cfOn:!!(j.cf && j.cf.handle), cfH:(j.cf && j.cf.handle) || '', cfM:(j.cf && j.cf.meta) || 3,
+  return CF2 || (CF2 = {nome:j.nome || '', nick:j.nick || '', habs:(j.habitos || []).map(h => h.n), hf:(j.habitos || []).map(h => h.semana || 0), datas:j.datas === 'mdy' ? 'mdy' : 'dmy', cfOn:!!(j.cf && j.cf.handle), cfH:(j.cf && j.cf.handle) || '', cfM:(j.cf && j.cf.meta) || 3,
     tags:Object.fromEntries(TIPOS.filter(t => !t.fixo).map(t => [t.k, (j.tags && j.tags[t.k]) || tagPadrao(t.k)])), err:'', novo:''});
 }
 function cfgHTML(){
   const c = rascunhoCfg();
   return `<div class="card wz" id="cfg" style="box-shadow:none;border-radius:14px"><h2><span class="c">~/</span>seu jogo · mudanças básicas</h2>
     <div class="wz-body" style="padding:4px 0 0">
-      <div class="wz-f"><label>Nome<input data-cfg="nome" value="${esc(c.nome)}" maxlength="40"></label><label>Nickname<input data-cfg="nick" value="${esc(c.nick)}" maxlength="20"></label></div>
-      <label>Hábitos (aparecem todo dia na Lista, marcados à mão)</label>
-      <div class="wz-disc">${c.habs.map((h,i) => `<div class="wz-row" style="grid-template-columns:minmax(0,1fr) 34px"><input data-cfgh="${i}" value="${esc(h)}" aria-label="Hábito ${i + 1}" maxlength="40"><button type="button" class="wz-x" data-cfghdel="${i}" aria-label="remover hábito">✕</button></div>`).join('')}
+      <div class="wz-f"><label>Nome<input data-cfg="nome" value="${esc(c.nome)}" maxlength="40"></label><label>Nickname<input data-cfg="nick" value="${esc(c.nick)}" maxlength="20"></label>
+        <label>Datas<select data-cfg="datas"><option value="dmy"${c.datas === 'dmy' ? ' selected' : ''}>dia/mês/ano · 31/12/2026</option><option value="mdy"${c.datas === 'mdy' ? ' selected' : ''}>mês/dia/ano · 12/31/2026</option></select></label></div>
+      <label>Hábitos (aparecem na Lista e você marca à mão; o semanal some quando a meta da semana é cumprida)</label>
+      <div class="wz-disc">${c.habs.map((h,i) => `<div class="wz-row" style="grid-template-columns:minmax(0,1fr) 150px 34px"><input data-cfgh="${i}" value="${esc(h)}" aria-label="Hábito ${i + 1}" maxlength="40">${freqSel(`data-cfghf="${i}"`, c.hf[i])}<button type="button" class="wz-x" data-cfghdel="${i}" aria-label="remover hábito">✕</button></div>`).join('')}
         <div class="wz-row" style="grid-template-columns:minmax(0,1fr) auto"><input id="cfg-novo" value="${esc(c.novo)}" placeholder="novo hábito, ex.: 30 min de exercício" maxlength="40"><button type="button" class="btn" data-cfghadd>+ adicionar</button></div></div>
       <div class="wz-f" style="grid-template-columns:auto minmax(0,1fr) 120px;align-items:end">
         <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font:14px var(--f-ui);color:var(--ink);padding-bottom:9px"><input type="checkbox" data-cfg="cfOn"${c.cfOn ? ' checked' : ''}> Codeforces</label>
@@ -403,19 +411,42 @@ function cfgHTML(){
     </div></div>`;
 }
 const rSys0 = RENDER.sys;
-RENDER.sys = S => { rSys0(S); document.getElementById('sys-root').insertAdjacentHTML('afterbegin', cfgHTML()); };
+/* iniciar com o computador: só aparece com o servidor de verdade (no modo demonstração não há servidor) */
+function srvHTML(){
+  const s = CTX.SRV; if(!s) return '';
+  const onde = {linux:'um serviço do usuário (systemd)', windows:'um atalho na pasta Inicializar do Windows', mac:'um LaunchAgent do macOS'}[s.sistema] || '';
+  return `<div class="card wz" id="cfg-srv" style="box-shadow:none;border-radius:14px"><h2><span class="c">~/</span>servidor · versão ${esc(s.versao)}</h2>
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <label style="display:flex;gap:8px;align-items:center;font:14px var(--f-ui);color:var(--ink)"><input type="checkbox" data-srvauto${s.auto ? ' checked' : ''}> Iniciar com o computador</label>
+      <span class="sub" style="flex:1;min-width:240px;margin:0">${s.auto
+        ? `Ligado: o servidor roda em segundo plano e você só abre <b>${esc(location.origin)}</b> (vale salvar nos favoritos). Desligue quando quiser.`
+        : `Desligado: é preciso rodar <code>servidor.py</code> toda vez. Ligado, ele inicia sozinho com o computador (${onde}) e gasta quase nada parado.`}</span></div></div>`;
+}
+RENDER.sys = S => { rSys0(S); document.getElementById('sys-root').insertAdjacentHTML('afterbegin', cfgHTML() + srvHTML()); };
+document.addEventListener('change', async e => {
+  if(!e.target.matches('[data-srvauto]')) return;
+  const ligar = e.target.checked; e.target.disabled = true;
+  try {
+    const r = await post('/api/autostart', {ligar});
+    toast(esc(r.msg));
+    if(r.recarregar){ await new Promise(ok => setTimeout(ok, 2500)); for(let i = 0; i < 10; i++){ try { await recarrega(); break; } catch(err){ await new Promise(ok => setTimeout(ok, 1000)); } } }
+    else await recarrega();
+  } catch(err){ toast('Não deu: ' + esc(err.message)); }
+  render();
+});
 document.addEventListener('input', e => {
   if(!CF2) return; const t = e.target, d = t.dataset;
   if(d.cfg) CF2[d.cfg] = t.type === 'checkbox' ? t.checked : t.value;
   if(d.cfgh !== undefined) CF2.habs[+d.cfgh] = t.value;
+  if(d.cfghf !== undefined) CF2.hf[+d.cfghf] = +t.value;
   if(d.cfgt) CF2.tags[d.cfgt] = t.value;
   if(t.id === 'cfg-novo') CF2.novo = t.value;
   if(d.cfg === 'cfOn') render();
 });
 document.addEventListener('click', async e => {
   const q = s => e.target.closest(s);
-  if(q('[data-cfghadd]')){ const c = rascunhoCfg(), n = c.novo.trim(); if(n){ c.habs.push(n); c.novo = ''; } render(); const i = document.getElementById('cfg-novo'); if(i) i.focus(); return; }
-  const hd = q('[data-cfghdel]'); if(hd){ rascunhoCfg().habs.splice(+hd.dataset.cfghdel, 1); render(); return; }
+  if(q('[data-cfghadd]')){ const c = rascunhoCfg(), n = c.novo.trim(); if(n){ c.habs.push(n); c.hf.push(0); c.novo = ''; } render(); const i = document.getElementById('cfg-novo'); if(i) i.focus(); return; }
+  const hd = q('[data-cfghdel]'); if(hd){ const c = rascunhoCfg(); c.habs.splice(+hd.dataset.cfghdel, 1); c.hf.splice(+hd.dataset.cfghdel, 1); render(); return; }
   if(q('[data-wzdiscabre]')){ abreDisciplinas(); return; }
   if(q('[data-cfgreset]')){ CF2 = null; render(); return; }
   if(!q('[data-cfgsave]')) return;
@@ -427,7 +458,7 @@ document.addEventListener('click', async e => {
     : c.cfOn && !HANDLE.test(c.cfH.trim()) ? 'Handle do Codeforces inválido.' : c.cfOn && !(meta >= 1 && meta <= 6) ? 'A meta do Codeforces vai de 1 a 6.'
     : vs.some(x => !x) || new Set(vs).size !== vs.length ? 'Cada tag precisa de um nome diferente.' : '';
   if(c.err){ render(); return; }
-  const jogador = {...CTX.JOG, nome:c.nome.trim(), nick, tags, habitos:habs.map(n => ({id:slug(n), n})), cf: c.cfOn ? {handle:c.cfH.trim(), meta} : null};
+  const jogador = {...CTX.JOG, nome:c.nome.trim(), nick, datas:c.datas, tags, habitos:habsJSON(c.habs, c.hf), cf: c.cfOn ? {handle:c.cfH.trim(), meta} : null};
   try { await post('/api/config', {jogador}); await recarrega(); } catch(err){ c.err = 'Não salvou: ' + err.message; render(); return; }
   CF2 = null; render(); toast('Salvo <small>os hábitos novos aparecem na Lista</small>');
 });

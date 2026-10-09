@@ -5,10 +5,26 @@ Um jogo (tema Hunter x Hunter) em cima do [todo.txt](https://github.com/todotxt/
 **Jenny** na loja. Roda no seu computador, sem conta e sem internet (só o Codeforces, se você ligar, consulta a API).
 Precisa apenas do Python 3.8 ou mais novo, no Linux, Windows ou Mac.
 
-> **Versão 0.1 (teste).** Testada no Linux. No Windows e no Mac ainda não foi testada: se algo der errado, avise.
+> **Versão 0.2 (teste).** Testada no Linux. No Windows e no Mac ainda não foi testada (inclusive o instalador e o
+> início automático): se algo der errado, avise. O que está planejado fica em [`docs/PENDENCIAS.md`](docs/PENDENCIAS.md).
 > O desenho do modo em grupo (placar **Torre Trick**) está em [`docs/COLETIVO.md`](docs/COLETIVO.md) e ainda não existe.
 
-## Instalação
+## Instalação rápida (um comando)
+
+Precisa do Python 3 (veja abaixo como conferir). Abra um terminal e rode:
+
+| Sistema | Comando |
+|---|---|
+| Linux / Mac | `curl -fsSL https://raw.githubusercontent.com/CaioParanaiba/todo-engine/main/instalar.sh \| sh` |
+| Windows (PowerShell) | `irm https://raw.githubusercontent.com/CaioParanaiba/todo-engine/main/instalar.ps1 \| iex` |
+
+Ele baixa o jogo na pasta `todo-engine` dentro da sua pasta de usuário (ou atualiza, se já estiver lá) e abre o jogo. Na
+primeira vez, o terminal explica o que é o servidor e pergunta se ele deve **iniciar sempre com o computador**; dizendo
+sim, é só abrir http://127.0.0.1:8642/ quando quiser jogar. Rodar o mesmo comando de novo atualiza o jogo.
+
+Prefere fazer à mão? Siga os passos abaixo.
+
+## Instalação passo a passo
 
 ### 1. Tenha o Python 3
 
@@ -40,6 +56,17 @@ as tags, os hábitos e as disciplinas do semestre, e no fim oferece um tour por 
 **Deixe a janela do terminal aberta enquanto joga.** Para parar, aperte `Ctrl+C` nela. Para jogar de novo, rode o mesmo
 comando.
 
+### 4. (Opcional) Iniciar com o computador
+
+Para não precisar rodar o comando toda vez, ligue **"Iniciar com o computador"** na aba **Regras**. O servidor passa a
+rodar em segundo plano (pode fechar o terminal) e a iniciar sozinho quando você liga o PC. Depois é só abrir
+**http://127.0.0.1:8642/**; vale salvar nos favoritos. Parado, ele gasta quase nada.
+
+Para desligar, desmarque a mesma opção. Pelo terminal também dá: `python3 servidor.py --instalar` e
+`python3 servidor.py --desinstalar` (no Windows, `py` no lugar de `python3`).
+
+Se mudar a pasta do jogo de lugar, desligue e ligue de novo para o início automático achar o caminho novo.
+
 ## Onde ficam os seus dados
 
 Tudo o que é seu fica numa pasta separada do código:
@@ -53,9 +80,11 @@ Tudo o que é seu fica numa pasta separada do código:
 |---|---|
 | `todo.txt`, `done.txt` | suas tarefas, no formato todo.txt (as concluídas vão para o `done.txt` no dia seguinte) |
 | `jogador.json` | nome, tags, hábitos, disciplinas e Codeforces |
-| `avaliacoes.txt`, `notas.txt` | plano de avaliação das disciplinas e notas lançadas |
+| `avaliacoes.txt`, `notas.txt` | plano de avaliação das disciplinas e notas lançadas (o editor do chefão guarda a versão anterior em `.bak`) |
+| `narradas.json` | cartas narradas do Book |
 | `estado.json` | loja, Jenny gasta e o que está equipado |
 | `avatares/` | coloque arquivos PNG aqui para ter mais fotos de perfil |
+| `servidor.log` | o que o servidor anotou quando roda em segundo plano |
 
 Para fazer backup, copie essa pasta. Para usar outra pasta: `python3 servidor.py --dados CAMINHO`.
 
@@ -68,8 +97,10 @@ Atualizar nunca mexe nos seus dados, porque eles ficam fora da pasta do código.
 
 ## Sem instalar: modo demonstração
 
-Abra o arquivo `web/index.html` direto no navegador (dois cliques). Entra um jogador de exemplo, com histórico, e nada é
-gravado: recarregar a página volta ao começo.
+**Online:** https://caioparanaiba.github.io/todo-engine/ (atualiza sozinho a cada mudança na página).
+**No computador:** abra o arquivo `web/index.html` direto no navegador (dois cliques).
+
+Entra um jogador de exemplo, com histórico, e nada é gravado: recarregar a página volta ao começo.
 
 ## Problemas comuns
 
@@ -77,6 +108,8 @@ gravado: recarregar a página volta ao começo.
   Rode o instalador de novo, escolha **Modify** e marque a opção.
 - **"A porta 8642 está ocupada":** outro programa usa essa porta. Rode com outra: `python3 servidor.py --porta 8643`.
 - **O navegador não abriu:** abra http://127.0.0.1:8642/ à mão.
+- **Esqueci de marcar um hábito ontem:** no card "hábitos de hoje", clique em **esqueci de marcar ontem**. Ele conta
+  para ontem (XP, Ten e heatmap). Só vale para o dia anterior.
 - **Codeforces não conta:** confira o handle na aba Regras. A contagem atualiza a cada 10 minutos e precisa de internet.
 
 ## Como funciona por dentro
@@ -84,9 +117,10 @@ gravado: recarregar a página volta ao começo.
 - `servidor.py`: servidor local (só a biblioteca padrão do Python). Lê e grava os seus arquivos, cria os hábitos de cada dia
   e consulta o Codeforces. Só aceita conexões do próprio computador.
 - `web/index.html`: a página do jogo. `web/motor.js`: todas as regras e contas. `web/guia.js`: assistente e tutorial.
-  `web/demo.js`: o servidor de mentira do modo demonstração.
-- **IA opcional.** O jogo funciona sem IA. Uma versão futura trará prompts prontos para quem quiser usar uma (plano de
-  ensino da disciplina, cartas narradas).
+  `web/chefes.js`: editor de avaliações e notas. `web/ia.js`: pedidos para a IA. `web/demo.js`: o servidor de mentira do
+  modo demonstração (também usado no GitHub Pages).
+- **IA opcional.** O jogo funciona sem IA. Com uma IA qualquer, o jogo monta os pedidos (plano de ensino → provas e
+  trabalhos, cartas narradas, anotações de aula → tarefas) e você cola a resposta de volta. Veja [`IA.md`](IA.md).
 
 ## Licença
 

@@ -1517,6 +1517,20 @@ def vigia_codigo():
             pass
 
 
+def vira_dia():
+    """Virou o dia com o servidor ligado: cria as recorrentes de hoje sem esperar a página abrir
+    (quem também usa o todo.txt em outro lugar, como o todo.sh ou um painel, já as encontra lá)."""
+    dia = hoje()
+    while True:
+        time.sleep(60)
+        if hoje() != dia:
+            try:
+                arruma_dia()
+                dia = hoje()
+            except Exception as e:   # arquivo ocupado ou ilegível: tenta de novo no próximo minuto
+                log("virada do dia:", repr(e))
+
+
 def main():
     global DADOS, TODO_DIR
     ap = argparse.ArgumentParser(description="Hunter.todo: servidor local do jogo")
@@ -1582,6 +1596,7 @@ def main():
         sys.exit(f"A porta {a.porta} está ocupada por outro programa. Rode com outra: python3 servidor.py --porta 8643")
     EXEC["srv"] = srv
     threading.Thread(target=vigia_codigo, daemon=True).start()
+    threading.Thread(target=vira_dia, daemon=True).start()
     arruma_dia()
     print(f"Hunter.todo {VERSAO} ({VERSAO_NOME}) em {url}")
     print(f"Seus dados: {DADOS}" + (f" (tarefas em {TODO_DIR})" if TODO_DIR != DADOS else ""))

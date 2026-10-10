@@ -1,0 +1,35 @@
+name: 🐛 Bug
+description: Algo no jogo não funciona como devia.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        O repositório é público: **nunca anexe o `todo.txt` nem o ZIP de "baixar meus dados"**. Um print ajuda muito: arraste a imagem para uma das caixas de texto (imagem até 10 MB).
+  - type: textarea
+    id: o-que
+    attributes:
+      label: O que aconteceu?
+      description: O que você fez e o que apareceu na tela.
+    validations:
+      required: true
+  - type: textarea
+    id: esperava
+    attributes:
+      label: O que você esperava?
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do jogo
+      description: Aba Novidades → sua versão.
+      placeholder: "0.5.1"
+  - type: input
+    id: sistema
+    attributes:
+      label: Sistema e navegador
+      placeholder: "Linux · Firefox"
+  - type: input
+    id: aba
+    attributes:
+      label: Aba do jogo
+      placeholder: "Lista"

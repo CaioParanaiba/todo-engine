@@ -1,0 +1,30 @@
+name: ❓ Dúvida
+description: Não entendeu como algo funciona.
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        O repositório é público: **nunca anexe o `todo.txt` nem o ZIP de "baixar meus dados"**. Um print ajuda muito: arraste a imagem para uma das caixas de texto (imagem até 10 MB).
+  - type: textarea
+    id: duvida
+    attributes:
+      label: Qual é a dúvida?
+    validations:
+      required: true
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do jogo
+      description: Aba Novidades → sua versão.
+      placeholder: "0.5.1"
+  - type: input
+    id: sistema
+    attributes:
+      label: Sistema e navegador
+      placeholder: "Linux · Firefox"
+  - type: input
+    id: aba
+    attributes:
+      label: Aba do jogo
+      placeholder: "Lista"

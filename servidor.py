@@ -63,7 +63,7 @@ from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSAO = "0.5"
+VERSAO = "0.5.1"
 VERSAO_NOME = "atualização das conquistas"   # nome da série 0.5 (aparece em Configurações → servidor)
 REPO = Path(__file__).resolve().parent
 WEB = REPO / "web"
@@ -1282,7 +1282,8 @@ ESTATICOS = {"/": ("index.html", "text/html; charset=utf-8"), "/index.html": ("i
              "/motor.js": ("motor.js", "text/javascript; charset=utf-8"), "/guia.js": ("guia.js", "text/javascript; charset=utf-8"),
              "/demo.js": ("demo.js", "text/javascript; charset=utf-8"), "/chefes.js": ("chefes.js", "text/javascript; charset=utf-8"),
              "/ia.js": ("ia.js", "text/javascript; charset=utf-8"), "/conquistas.js": ("conquistas.js", "text/javascript; charset=utf-8"),
-             "/novidades.js": ("novidades.js", "text/javascript; charset=utf-8")}
+             "/novidades.js": ("novidades.js", "text/javascript; charset=utf-8"),
+             "/feedback.js": ("feedback.js", "text/javascript; charset=utf-8")}
 
 
 class H(BaseHTTPRequestHandler):

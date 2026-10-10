@@ -107,18 +107,21 @@ página vinha nova (lida do disco) e o servidor ficava velho, sem as rotas da IA
 **Ao lançar uma versão:** `VERSAO` (servidor.py) e `VERSAO_PAGINA` (web/index.html) juntos, a versão nova no topo do
 `web/novidades.js` (é ela que avisa os amigos) e a linha da tabela de versões no README.
 
-## Planejado para a v0.5.1 (feedback dos amigos por issues; sai primeiro na `beta`)
-1. **Botão de feedback no jogo:** tipo (🐛 bug · 💡 ideia · ❓ dúvida) + texto → abre
-   `github.com/CaioParanaiba/todo-engine/issues/new?title=...&body=...&labels=...` já preenchida com versão (`VERSAO`),
-   sistema e aba de origem. Nada de token: o jogador confere e clica em "Submit" (precisa de conta no GitHub).
-   Alternativa sem conta: botão "copiar texto" para mandar no WhatsApp.
-2. **Formulários de issue** em `.github/ISSUE_TEMPLATE/` (`bug.yml`, `ideia.yml`) com campos guiados (o que aconteceu,
-   o que esperava, versão).
-3. **Aviso de anexos:** o link pré-preenchido não leva arquivo; print/arquivo se arrasta na página da issue (imagem até
-   10 MB, outros até 25 MB). O repositório é público: nunca anexar o `todo.txt` nem o ZIP de "baixar meus dados".
+## v0.5.1 · feedback por issues (na `beta`, em avaliação)
 
-Em aberto: aba própria "Feedback" ou ícone fixo no canto que abre em qualquer aba (sugestão: ícone, sabe a aba de
-origem); labels `ideia`/`dúvida` criadas no GitHub (`bug` já existe) ou prefixo `[ideia]` no título.
+- **`web/feedback.js`:** tipo (🐛 bug · 💡 ideia · ❓ dúvida), resumo, texto (bug: + "o que esperava"; ideia: + "por que
+  ajudaria") e a aba de origem → abre `issues/new?template=X.yml&title=...&<id do campo>=...` já preenchida com versão
+  (`(beta)` pelo `HJ_NOV.canal()`), sistema e navegador. Nada de token: o jogador confere e clica em *Create*.
+  *copiar texto* para quem não tem conta (mandar por mensagem). Ao abrir no GitHub o rascunho é limpo.
+- **Tipo em português, label do GitHub em inglês:** cada formulário de `.github/ISSUE_TEMPLATE/` aplica a label que já
+  existe no repositório: `bug.yml` → `bug`, `ideia.yml` → `enhancement`, `duvida.yml` → `question`. Os campos `versao`,
+  `sistema` e `aba` vêm preenchidos pela URL (pelo `id`). O aviso de anexos (repositório público; nunca o `todo.txt` nem o
+  ZIP) está no jogo e no topo de cada formulário.
+- **Duas entradas para o Caio avaliar na beta:** o 💬 fixo no canto direito (abre um painel em qualquer aba; Esc ou clique
+  fora fecha e o rascunho fica) e a aba **Feedback** no menu (o mesmo formulário + "como funciona"). **Decidir qual fica**
+  antes do merge na `main` (ou as duas).
+- Falta: tutorial da aba Feedback no `guia.js` (se a aba ficar); conferir no GitHub de verdade que o `template=` preenche os
+  campos (só dá depois do push dos `.yml`).
 
 ## Planejado para a v0.6
 

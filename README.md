@@ -6,7 +6,7 @@ Um jogo (tema Hunter x Hunter) em cima do [todo.txt](https://github.com/todotxt/
 conferência de versão nova (uma leitura do GitHub a cada 6 horas) saem do computador.
 Precisa apenas do Python 3.8 ou mais novo, no Linux, Windows ou Mac.
 
-> **Versão 0.5.** A 0.3 foi testada no Linux por amigos, com foco em usabilidade. No Windows e no Mac ainda não foi testada
+> **Versão 0.5.1.** A 0.3 foi testada no Linux por amigos, com foco em usabilidade. No Windows e no Mac ainda não foi testada
 > (inclusive o instalador e o início automático): se algo der errado, avise. O que está planejado fica em [`docs/PENDENCIAS.md`](docs/PENDENCIAS.md).
 > O desenho do modo em grupo (placar **Torre Trick**) está em [`docs/COLETIVO.md`](docs/COLETIVO.md) e ainda não existe.
 
@@ -136,7 +136,8 @@ Entra um jogador de exemplo, com histórico, e nada é gravado: recarregar a pá
 - `web/index.html`: a página do jogo. `web/motor.js`: todas as regras e contas. `web/guia.js`: assistente e tutorial.
   `web/chefes.js`: editor de avaliações e notas. `web/ia.js`: pedidos para a IA e a IA ligada. `web/conquistas.js`:
   conquistas criadas pela IA (as regras ficam no motor). `web/novidades.js`: aba Novidades, com a lista de versões que o
-  servidor lê do GitHub para avisar de versão nova (ao lançar uma, ponha-a no topo). `web/demo.js`: o servidor de mentira do
+  servidor lê do GitHub para avisar de versão nova (ao lançar uma, ponha-a no topo). `web/feedback.js`: bug, ideia ou
+  dúvida vira uma issue preenchida pelos formulários de `.github/ISSUE_TEMPLATE/`. `web/demo.js`: o servidor de mentira do
   modo demonstração (também usado no GitHub Pages).
 - **IA opcional.** O jogo funciona sem IA. Com uma IA de terminal instalada (Claude Code, Codex ou Gemini CLI), ligue-a
   em **Configurações → IA**: o jogo passa a ler os planos de ensino (pasta `~/.hunter-todo/planos/`), aplicar a caixa de entrada
@@ -147,6 +148,7 @@ Entra um jogador de exemplo, com histórico, e nada é gravado: recarregar a pá
 
 | Versão | Nome | O que trouxe |
 |---|---|---|
+| 0.5.1 | atualização das conquistas | feedback pelo jogo: bug, ideia ou dúvida vira uma issue já preenchida no GitHub (💬 no canto ou aba Feedback) |
 | 0.5 | **atualização das conquistas** | conquistas criadas pela IA (recompensa em Jenny ou feitiço), aba Novidades com aviso de versão nova e atualizar com um clique, instalador sem git que atualiza |
 | 0.4 · 0.4.1 · 0.4.2 | **atualização da IA** | IA de terminal ligada no próprio jogo (planos de ensino, caixa de entrada, cartas do Book, tipo da tarefa), tipos ao lado do campo, Codeforces à mão, aba Configurações, pesos acima de 100%, salvar vários planos de uma vez, "fiz de novo" nos hábitos semanais |
 | 0.3 · 0.3.1 | | ligação tarefa → avaliação, Torre Trick (explicação), backup, prêmios reais, prioridade sugerida |

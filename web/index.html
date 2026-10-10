@@ -1267,6 +1267,8 @@ details.l-grp summary{cursor:pointer;list-style:none} details.l-grp summary::-we
     <div id="gnav-cfg"></div><div class="sys" id="cfg-root"></div></section>
   <section id="v-nv" hidden>
     <div id="gnav-nv"></div><div class="sys" id="nv-root"></div></section>
+  <section id="v-fb" hidden>
+    <div id="gnav-fb"></div><div class="sys" id="fb-root"></div></section>
   <section id="v-sys" hidden>
     <div id="gnav-sys"></div><div class="sys" id="sys-root"></div></section>
 </div>
@@ -1304,7 +1306,7 @@ function sync(api){
   avisoVersao();
 }
 /* a página vem do disco a cada pedido, mas o servidor em segundo plano pode estar com o código antigo (atualizou sem reiniciar) */
-const VERSAO_PAGINA = '0.5';
+const VERSAO_PAGINA = '0.5.1';
 function avisoVersao(){
   const v = CTX && CTX.SRV && CTX.SRV.versao, el = document.getElementById('aviso-versao');
   if(!v || v === VERSAO_PAGINA){ if(el) el.remove(); return; }
@@ -1995,8 +1997,8 @@ document.getElementById('l-add').addEventListener('submit', async e => {
 });
 
 /* ---------- abas e interação (página real) ---------- */
-const TABS = ['l','b','b2','d2','bk','ms','px','sys','cfg','tt','nv'];
-const RENDER = {l:rL, b:rB, b2:rB2, d2:rD2, bk:rBK, ms:rMS, px:rPX, sys:rSys, cfg:rCfg, tt:rTT, nv:() => {}};   // nv: novidades.js
+const TABS = ['l','b','b2','d2','bk','ms','px','sys','cfg','tt','nv','fb'];
+const RENDER = {l:rL, b:rB, b2:rB2, d2:rD2, bk:rBK, ms:rMS, px:rPX, sys:rSys, cfg:rCfg, tt:rTT, nv:() => {}, fb:() => {}};   // nv: novidades.js · fb: feedback.js
 let cur = 'l';
 function render(){
   if(!CTX) return;
@@ -2103,4 +2105,5 @@ recarrega().then(() => tab((location.hash||'').slice(1))).catch(err => {
 <script src="ia.js"></script>
 <script src="conquistas.js"></script>
 <script src="novidades.js"></script>
+<script src="feedback.js"></script>
 </body></html>

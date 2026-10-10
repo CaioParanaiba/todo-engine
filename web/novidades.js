@@ -5,6 +5,11 @@
  * Carregado depois de conquistas.js: usa CTX, EST, UI, cur, tab, render, post, recarrega, esc, ic, toast, salvaUI, gnav, VERSAO_PAGINA.
  */
 window.HJ_NOVIDADES = /*NOVIDADES*/[
+  {"versao": "0.5.1", "nome": "atualização das conquistas", "data": "2026-10-10",
+   "resumo": "Achou um bug ou teve uma ideia? Agora dá para mandar direto do jogo.",
+   "itens": [
+     {"ic": "scroll", "t": "Feedback pelo jogo", "d": "O 💬 no canto da tela (ou a aba Feedback) manda um bug, uma ideia ou uma dúvida. O jogo abre a página do GitHub já preenchida com a sua versão, o sistema e a aba; é só conferir e clicar em Create. Sem conta no GitHub, copie o texto e mande por mensagem."}
+   ]},
   {"versao": "0.5", "nome": "atualização das conquistas", "data": "2026-10-09",
    "resumo": "A IA passa a criar desafios feitos para você, e o jogo agora avisa quando sai versão nova.",
    "itens": [
@@ -171,6 +176,6 @@ function boasNovas(){
   to.innerHTML = `${ic('antenna')} Jogo atualizado para a ${esc(v.versao)} <small>${esc(v.resumo || '')}</small><button class="l-undo" data-go="nv">ver o que mudou</button>`;
   document.body.appendChild(to); setTimeout(() => to.remove(), 12000);
 }
-window.HJ_NOV = {confere};
+window.HJ_NOV = {confere, canal: () => AT && AT.canal};
 (function tenta(){ if(!CTX){ setTimeout(tenta, 500); return; } if(cur === 'nv') render(); setTimeout(boasNovas, 1500); setTimeout(() => confere(false), 1800); })();
 })();

@@ -107,6 +107,19 @@ página vinha nova (lida do disco) e o servidor ficava velho, sem as rotas da IA
 **Ao lançar uma versão:** `VERSAO` (servidor.py) e `VERSAO_PAGINA` (web/index.html) juntos, a versão nova no topo do
 `web/novidades.js` (é ela que avisa os amigos) e a linha da tabela de versões no README.
 
+## Planejado para a v0.5.1 (feedback dos amigos por issues; sai primeiro na `beta`)
+1. **Botão de feedback no jogo:** tipo (🐛 bug · 💡 ideia · ❓ dúvida) + texto → abre
+   `github.com/CaioParanaiba/todo-engine/issues/new?title=...&body=...&labels=...` já preenchida com versão (`VERSAO`),
+   sistema e aba de origem. Nada de token: o jogador confere e clica em "Submit" (precisa de conta no GitHub).
+   Alternativa sem conta: botão "copiar texto" para mandar no WhatsApp.
+2. **Formulários de issue** em `.github/ISSUE_TEMPLATE/` (`bug.yml`, `ideia.yml`) com campos guiados (o que aconteceu,
+   o que esperava, versão).
+3. **Aviso de anexos:** o link pré-preenchido não leva arquivo; print/arquivo se arrasta na página da issue (imagem até
+   10 MB, outros até 25 MB). O repositório é público: nunca anexar o `todo.txt` nem o ZIP de "baixar meus dados".
+
+Em aberto: aba própria "Feedback" ou ícone fixo no canto que abre em qualquer aba (sugestão: ícone, sabe a aba de
+origem); labels `ideia`/`dúvida` criadas no GitHub (`bug` já existe) ou prefixo `[ideia]` no título.
+
 ## Planejado para a v0.6
 
 1. Testar Codex e Gemini CLI com a IA ligada (e o Windows: `.cmd` do npm). Os nomes de modelo do pedido leve podem mudar.

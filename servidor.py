@@ -5,7 +5,8 @@ Uso:  python3 servidor.py [--porta 8642] [--dados PASTA] [--sem-navegador] [--in
 
 Serve a página do jogo (web/) em http://127.0.0.1:PORTA/ e grava os dados do jogador numa pasta separada do código
 (padrão ~/.hunter-todo/, ou a variável HUNTER_DADOS). Atualizar o código (git pull ou ZIP novo) nunca mexe nela:
-  todo.txt, done.txt        tarefas no formato todo.txt (as concluídas de dias anteriores vão para o done.txt)
+  todo.txt, done.txt        tarefas no formato todo.txt (as concluídas de dias anteriores vão para o done.txt);
+                            quem já tem um todo.txt em outra pasta usa --todo PASTA (ou HUNTER_TODO) e o jogo lê e grava lá
   jogador.json              nome, tags, hábitos, disciplinas e Codeforces (o assistente da primeira entrada grava)
   avaliacoes.txt, notas.txt plano de avaliação das disciplinas e notas lançadas
   estado.json               loja, carteira, o que está equipado e os prêmios reais do jogador
@@ -67,6 +68,7 @@ VERSAO_NOME = "atualização das conquistas"   # nome da série 0.5 (aparece em 
 REPO = Path(__file__).resolve().parent
 WEB = REPO / "web"
 DADOS = Path()   # definido em main()
+TODO_DIR = Path()   # pasta do todo.txt e do done.txt: a de dados, ou a do --todo
 lock = threading.RLock()
 undo_stack = []
 
@@ -82,14 +84,18 @@ def log(*a):
 
 
 # ---------- arquivos ----------
+def caminho(nome):
+    return (TODO_DIR if nome in ("todo.txt", "done.txt") else DADOS) / nome
+
+
 def ler_txt(nome):
-    f = DADOS / nome
+    f = caminho(nome)
     return f.read_text(encoding="utf-8") if f.exists() else ""
 
 
 def gravar_txt(nome, texto):
     """Grava num .tmp e troca de uma vez: um corte de energia nunca deixa o arquivo pela metade."""
-    f = DADOS / nome
+    f = caminho(nome)
     tmp = f.with_name(f.name + ".tmp")
     tmp.write_text(texto, encoding="utf-8")
     os.replace(tmp, f)
@@ -704,7 +710,7 @@ def api_jogo_planos(d):
         novos[nome] = t if t.endswith("\n") or not t else t + "\n"
     with lock:
         for nome, t in novos.items():
-            if (DADOS / nome).exists():
+            if caminho(nome).exists():
                 gravar_txt(nome + ".bak", ler_txt(nome))
             gravar_txt(nome, t)
     return {"ok": True}
@@ -838,7 +844,19 @@ def api_conquistas(d):
 
 # ---------- atualização: confere no GitHub se há versão nova e, se o jogador pedir, atualiza ----------
 GITHUB = "https://github.com/CaioParanaiba/todo-engine"
-RAW = os.environ.get("HUNTER_RAW") or "https://raw.githubusercontent.com/CaioParanaiba/todo-engine/main/"   # HUNTER_RAW: outro endereço, para testar
+RAW = os.environ.get("HUNTER_RAW") or ""   # HUNTER_RAW: outro endereço, para testar; vazio = a branch do canal
+
+
+def canal():
+    """Branch que esta cópia segue: "beta" numa cópia git na branch beta (o autor testa as versões antes), senão "main"."""
+    if metodo_atualizar() == "git":
+        try:
+            r = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, timeout=10)
+            if r.stdout.strip() == "beta":
+                return "beta"
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return "main"
 ATUAL = {"quando": 0.0, "remota": None, "erro": ""}
 atual_lock = threading.Lock()
 
@@ -860,7 +878,7 @@ def confere_github(forcar=False):
         if not forcar and time.time() - ATUAL["quando"] < 6 * 3600:
             return
         try:
-            with urllib.request.urlopen(urllib.request.Request(RAW + "web/novidades.js", headers={"User-Agent": "hunter-todo/" + VERSAO}), timeout=8) as r:
+            with urllib.request.urlopen(urllib.request.Request((RAW or f"https://raw.githubusercontent.com/CaioParanaiba/todo-engine/{canal()}/") + "web/novidades.js", headers={"User-Agent": "hunter-todo/" + VERSAO}), timeout=8) as r:
                 ATUAL.update(remota=novidades_de(r.read(400_000).decode("utf-8")), erro="")
         except urllib.error.HTTPError as e:   # 404: a versão publicada ainda não tem o novidades.js (é anterior à 0.5)
             ATUAL.update(remota=[], erro="" if e.code == 404 else "o GitHub não respondeu direito")
@@ -877,7 +895,7 @@ def metodo_atualizar():
 def api_atualizacao_get(forcar):
     confere_github(forcar)
     novas = [x for x in (ATUAL["remota"] or []) if vtupla(x["versao"]) > vtupla(VERSAO)]
-    return {"ok": True, "versao": VERSAO, "nome": VERSAO_NOME, "novas": novas, "erro": ATUAL["erro"], "metodo": metodo_atualizar(),
+    return {"ok": True, "versao": VERSAO, "nome": VERSAO_NOME, "canal": canal(), "novas": novas, "erro": ATUAL["erro"], "metodo": metodo_atualizar(),
             "conferido": time.strftime("%Y-%m-%d %H:%M", time.localtime(ATUAL["quando"])) if ATUAL["quando"] else ""}
 
 
@@ -932,6 +950,10 @@ def backup():
         for f in sorted(DADOS.rglob("*")):
             if f.is_file() and f.name != "servidor.log":
                 z.write(f, f.relative_to(DADOS).as_posix())
+        if TODO_DIR != DADOS:   # todo.txt em outra pasta (--todo): vai junto no ZIP
+            for nome in ("todo.txt", "done.txt"):
+                if caminho(nome).is_file():
+                    z.write(caminho(nome), nome)
     return buf.getvalue()
 
 
@@ -1152,7 +1174,8 @@ def comando_fundo():
     exe = Path(sys.executable)
     if sistema() == "windows" and exe.with_name("pythonw.exe").exists():
         exe = exe.with_name("pythonw.exe")   # sem janela de terminal
-    return [str(exe), str(REPO / "servidor.py"), "--fundo", "--porta", str(EXEC["porta"]), "--dados", str(DADOS)]
+    return [str(exe), str(REPO / "servidor.py"), "--fundo", "--porta", str(EXEC["porta"]), "--dados", str(DADOS)] + (
+        ["--todo", str(TODO_DIR)] if TODO_DIR != DADOS else [])
 
 
 def arquivo_auto():
@@ -1382,7 +1405,7 @@ def boas_vindas(a, url):
   Bem-vindo ao Hunter.todo {VERSAO}
 {linha}
 O jogo roda no seu computador. Este programa (o "servidor") guarda as suas
-tarefas em {DADOS}
+tarefas em {TODO_DIR}
 e mostra o jogo no navegador, em {url}
 
 Ele precisa estar ligado enquanto você joga. Você escolhe:
@@ -1495,11 +1518,13 @@ def vigia_codigo():
 
 
 def main():
-    global DADOS
+    global DADOS, TODO_DIR
     ap = argparse.ArgumentParser(description="Hunter.todo: servidor local do jogo")
     ap.add_argument("--porta", type=int, default=int(os.environ.get("HUNTER_PORTA") or 8642))
     ap.add_argument("--dados", default=os.environ.get("HUNTER_DADOS") or str(Path.home() / ".hunter-todo"),
                     help="pasta dos seus dados (padrão: ~/.hunter-todo)")
+    ap.add_argument("--todo", default=os.environ.get("HUNTER_TODO") or "",
+                    help="pasta de um todo.txt que você já usa (padrão: a pasta de dados)")
     ap.add_argument("--sem-navegador", action="store_true", help="não abre o navegador")
     ap.add_argument("--instalar", action="store_true", help="passa a iniciar o servidor junto com o computador, em segundo plano")
     ap.add_argument("--desinstalar", action="store_true", help="deixa de iniciar junto com o computador")
@@ -1510,6 +1535,9 @@ def main():
     DADOS = Path(a.dados).expanduser().resolve()
     DADOS.mkdir(parents=True, exist_ok=True)
     (DADOS / "avatares").mkdir(exist_ok=True)
+    TODO_DIR = Path(a.todo).expanduser().resolve() if a.todo else DADOS
+    if not TODO_DIR.is_dir():
+        sys.exit(f"A pasta do --todo não existe: {TODO_DIR}")
     EXEC.update(porta=a.porta, fundo=a.fundo)
     url = f"http://127.0.0.1:{a.porta}/"
     if a.instalar or a.desinstalar:
@@ -1530,7 +1558,7 @@ def main():
             f.unlink()
         sys.stdout = sys.stderr = open(f, "a", encoding="utf-8", buffering=1)
     for nome in ("todo.txt", "done.txt"):
-        if not (DADOS / nome).exists():
+        if not caminho(nome).exists():
             gravar_txt(nome, "")
     H.porta = a.porta
     antigo = ping(a.porta)
@@ -1556,7 +1584,7 @@ def main():
     threading.Thread(target=vigia_codigo, daemon=True).start()
     arruma_dia()
     print(f"Hunter.todo {VERSAO} ({VERSAO_NOME}) em {url}")
-    print(f"Seus dados: {DADOS}")
+    print(f"Seus dados: {DADOS}" + (f" (tarefas em {TODO_DIR})" if TODO_DIR != DADOS else ""))
     if not a.fundo:
         print("Deixe esta janela aberta enquanto joga. Para parar: Ctrl+C.")
         if not auto_ligado():

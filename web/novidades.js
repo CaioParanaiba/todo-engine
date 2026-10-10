@@ -132,7 +132,7 @@ function rNV(){
   const v = NOV.find(x => x.versao === VERSAO_PAGINA) || NOV[0], [a, b] = String(v.versao).split(/\.(.*)/s);
   const novas = temNova() ? AT.novas.map(x => ({...x, futura:true})) : [];
   document.getElementById('nv-root').innerHTML = `<div class="nv">
-    <div class="card nv-hero" id="nv-hero"><div class="nv-ver"><p class="cap">sua versão</p><div class="num">${esc(a)}<span>.${esc(b || '0')}</span></div><div class="nome">${esc(v.nome || '')}</div><p>${esc(v.resumo || '')}</p></div>
+    <div class="card nv-hero" id="nv-hero"><div class="nv-ver"><p class="cap">sua versão</p><div class="num">${esc(a)}<span>.${esc(b || '0')}</span></div><div class="nome">${esc(v.nome || '')}${AT && AT.canal === 'beta' ? ' · canal beta' : ''}</div><p>${esc(v.resumo || '')}</p></div>
       <div class="nv-st" id="nv-st">${statusHTML()}</div></div>
     <h2 class="h" style="font:700 20px var(--f-hud);margin:8px 0 0">O que mudou em cada versão</h2>
     <div class="nv-tl" id="nv-lista">${novas.map((x, i) => versaoHTML(x, i).replace('<div class="topo">', '<div class="topo"><em>ainda não instalada</em>')).join('')}${NOV.map((x, i) => versaoHTML(x, i + (novas.length ? 1 : 0))).join('')}</div></div>`;

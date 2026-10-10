@@ -89,7 +89,7 @@ Tudo o que é seu fica numa pasta separada do código:
 | `avatares/` | coloque arquivos PNG aqui para ter mais fotos de perfil |
 | `servidor.log` | o que o servidor anotou quando roda em segundo plano |
 
-Para fazer backup, use o botão **baixar meus dados** na aba Configurações (um ZIP da pasta) ou copie a pasta. Para usar outra pasta: `python3 servidor.py --dados CAMINHO`.
+Para fazer backup, use o botão **baixar meus dados** na aba Configurações (um ZIP da pasta) ou copie a pasta. Para usar outra pasta: `python3 servidor.py --dados CAMINHO`. Se você já tem um todo.txt em outra pasta (com o todo.sh ou outro app), use `--todo PASTA`: o jogo lê e grava o `todo.txt` e o `done.txt` de lá, e o resto continua na pasta de dados.
 
 ## Atualizar
 

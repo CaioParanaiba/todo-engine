@@ -148,7 +148,7 @@ Entra um jogador de exemplo, com histórico, e nada é gravado: recarregar a pá
 
 | Versão | Nome | O que trouxe |
 |---|---|---|
-| 0.5.1 | atualização das conquistas | feedback pelo jogo: bug, ideia ou dúvida vira uma issue já preenchida no GitHub (💬 no canto ou aba Feedback) |
+| 0.5.1 | atualização das conquistas | feedback pelo jogo: bug, ideia ou dúvida vira uma issue já preenchida no GitHub (balão no canto da tela) |
 | 0.5 | **atualização das conquistas** | conquistas criadas pela IA (recompensa em Jenny ou feitiço), aba Novidades com aviso de versão nova e atualizar com um clique, instalador sem git que atualiza |
 | 0.4 · 0.4.1 · 0.4.2 | **atualização da IA** | IA de terminal ligada no próprio jogo (planos de ensino, caixa de entrada, cartas do Book, tipo da tarefa), tipos ao lado do campo, Codeforces à mão, aba Configurações, pesos acima de 100%, salvar vários planos de uma vez, "fiz de novo" nos hábitos semanais |
 | 0.3 · 0.3.1 | | ligação tarefa → avaliação, Torre Trick (explicação), backup, prêmios reais, prioridade sugerida |

@@ -107,21 +107,17 @@ página vinha nova (lida do disco) e o servidor ficava velho, sem as rotas da IA
 **Ao lançar uma versão:** `VERSAO` (servidor.py) e `VERSAO_PAGINA` (web/index.html) juntos, a versão nova no topo do
 `web/novidades.js` (é ela que avisa os amigos) e a linha da tabela de versões no README.
 
-## v0.5.1 · feedback por issues (na `beta`, em avaliação)
-
-- **`web/feedback.js`:** tipo (🐛 bug · 💡 ideia · ❓ dúvida), resumo, texto (bug: + "o que esperava"; ideia: + "por que
-  ajudaria") e a aba de origem → abre `issues/new?template=X.yml&title=...&<id do campo>=...` já preenchida com versão
-  (`(beta)` pelo `HJ_NOV.canal()`), sistema e navegador. Nada de token: o jogador confere e clica em *Create*.
-  *copiar texto* para quem não tem conta (mandar por mensagem). Ao abrir no GitHub o rascunho é limpo.
-- **Tipo em português, label do GitHub em inglês:** cada formulário de `.github/ISSUE_TEMPLATE/` aplica a label que já
-  existe no repositório: `bug.yml` → `bug`, `ideia.yml` → `enhancement`, `duvida.yml` → `question`. Os campos `versao`,
-  `sistema` e `aba` vêm preenchidos pela URL (pelo `id`). O aviso de anexos (repositório público; nunca o `todo.txt` nem o
-  ZIP) está no jogo e no topo de cada formulário.
-- **Duas entradas para o Caio avaliar na beta:** o 💬 fixo no canto direito (abre um painel em qualquer aba; Esc ou clique
-  fora fecha e o rascunho fica) e a aba **Feedback** no menu (o mesmo formulário + "como funciona"). **Decidir qual fica**
-  antes do merge na `main` (ou as duas).
-- Falta: tutorial da aba Feedback no `guia.js` (se a aba ficar); conferir no GitHub de verdade que o `template=` preenche os
-  campos (só dá depois do push dos `.yml`).
+**v0.5.1** publicada em 10/10/2026 (tag `v0.5.1`): feedback pelo jogo.
+- **`web/feedback.js`:** o balão fixo no canto direito (ícone `fb`, em qualquer aba) abre um painel com o tipo (bug ·
+  ideia · dúvida, ícones `bug`, `ideia`, `duvida`), resumo, texto (bug: + "o que esperava"; ideia: + "por que ajudaria")
+  e a aba de origem → `issues/new?template=X.yml&title=...&<id do campo>=...` com versão (`(beta)` pelo
+  `HJ_NOV.canal()`), sistema e navegador. Sem token: o jogador confere e clica em *Create*. *Copiar texto* para quem não
+  tem conta. A aba Feedback testada na beta saiu: ficou só o balão.
+- **Tipo em português, label em inglês:** os formulários de `.github/ISSUE_TEMPLATE/` aplicam as labels que já existem
+  (`bug.yml` → `bug`, `ideia.yml` → `enhancement`, `duvida.yml` → `question`); o link com `labels=` só valeria para quem
+  tem escrita no repositório. **O GitHub só lê os formulários da `main`**: na beta o link abria uma issue vazia.
+- **Conferir agora** forçava nada (o `parse_qs` descartava `?agora`); corrigido. Quem está na 0.5 só vê a 0.5.1 quando
+  o cache de 6 h vencer.
 
 ## Planejado para a v0.6
 

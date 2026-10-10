@@ -8,7 +8,7 @@ window.HJ_NOVIDADES = /*NOVIDADES*/[
   {"versao": "0.5.1", "nome": "atualização das conquistas", "data": "2026-10-10",
    "resumo": "Achou um bug ou teve uma ideia? Agora dá para mandar direto do jogo.",
    "itens": [
-     {"ic": "scroll", "t": "Feedback pelo jogo", "d": "O 💬 no canto da tela (ou a aba Feedback) manda um bug, uma ideia ou uma dúvida. O jogo abre a página do GitHub já preenchida com a sua versão, o sistema e a aba; é só conferir e clicar em Create. Sem conta no GitHub, copie o texto e mande por mensagem."}
+     {"ic": "fb", "t": "Feedback pelo jogo", "d": "O balão no canto direito da tela, em qualquer aba, manda um bug, uma ideia ou uma dúvida. O jogo abre a página do GitHub já preenchida com a sua versão, o sistema e a aba; é só conferir e clicar em Create. Sem conta no GitHub, copie o texto e mande por mensagem."}
    ]},
   {"versao": "0.5", "nome": "atualização das conquistas", "data": "2026-10-09",
    "resumo": "A IA passa a criar desafios feitos para você, e o jogo agora avisa quando sai versão nova.",

@@ -1345,7 +1345,7 @@ class H(BaseHTTPRequestHandler):
             self.end_headers()
             return self.wfile.write(corpo)
         if caminho == "/api/atualizacao":
-            return self._json(200, api_atualizacao_get("agora" in urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)))
+            return self._json(200, api_atualizacao_get("agora" in urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query, keep_blank_values=True)))
         if caminho in ("/api/ia", "/api/ia/rodar"):
             q = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
             try:

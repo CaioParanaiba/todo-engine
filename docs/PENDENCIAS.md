@@ -18,6 +18,13 @@ O `guia.js` roda num escopo fechado: no roteiro, abra o tutorial clicando em `[d
 numa chamada separada. Depois de mexer em `web/`, rode `python3 ferramentas/standalone.py` (gera o `docs/prototipo.html`);
 o Pages atualiza a cada push.
 
+**Branches: `main` e `beta`.** A `main` é a versão estável: é a que o instalador baixa e a que o botão "Atualizar agora"
+confere. A `beta` é onde as versões novas são testadas em uso real antes de sair, e pode quebrar; nenhum instalador
+aponta para ela (uma cópia git na branch beta confere as novidades da beta: `canal()` no `servidor.py`).
+Fluxo de uma versão: desenvolver e testar na `beta` → push na `beta` → usar a versão de verdade por 1 ou 2 dias →
+merge da `beta` na `main` + tag `vX.Y`. Só o merge na `main` avisa os jogadores. Nunca dar push de trabalho novo direto na `main`.
+**Ao lançar:** `VERSAO` (servidor.py) + `VERSAO_PAGINA` (web/index.html) + topo do `web/novidades.js` + tabela de versões do README.
+
 **v0.3.1** publicada em 09/10/2026: prioridade no formulário e seta de descer na Lista, e o `IA.md` com o modo agente.
 
 **v0.4 · "atualização da IA"** publicada em 09/10/2026 (tag `v0.4`, falta o teste dos amigos). Entraram nela:

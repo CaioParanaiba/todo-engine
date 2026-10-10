@@ -63,7 +63,7 @@ from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSAO = "0.5.1"
+VERSAO = "0.5.2"
 VERSAO_NOME = "atualização das conquistas"   # nome da série 0.5 (aparece em Configurações → servidor)
 REPO = Path(__file__).resolve().parent
 WEB = REPO / "web"
@@ -742,12 +742,16 @@ def api_jogo_narrada(d):
     return {"ok": True, "no": carta["no"]}
 
 
+RECIBOS = ("notasJ", "furias", "acertos")   # bônus de nota, períodos de fúria e acertos (recibos() no web/motor.js)
+
+
 def api_jogo_estado(d):
     e = d.get("estado")
     if not isinstance(e, dict):
         raise Erro("estado inválido")
     ok = {"spent": (int, float), "cofreUsado": (int, float), "own": list, "resg": list, "bought": dict, "usados": dict, "usos": list,
-          "equip": dict, "tour": dict, "premios": list, "cofreMes": (int, float), "visto": str}
+          "equip": dict, "tour": dict, "premios": list, "cofreMes": (int, float), "visto": str,
+          "notasJ": dict, "furias": dict, "acertos": dict}
     for k, v in e.items():
         if k not in ok or not isinstance(v, ok[k]):
             raise Erro(f"campo inválido no estado: {k}")
@@ -757,10 +761,14 @@ def api_jogo_estado(d):
             raise Erro("prêmio inválido: precisa de nome (até 80 letras) e preço")
     if len(e.get("premios", [])) > 60 or e.get("cofreMes", 0) < 0:
         raise Erro("prêmios demais (máx. 60) ou cofre negativo")
-    corpo = json.dumps(e, ensure_ascii=False, indent=1)
-    if len(corpo) > 60000:
-        raise Erro("estado grande demais", 413)
     with lock:
+        antigo = ler_json("estado.json", {})
+        for k in RECIBOS:   # recibos da carteira: uma aba antiga aberta não apaga o que outra já gravou
+            if isinstance(antigo, dict) and isinstance(antigo.get(k), dict):
+                e[k] = {**antigo[k], **e.get(k, {})}
+        corpo = json.dumps(e, ensure_ascii=False, indent=1)
+        if len(corpo) > 60000:
+            raise Erro("estado grande demais", 413)
         gravar_txt("estado.json", corpo + "\n")
     return {"ok": True}
 

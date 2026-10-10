@@ -1305,10 +1305,16 @@ function sync(api){
   const e = EST.equip; Object.assign(UI, {theme:e.theme, fx:e.fx||[], bg:e.bg||'', frame:e.frame||'', title:e.title||'', avatar:e.avatar||'logo', lic:e.lic||'l2', hud:e.hud||'logo'}); Object.assign(UI.skin, e.skin||{});
   if(!BOSSES.some(b => b.d === UI.bsel)) UI.bsel = BOSSES[0] ? BOSSES[0].d : '';
   if(!BOSSES.some(b => b.d === UI.mapsel)) UI.mapsel = UI.bsel;
-  avisoVersao();
+  avisoVersao(); guardaRecibos();
+}
+/* bônus de nota, períodos de fúria e o acerto da 0.5.2 ficam gravados no estado.json (recibos() no motor.js) */
+function guardaRecibos(){
+  const r = estado().rec; if(!r.mudou) return;
+  Object.assign(EST, {notasJ:r.notasJ, furias:r.furias, acertos:r.acertos});
+  post('/api/jogo/estado', {estado:EST}).catch(e => toast('Não salvou a carteira: ' + esc(e.message)));
 }
 /* a página vem do disco a cada pedido, mas o servidor em segundo plano pode estar com o código antigo (atualizou sem reiniciar) */
-const VERSAO_PAGINA = '0.5.1';
+const VERSAO_PAGINA = '0.5.2';
 function avisoVersao(){
   const v = CTX && CTX.SRV && CTX.SRV.versao, el = document.getElementById('aviso-versao');
   if(!v || v === VERSAO_PAGINA){ if(el) el.remove(); return; }
@@ -1568,7 +1574,7 @@ function rMS(S){
     <div class="lay7"><div>${main}</div>
       <div class="side7">
         <div class="card"><h2><span class="c">~/</span>carteira</h2><div class="wal7">${fmt(S.jenny)} J<small>disponível</small></div>
-          <div class="flow4" style="display:grid;gap:4px;font:12.5px var(--f-mono);color:var(--soft);margin:10px 0"><div style="display:flex;justify-content:space-between"><span>XP × 10</span><b style="color:var(--ink)">+${fmt(S.total*10)}</b></div><div style="display:flex;justify-content:space-between"><span>bônus de notas</span><b style="color:var(--ink)">+${fmt(S.bonusNotas)}</b></div>${S.conqJ ? `<div style="display:flex;justify-content:space-between"><span>conquistas da IA</span><b style="color:var(--ink)">+${fmt(S.conqJ)}</b></div>` : ''}<div style="display:flex;justify-content:space-between"><span>gasto</span><b style="color:var(--ink)">−${fmt(SPENT)}</b></div></div></div>
+          <div class="flow4" style="display:grid;gap:4px;font:12.5px var(--f-mono);color:var(--soft);margin:10px 0"><div style="display:flex;justify-content:space-between"><span>XP × 10</span><b style="color:var(--ink)">+${fmt(S.total*10)}</b></div><div style="display:flex;justify-content:space-between"><span>bônus de notas</span><b style="color:var(--ink)">+${fmt(S.bonusNotas)}</b></div>${S.conqJ ? `<div style="display:flex;justify-content:space-between"><span>conquistas da IA</span><b style="color:var(--ink)">+${fmt(S.conqJ)}</b></div>` : ''}${S.acerto ? `<div style="display:flex;justify-content:space-between" title="a carteira tinha ficado negativa porque um peso de prova mudou depois do gasto; a 0.5.2 devolveu o que faltava para zerar"><span>acerto da 0.5.2</span><b style="color:var(--ink)">+${fmt(S.acerto)}</b></div>` : ''}<div style="display:flex;justify-content:space-between"><span>gasto</span><b style="color:var(--ink)">−${fmt(SPENT)}</b></div></div></div>
         <div class="card"><h2><span class="c">~/</span>cofre do mês</h2><div class="wal7" style="font-size:22px">R$ ${fmt(cofreTotal() - COFRE_USADO)}<small>R$ ${fmt(HJx.cofreMes(EST))} por mês, acumula · usado R$ ${fmt(COFRE_USADO)}</small></div><div class="cofre"><b style="width:${pct(cofreTotal()-COFRE_USADO, cofreTotal())}%"></b></div></div>
         <div class="card"><h2><span class="c">~/</span>usando agora</h2><div class="eqlist">${eqs.map(([a,b]) => `<div><span>${a}</span><span>${esc(b)}</span></div>`).join('')}</div></div>
         ${RESG.length ? `<div class="card"><h2><span class="c">~/</span>resgatados</h2><ul class="got">${RESG.map(r => `<li style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;font-size:13px"><span>${esc(r)}</span><span class="sub">${ddmm(HOJE)}</span></li>`).join('')}</ul></div>` : ''}
@@ -1738,7 +1744,7 @@ function rSys(S){
       <div class="card"><h2><span class="c">~/</span>nota baixa = fúria</h2><p style="margin:0;font-size:14px">Sem penalidade. O chefão mostra quanto você precisa no resto e entra em fúria: as tarefas dele rendem ×1,5 até a próxima avaliação. Reprovou no semestre: ele escapa, e volta como revanche se você refizer a matéria.</p></div>
     </div>
     <div class="two">
-      <div class="card"><h2><span class="c">~/</span>jenny</h2><p style="margin:0 0 8px;font-size:14px">Cada XP vale 10 J. Cada nota ≥ ${MEDIA} dá bônus de nota × peso × 5. Um 7,5 numa prova de peso 25 dá ${fmt(7.5*25*5)} J. O esforço paga o dia a dia, e o resultado paga os prêmios grandes.</p><p class="sub" style="margin:0">Hoje: ${fmt(S.total*10)} J do XP + ${fmt(S.bonusNotas)} J de notas.</p></div>
+      <div class="card"><h2><span class="c">~/</span>jenny</h2><p style="margin:0 0 8px;font-size:14px">Cada XP vale 10 J. Cada nota ≥ ${MEDIA} dá bônus de nota × peso × 5. Um 7,5 numa prova de peso 25 dá ${fmt(7.5*25*5)} J. O bônus fica com o peso do dia em que a nota entrou: mudar o plano depois não tira Jenny. O esforço paga o dia a dia, e o resultado paga os prêmios grandes.</p><p class="sub" style="margin:0">Hoje: ${fmt(S.total*10)} J do XP + ${fmt(S.bonusNotas)} J de notas.</p></div>
       <div class="card"><h2><span class="c">~/</span>plano de ensino</h2><p style="margin:0;font-size:14px">Em <b>Chefões → editar avaliações e notas</b> você cadastra provas, trabalhos e listas (peso e data), corrige ou apaga notas. Com IA (opcional): ligada em <b>Configurações → IA</b>, ela lê os planos de ensino e aplica a caixa de entrada sozinha, e você confere antes de salvar; sem ela, o botão <b>copiar pedido</b> monta o texto para colar numa IA de chat. A caixa de entrada guarda lembretes de mudança. Detalhes no <span class="mono">IA.md</span>.</p></div>
     </div>`;
 }

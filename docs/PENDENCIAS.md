@@ -119,6 +119,21 @@ página vinha nova (lida do disco) e o servidor ficava velho, sem as rotas da IA
 - **Conferir agora** forçava nada (o `parse_qs` descartava `?agora`); corrigido. Quem está na 0.5 só vê a 0.5.1 quando
   o cache de 6 h vencer.
 
+**v0.5.2** (10/10/2026): recibos da carteira. Um amigo ficou com −58 J: a IA reescreveu o plano e baixou pesos
+(COMP2 P1 de 40 para 20, ENGR P1 de 18 para 8) depois que ele gastou, e o bônus de notas, refeito a cada abertura com o
+peso atual, caiu de 2502 para 1212 J. O gasto (`spent`) fica gravado; o ganho era todo recalculado.
+- **`recibos()` em `web/motor.js`:** `estado.json` guarda `notasJ` (`{"DISC:aval": {nota, w, j, em}}`: o bônus usa o
+  peso do dia em que a nota apareceu; corrigir a nota recalcula com esse peso; avaliação renomeada com a mesma nota herda
+  o recibo órfão, sem bônus em dobro; recibo nunca é apagado) e `furias` (`{DISC: [[início, fim|null]]}`: abre no dia da
+  última nota quando o chefão entra em fúria, fecha no dia da nota que tirou dele, ou hoje; tarefa dentro de um período
+  ganha ×1,5 para sempre). A página grava em `sync()` → `guardaRecibos()` quando `S.rec.mudou`.
+- **`acertos["0.5.2"]`:** na 1ª abertura, se `spent` > ganho, credita a diferença uma vez (linha "acerto da 0.5.2" na
+  carteira da Masadora).
+- **Servidor:** `notasJ`, `furias` e `acertos` aceitos no `POST /api/jogo/estado` e mesclados com o que já está gravado
+  (uma aba antiga aberta não apaga recibos).
+- Ainda recalculado a cada abertura: XP das tarefas (apagar uma linha concluída tira XP), Codeforces (só as últimas 2000
+  submissões da API) e missão da semana. Uma nota corrigida para menos ainda pode deixar a carteira negativa.
+
 ## Planejado para a v0.6
 
 1. Testar Codex e Gemini CLI com a IA ligada (e o Windows: `.cmd` do npm). Os nomes de modelo do pedido leve podem mudar.

@@ -345,6 +345,34 @@ function chefoes(C, feitas, abertas){
     return {...B, avs, pts, rest: Math.max(0, 1000 - pts*10), tot:1000, dead, fury, need, st: dead ? 'dead' : fury ? 'hurt' : '', open: avs.flatMap(a => a.abertas), lig};
   });
 }
+/* recibos (0.5.2): o bônus de cada nota e os períodos de fúria ficam gravados no estado.json quando aparecem, para que mudar
+   um peso, reescrever o plano ou sair da fúria nunca tire Jenny ou XP já dados. Antes tudo era recalculado a cada abertura
+   e o gasto ficava gravado: um peso menor deixava a carteira negativa. A página grava o que mudou (S.rec.mudou).
+   notasJ: {"DISC:aval": {nota, w, j, em}} · furias: {DISC: [[início, fim ou null]]} · acertos: {versão: J creditados uma vez} */
+const ACERTO = '0.5.2';   // na 1ª abertura desta versão, a carteira negativa pelo bug antigo volta a zero
+const jNota = (n, w) => n >= MEDIA ? Math.round(n*(+w||0)*5) : 0;
+function recibos(C, bs){
+  const notasJ = JSON.parse(JSON.stringify(C.EST.notasJ || {})), furias = JSON.parse(JSON.stringify(C.EST.furias || {}));
+  let mudou = false;
+  const com = bs.flatMap(b => b.avs.filter(a => !a.cont && a.nota != null).map(a => [b.d, a]));
+  const vivas = new Set(com.map(([d, a]) => d+':'+a.k));
+  for(const [d, a] of com){
+    const k = d+':'+a.k, r = notasJ[k];
+    if(r){ if(r.nota !== a.nota){ r.nota = a.nota; r.j = jNota(a.nota, r.w); mudou = true; } continue; }   // nota corrigida: vale o peso do recibo
+    // avaliação renomeada (a IA trocou P1 por N1): o recibo órfão da mesma disciplina e com a mesma nota passa para a chave nova
+    const orf = Object.keys(notasJ).find(o => o.startsWith(d+':') && !vivas.has(o) && notasJ[o].nota === a.nota);
+    if(orf){ notasJ[k] = notasJ[orf]; delete notasJ[orf]; }
+    else notasJ[k] = {nota:a.nota, w:+a.w||0, j:jNota(a.nota, a.w), em:C.HOJE};
+    mudou = true;
+  }
+  for(const b of bs){
+    const ps = furias[b.d] || [], aberto = ps.find(p => !p[1]);
+    const ult = b.avs.map(a => C.NDATA[b.d+':'+a.k]).filter(Boolean).sort().pop() || '';
+    if(b.fury && !aberto){ furias[b.d] = ps.concat([[ult || C.HOJE, null]]); mudou = true; }   // começa no dia da nota que causou a fúria
+    else if(!b.fury && aberto){ aberto[1] = ult > aberto[0] ? ult : C.HOJE; mudou = true; }    // termina no dia da nota que tirou dela
+  }
+  return {notasJ, furias, mudou};
+}
 /* marca curta de uma linha do todo (para lembrar o que já estava feito quando um feitiço foi usado) */
 const marca = raw => { let h = 5381; for(const c of String(raw)) h = ((h << 5) + h + c.codePointAt(0)) >>> 0; return h.toString(36); };
 /* XP extra do Codeforces: do 4º ao 6º problema resolvido no dia, +1 cada; depois, nada (a meta é 3: a recorrente paga o resto) */
@@ -375,7 +403,7 @@ function estado(C){
   const F = efeitos(C, D.feitas);
   const feitas = D.feitas.concat(F.extras), abertas = D.abertas.filter(t => !t.done);
   const bs = chefoes(C, feitas, abertas);
-  const furia = {}; for(const b of bs) if(b.fury){ const ds = b.avs.map(a => C.NDATA[b.d+':'+a.k]).filter(Boolean).sort(); furia[b.d] = ds[ds.length-1] || HOJE; }
+  const rec = recibos(C, bs), naFuria = (d, dia) => (rec.furias[d] || []).some(([i, f]) => dia >= i && (!f || dia <= f));
   const xpBase = t => { const k = F.ken.get(norm(t.txt)) || 0; return xpDe(k && t.due ? {...t, due: addD(t.due, k)} : t); };
   // missão da semana: o atributo mais fraco ANTES da semana começar (fixo durante a semana; Gyo escolhe outro)
   const fracoDa = ws => { if(F.gyo[semanaISO(ws)] !== undefined) return F.gyo[semanaISO(ws)];
@@ -392,7 +420,7 @@ function estado(C){
     let x = xpBase(t);
     if(extraHab.has(i)) x *= HAB_EXTRA;                                 // hábito semanal acima da meta
     if(nenDe(t) === fracoSem(t.done)) x *= 1.5;                       // missão da semana
-    const d = discOf(t,C); if(d && furia[d] && t.done >= furia[d]) x *= 1.5;   // fúria
+    const d = discOf(t,C); if(d && t.done && naFuria(d, t.done)) x *= 1.5;   // fúria (pelos períodos gravados)
     if(F.mult.has(i)) x *= F.mult.get(i);                              // Ko / Acompanhar
     x = Math.round(x); total += x; xs.push({t,x});
     porDia[t.done] = (porDia[t.done]||0)+1; xpDia[t.done] = (xpDia[t.done]||0)+x; attr[nenDe(t)] += x;
@@ -417,10 +445,13 @@ function estado(C){
     let x = xpBase({...t, done:HOJE}); if(nenDe(t) === fraco) x *= 1.5; if(b && b.fury) x *= 1.5;
     return {t, sc, x: Math.round(x), b, av, bonus: nenDe(t) === fraco, fury: !!(b && b.fury)};
   }).sort((a,b) => b.sc - a.sc);
-  const bonusNotas = Math.round(bs.reduce((s,b) => s + b.avs.filter(a => !a.cont && a.nota >= MEDIA).reduce((q,a) => q + a.nota*a.w*5, 0), 0));
+  const bonusNotas = Object.values(rec.notasJ).reduce((s, r) => s + (+r.j || 0), 0);   // pelos recibos: o peso do dia em que a nota entrou
   const resg = (C.CONQ || []).filter(c => c && c.resgate && !c.descartada);   // conquistas da IA resgatadas: Jenny ou um feitiço
   const conqJ = resg.reduce((s, c) => s + (c.resgate.como === 'jenny' ? +c.resgate.j || 0 : 0), 0);
-  const ganho = total*10 + bonusNotas + conqJ;
+  rec.acertos = {...(EST.acertos || {})};
+  if(rec.acertos[ACERTO] === undefined){ rec.acertos[ACERTO] = Math.max(0, (EST.spent||0) - (total*10 + bonusNotas + conqJ)); rec.mudou = true; }
+  const acerto = Object.values(rec.acertos).reduce((s, j) => s + (+j || 0), 0);
+  const ganho = total*10 + bonusNotas + conqJ + acerto;
   const prepBonus = bs.reduce((s,b) => s + b.avs.filter(a => a.prepOk).length, 0);
   // bolsa: comprados + preparação completa + missões − usados
   const inv = {}; for(const w in EST.bought) for(const k of EST.bought[w]) inv[k] = (inv[k]||0) + 1;
@@ -436,7 +467,7 @@ function estado(C){
   const hab = Object.values(habDias).reduce((m,h) => h.d.size > m.max ? {max:h.d.size, nome:h.n} : m, {max:0, nome:''});
   const sem = {n: Math.floor(dias(TEMP.ini,HOJE)/7)+1, tot: Math.ceil(dias(TEMP.ini,TEMP.fim)/7)};
   return {total, a:andar(total, C.dif), attr, porDia, xpDia, set, first, ten:ten(set,first,HOJE,F.zetsu), hojeXP: xpDia[HOJE]||0, xs, n:D.feitas.length, ritmo,
-    proj: andar(Math.round(total + ritmo*Math.max(0,dias(HOJE,TEMP.fim))/7), C.dif), bs, fraco, missDias, missoes, rot, golpes, ganho, bonusNotas, conqJ, jenny: ganho - (EST.spent||0),
+    proj: andar(Math.round(total + ritmo*Math.max(0,dias(HOJE,TEMP.fim))/7), C.dif), bs, fraco, missDias, missoes, rot, golpes, ganho, bonusNotas, conqJ, acerto, rec, jenny: ganho - (EST.spent||0),
     inv, prepBonus, espera, hab, sem, cfHoje, cfXP, usos: F.usos, metaDia: Math.max(20, Math.round(ritmo/5/5)*5),
     cofre: cofreMes(EST)*(Math.floor(Math.max(0,dias(TEMP.ini,HOJE))/30)+1) - (EST.cofreUsado||0)};
 }

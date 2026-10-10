@@ -5,6 +5,13 @@
  * Carregado depois de conquistas.js: usa CTX, EST, UI, cur, tab, render, post, recarrega, esc, ic, toast, salvaUI, gnav, VERSAO_PAGINA.
  */
 window.HJ_NOVIDADES = /*NOVIDADES*/[
+  {"versao": "0.5.2", "nome": "atualização das conquistas", "data": "2026-10-10",
+   "resumo": "A Jenny e o XP que você ganhou não somem mais quando o plano de avaliações muda.",
+   "itens": [
+     {"ic": "coin", "t": "Bônus de nota guardado", "d": "O bônus de cada nota agora fica com o peso do dia em que a nota entrou. Antes ele era refeito com o peso atual: se você ou a IA corrigiam um peso para menos depois de você gastar, a carteira ficava negativa. Mudar o plano não tira mais Jenny; corrigir a própria nota ajusta só a diferença."},
+     {"ic": "spider", "t": "Fúria guardada", "d": "As tarefas feitas com o chefão em fúria ficam com o ×1,5 para sempre. Antes, quando o chefão saía da fúria ou entrava outra nota, o bônus sumia das tarefas antigas, e com ele XP e Jenny."},
+     {"ic": "scroll", "t": "Carteira negativa zerada", "d": "Se a sua carteira tinha ficado negativa por esse problema, o jogo devolveu uma vez o que faltava para zerar. Aparece como acerto da 0.5.2 na carteira da Masadora."}
+   ]},
   {"versao": "0.5.1", "nome": "atualização das conquistas", "data": "2026-10-10",
    "resumo": "Achou um bug ou teve uma ideia? Agora dá para mandar direto do jogo.",
    "itens": [

@@ -1286,23 +1286,24 @@ let CTX = null, D, HOJE, TEMP, BOSSES, AVAL, NOTAS, PARC, INBOX, EST, COS = [];
 const SIM = new Set(), NOTAS_TXT = [];
 let OWN = new Set(), SPENT = 0, BOUGHT = {}, RESG = [], COFRE_USADO = 0;
 const R = {dif:'normal'};
-const UI = {bsel:'', bk:'slot', bksel:'001', page:0, sel:'001', mapsel:'', px:'map', cat:'aparencia', theme:'simples', fx:[], bg:'', frame:'', title:'',
+const UI = {bsel:'', bk:'slot', bksel:'001', page:0, sel:'001', mapsel:'', px:'map', cat:'aparencia', theme:'simples', fx:[], bg:'', frame:'', title:'', font:'', som:'',
   avatar:'logo', lic:'l2', hud:'logo', anim:'calma', skin:{map:'dia', p1:'lilas', p3:'couro', p3b:'madeira'}};
 try { UI.fxOff = localStorage.getItem('hj-fxoff') === '1'; } catch(e){}
 const PXSKINS = {map:[['dia','Dia'],['tarde','Tarde'],['noite','Noite']], p1:[['lilas','Lilás'],['gameboy','Game Boy'],['noite','Noite']], p3:[['couro','Couro'],['joy','Joystation'],['noite','Noite']], p3b:[['madeira','Madeira'],['neon','Neon'],['papel','Papel']]};
-const THEMES = [['simples','Simples'],['painel','Painel'],['leorio','Leorio'],['claro','Claro'],['gon','Gon'],['biscuit','Biscuit'],['kurapika','Kurapika'],['netero','Netero'],['killua','Killua'],['hisoka','Hisoka'],['meruem','Meruem']];
+const THEMES = [['simples','Simples'],['painel','Painel'],['leorio','Leorio'],['claro','Claro'],['gon','Gon'],['biscuit','Biscuit'],['kurapika','Kurapika'],['netero','Netero'],['killua','Killua'],['hisoka','Hisoka'],['meruem','Meruem'],['pergaminho','Pergaminho'],['zoldyck','Zoldyck'],['ryodan','Genei Ryodan'],['greed','Greed Island'],['abismo','Continente Negro'],['aurora','Aurora']];
 const avSrc = f => (window.HJ_AV && window.HJ_AV[f]) || 'a/' + f + '.png';   // no protótipo de arquivo único as fotos vêm embutidas
 const LOGO = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%231D2027' stroke='%23CDB384' stroke-width='3'/%3E%3Cpath d='M32 9l6 15 16 1-12 10 4 16-14-9-14 9 4-16-12-10 16-1z' fill='none' stroke='%23CDB384' stroke-width='2.5' stroke-linejoin='round'/%3E%3Ctext x='32' y='40' text-anchor='middle' font-family='Arial Black,Arial' font-weight='900' font-size='15' fill='%23E2E5EB'%3EH%3C/text%3E%3C/svg%3E";   // emblema do template (as fotos de perfil ficam em a/, servidas pelo servidor)
 const discOf = t => HJx.discOf(t, CTX);
 const andar = xp => HJx.andar(xp, R.dif), custo = n => HJx.custo(n, R.dif), xpAte = n => HJx.xpAte(n, R.dif);
 const estado = () => HJx.estado(CTX);
+const somOff = () => !!(window.HJ_FX && HJ_FX.somOff());   // sons da loja desligados neste computador (efeitos.js)
 const cartas = S => HJx.cartas(CTX, S);
 const cofreTotal = () => HJx.cofreMes(EST)*(Math.floor(Math.max(0,dias(TEMP.ini,HOJE))/30)+1);
 function sync(api){
   CTX = HJx.carregar(api); ({D, HOJE, TEMP, BOSSES, AVAL, NOTAS, PARC, INBOX, EST} = CTX); COS = HJx.catalogo(CTX.AVATARES);
   OWN = HJx.expandeOwn(new Set(EST.own)); SPENT = EST.spent||0; COFRE_USADO = EST.cofreUsado||0; RESG = EST.resg||[];
   BOUGHT = Object.fromEntries((EST.bought[HJx.semanaISO(HOJE)]||[]).map(k => [k,1]));
-  const e = EST.equip; Object.assign(UI, {theme:e.theme, fx:e.fx||[], bg:e.bg||'', frame:e.frame||'', title:e.title||'', avatar:e.avatar||'logo', lic:e.lic||'l2', hud:e.hud||'logo'}); Object.assign(UI.skin, e.skin||{});
+  const e = EST.equip; Object.assign(UI, {theme:e.theme, fx:e.fx||[], bg:e.bg||'', frame:e.frame||'', title:e.title||'', font:e.font||'', som:e.som||'', avatar:e.avatar||'logo', lic:e.lic||'l2', hud:e.hud||'logo'}); Object.assign(UI.skin, e.skin||{});
   if(!BOSSES.some(b => b.d === UI.bsel)) UI.bsel = BOSSES[0] ? BOSSES[0].d : '';
   if(!BOSSES.some(b => b.d === UI.mapsel)) UI.mapsel = UI.bsel;
   avisoVersao(); guardaRecibos();
@@ -1314,7 +1315,7 @@ function guardaRecibos(){
   post('/api/jogo/estado', {estado:EST}).catch(e => toast('Não salvou a carteira: ' + esc(e.message)));
 }
 /* a página vem do disco a cada pedido, mas o servidor em segundo plano pode estar com o código antigo (atualizou sem reiniciar) */
-const VERSAO_PAGINA = '0.5.3';
+const VERSAO_PAGINA = '0.5.4';
 function avisoVersao(){
   const v = CTX && CTX.SRV && CTX.SRV.versao, el = document.getElementById('aviso-versao');
   if(!v || v === VERSAO_PAGINA){ if(el) el.remove(); return; }
@@ -1335,7 +1336,7 @@ async function recarrega(){ const r = await fetch('/api/jogo', {cache:'no-store'
 function salvaUI(){
   EST.own = [...OWN]; EST.spent = SPENT; EST.cofreUsado = COFRE_USADO; EST.resg = RESG;
   EST.bought[HJx.semanaISO(HOJE)] = Object.keys(BOUGHT);
-  EST.equip = {theme:UI.theme, fx:UI.fx, bg:UI.bg, frame:UI.frame, title:UI.title, avatar:UI.avatar, lic:UI.lic, hud:UI.hud, skin:UI.skin};
+  EST.equip = {theme:UI.theme, fx:UI.fx, bg:UI.bg, frame:UI.frame, title:UI.title, font:UI.font, som:UI.som, avatar:UI.avatar, lic:UI.lic, hud:UI.hud, skin:UI.skin};
   post('/api/jogo/estado', {estado:EST}).catch(e => toast('Não salvou a loja: ' + esc(e.message)));
 }
 function aplicaTema(){
@@ -1344,6 +1345,8 @@ function aplicaTema(){
   r.setAttribute('data-fx', (UI.fxOff ? [] : UI.fx).join(' '));
   if(UI.bg) r.setAttribute('data-bg', UI.bg); else r.removeAttribute('data-bg');
   if(UI.frame) r.setAttribute('data-frame', UI.frame); else r.removeAttribute('data-frame');
+  if(UI.font) r.setAttribute('data-font', UI.font); else r.removeAttribute('data-font');
+  if(window.HJ_FX) HJ_FX.aplica();
 }
 
 /* ---------- desenho ---------- */
@@ -1522,7 +1525,9 @@ function equipado(it){
   if(it.cat === 'fx') return UI.fx.includes(it.fx);
   if(it.cat === 'frame') return UI.frame === it.eq.frame;
   if(it.cat === 'title') return UI.title === it.eq.title;
-  if(it.cat === 'full') return !it.lend && UI.theme === it.eq.theme && UI.bg === it.eq.bg && it.fxs.every(f => UI.fx.includes(f));
+  if(it.cat === 'font') return UI.font === it.eq.font;
+  if(it.cat === 'som') return UI.som === it.eq.som;
+  if(it.cat === 'full') return !it.lend && Object.keys(it.eq).every(k => UI[k] === it.eq[k]) && it.fxs.every(f => UI.fx.includes(f));
   if(it.skin) return UI.skin[it.skin[0]] === it.skin[1];
   return false;
 }
@@ -1534,7 +1539,9 @@ function equipa(it){
   else if(it.cat === 'fx') UI.fx = on ? UI.fx.filter(f => f !== it.fx) : UI.fx.concat(it.fx);
   else if(it.cat === 'frame') UI.frame = on ? '' : it.eq.frame;
   else if(it.cat === 'title') UI.title = on ? '' : it.eq.title;
-  else if(it.cat === 'full'){ UI.theme = it.eq.theme; UI.bg = it.eq.bg; UI.fx = [...new Set(UI.fx.concat(it.fxs))]; }
+  else if(it.cat === 'font') UI.font = on ? '' : it.eq.font;
+  else if(it.cat === 'som') UI.som = on ? '' : it.eq.som;
+  else if(it.cat === 'full'){ Object.assign(UI, it.eq); UI.fx = [...new Set(UI.fx.concat(it.fxs))]; }
   else if(it.skin) UI.skin[it.skin[0]] = on ? PXSKINS[it.skin[0]][0][0] : it.skin[1];
   UI.anim = 'calma';
 }
@@ -1542,9 +1549,10 @@ function pvHTML(it){
   if(it.cat === 'avatar') return `<div class="pv av8" style="${palStyle(UI.theme)}"><span class="plate" style="width:76px;height:76px;background:${it.eq.avatar === 'logo' ? '#F6F3EC' : 'transparent'};box-shadow:none"><img src="${it.eq.avatar === 'logo' ? LOGO : avSrc(it.eq.avatar)}" alt="" style="width:100%"></span></div>`;
   if(it.sw) return `<div class="pv sw">${it.sw.map(c => `<i style="background:${c}"></i>`).join('')}</div>`;
   if(it.lend) return `<div class="pv leg">?</div>`;
+  if(it.cat === 'som') return `<div class="pv som" style="${palStyle(UI.theme)}">${[18,34,26,44,30,20,38,24].map((h, i) => `<i style="--h:${h}px;--d:${i*.12}s"></i>`).join('')}<span class="hj-tag">▶ ouvir</span></div>`;
   const pal = it.eq?.theme || UI.theme, fx = it.fx ? [it.fx] : (it.fxs || []);
-  const cls = ['pv', it.eq?.bg ? 'tex-'+it.eq.bg : '', fx.length ? 'fxd '+fx.join(' ') : '', it.eq?.frame ? 'fr-'+it.eq.frame : ''].join(' ');
-  return `<div class="${cls}" style="${palStyle(pal)}">${avMe(40)}<div class="mini"><b>Andar 97</b>${it.eq?.title?`<span class="titulo">${esc(it.eq.title)}</span>`:''}<div class="xpbar"><b style="width:62%"></b></div></div><span class="ring fury" style="--p:70"><span>${ic('antenna')}</span></span>${fx.includes('zap')?'<span class="flash"></span>':''}</div>`;
+  const cls = ['pv', it.eq?.bg ? 'tex-'+it.eq.bg : '', fx.length ? 'fxd '+fx.join(' ') : '', it.eq?.frame ? 'fr-'+it.eq.frame : '', it.eq?.font ? 'ft-'+it.eq.font : ''].join(' ');
+  return `<div class="${cls}" style="${palStyle(pal)}">${avMe(40)}<div class="mini"><b>Andar 97</b>${it.eq?.title?`<span class="titulo">${esc(it.eq.title)}</span>`:''}<div class="xpbar"><b style="width:62%"></b></div></div><span class="ring fury" style="--p:70"><span>${ic('antenna')}</span></span>${fx.includes('zap')?'<span class="flash"></span>':''}${it.ev ? `<span class="hj-tag">${['confete','fogos'].includes(it.fx) ? 'no andar novo' : 'ao concluir'} · ▶</span>` : ''}</div>`;
 }
 function itemHTML(S, it){
   const own = OWN.has(it.id), eq = own && equipado(it), lk = it.lock && it.lock(S), need = it.need && !OWN.has(it.need);
@@ -1555,20 +1563,21 @@ function itemHTML(S, it){
   else if(lk) btn = `<button class="btn" disabled>${it.why}</button>`;
   else if(need) btn = `<button class="btn" disabled>abra o mundo pixel</button>`;
   else btn = `<button class="btn" data-cos="${it.id}" ${S.jenny >= it.p ? '' : 'disabled'}>${S.jenny >= it.p ? 'comprar' : `faltam ${fmt(it.p - S.jenny)} J`}</button>`;
-  return `<div class="it7${own?' own':''}${eq?' eq':''}${lk||need?' lock':''}">${pvHTML(it)}<div class="info"><b>${esc(it.n)}</b><p>${esc(it.d)}</p><div class="buy7"><span class="pr${it.p?'':' free'}">${it.excl ? 'exclusivo' : it.p ? fmt(it.p)+' J' : 'grátis'}${own?' · seu':''}</span>${btn}</div></div></div>`;
+  const ver = it.ev || it.cat === 'som' ? `<button class="btn hj-ver" data-fxver="${it.id}" title="${it.cat === 'som' ? 'ouvir' : 'ver o efeito'}" aria-label="${it.cat === 'som' ? 'ouvir' : 'ver o efeito'}">▶</button>` : '';
+  return `<div class="it7${own?' own':''}${eq?' eq':''}${lk||need?' lock':''}">${pvHTML(it)}<div class="info"><b>${esc(it.n)}</b><p>${esc(it.d)}</p><div class="buy7"><span class="pr${it.p?'':' free'}">${it.excl ? 'exclusivo' : it.p ? fmt(it.p)+' J' : 'grátis'}${own?' · seu':''}</span><span style="display:flex;gap:6px">${ver}${btn}</span></div></div></div>`;
 }
 const SECS = {
-  aparencia:[['avatar','Fotos de perfil','O rosto das páginas do jogo. No painel fica sempre o símbolo da Associação. Para ter mais fotos, coloque arquivos PNG na pasta avatares/ dos seus dados (~/.hunter-todo/avatares/).'],['pal','Paletas','Só as cores. A Simples vem com o jogo.'],['tex','Texturas de fundo','Um padrão atrás de todas as telas. Um por vez.'],['fx','Efeitos','Animações compradas uma a uma. Dá para ligar e desligar cada uma.'],['frame','Molduras do avatar',''],['title','Títulos','Aparecem embaixo do andar, no card e na ficha.'],['full','Temas completos','Paleta, fundo e efeitos juntos, mais barato que comprar separado.']],
+  aparencia:[['avatar','Fotos de perfil','O rosto das páginas do jogo. No painel fica sempre o símbolo da Associação. Para ter mais fotos, coloque arquivos PNG na pasta avatares/ dos seus dados (~/.hunter-todo/avatares/).'],['pal','Paletas','Só as cores. A Simples vem com o jogo.'],['tex','Texturas de fundo','Um padrão atrás de todas as telas. Um por vez.'],['fx','Efeitos na tela','Animações compradas uma a uma. Dá para ligar e desligar cada uma.'],['fxev','Na hora da conquista','Disparam quando você conclui uma tarefa ou sobe de andar. O ▶ mostra antes de comprar.'],['frame','Molduras do avatar',''],['title','Títulos','Aparecem embaixo do andar, no card e na ficha.'],['font','Fontes','A letra dos títulos e dos números. Uma por vez.'],['som','Sons','Tocam ao concluir uma tarefa e no andar novo. Um por vez; o ▶ toca antes de comprar. Dá para desligar em Configurações.'],['full','Temas completos','Paleta, fundo e efeitos juntos, mais barato que comprar separado.']],
   pixel:[['px','Mundo pixel','Primeiro desbloqueie o mundo; depois as peles.']],
 };
 function rMS(S){
   const cats = [['aparencia','Aparência'],['pixel','Mundo pixel'],['premios','Prêmios reais'],['feiticos','Feitiços']];
   let main = '';
-  if(SECS[UI.cat]) main = SECS[UI.cat].map(([c,t,d]) => `<div class="sec7"><h3>${t}</h3>${d?`<p>${d}</p>`:''}<div class="items">${COS.filter(i => i.cat === c).map(i => itemHTML(S,i)).join('')}</div></div>`).join('') + (UI.cat==='aparencia' ? '<div class="sec7"><h3>Na próxima temporada</h3><p>Em 2027-1 chegam os rostos das Formigas Quimera, uma paleta nova e itens com o tema dos novos chefões.</p></div>' : '');
+  if(SECS[UI.cat]) main = SECS[UI.cat].map(([c,t,d]) => `<div class="sec7"><h3>${t}</h3>${d?`<p>${d}</p>`:''}<div class="items">${COS.filter(i => c === 'fxev' ? i.cat === 'fx' && i.ev : i.cat === c && !(c === 'fx' && i.ev)).map(i => itemHTML(S,i)).join('')}</div></div>`).join('') + (UI.cat==='aparencia' ? '<div class="sec7"><h3>Na próxima temporada</h3><p>Em 2027-1 chegam os rostos das Formigas Quimera, uma paleta nova e itens com o tema dos novos chefões.</p></div>' : '');
   else if(UI.cat === 'premios') main = UI.pedit ? premiosEditor(S) : premiosHTML(S);
   else main = `<div class="sec7"><h3>Feitiços</h3><p>Também vêm da preparação completa e da missão da semana. Limite de 1 de cada por semana na loja. Expiram em ${ddmm(TEMP.volta)}.</p><div class="items">${SPELLS.filter(s => !s.noshop).map(s => { const [ok,why] = buyable(S,'s',s.k);
       return `<div class="it7"><div class="pv real" style="${palStyle(UI.theme)}"><span class="av" style="--c:var(--aura)">${ic(s.ic)}</span><span>na bolsa: ${S.inv[s.k]||0}</span></div><div class="info"><b>${s.n}</b><p>${s.e}</p><div class="buy7"><span class="pr">${fmt(s.p)} J</span><button class="btn" data-buy="s:${s.k}" ${ok?'':'disabled'}>${ok?'comprar':why}</button></div></div></div>`; }).join('')}</div></div>`;
-  const eqs = [['Paleta', (THEMES.find(t => t[0]===UI.theme)||[0,UI.theme])[1]], ['Foto', HJx.catalogo([UI.avatar]).slice(-1)[0].n], ['Fundo', UI.bg || '—'], ['Efeitos', UI.fxOff ? 'desligados' : (UI.fx.join(', ') || 'nenhum')], ['Moldura', UI.frame || '—'], ['Título', UI.title || '—']];
+  const eqs = [['Paleta', (THEMES.find(t => t[0]===UI.theme)||[0,UI.theme])[1]], ['Foto', HJx.catalogo([UI.avatar]).slice(-1)[0].n], ['Fundo', UI.bg || '—'], ['Efeitos', UI.fxOff ? 'desligados' : (UI.fx.join(', ') || 'nenhum')], ['Moldura', UI.frame || '—'], ['Título', UI.title || '—'], ['Fonte', UI.font || 'padrão'], ['Som', !UI.som ? 'nenhum' : somOff() ? UI.som + ' (desligado)' : UI.som]];
   document.getElementById('ms-root').innerHTML = `
     <div class="cats">${cats.map(([k,n]) => `<button data-cat="${k}" aria-pressed="${UI.cat===k}">${n}</button>`).join('')}</div>
     <div class="lay7"><div>${main}</div>
@@ -1730,7 +1739,7 @@ function rTT(){
 /* ---------- Configurações (o seu jogo, IA, servidor, efeitos e backup; guia.js e ia.js põem os cards de cima) ---------- */
 function rCfg(S){
   document.getElementById('cfg-root').innerHTML = `
-    <div class="card"><h2><span class="c">~/</span>configurações deste computador</h2><div class="togg" style="margin:0"><span class="sub">efeitos:</span><button data-fxoff="0" aria-pressed="${!UI.fxOff}">os comprados</button><button data-fxoff="1" aria-pressed="${!!UI.fxOff}">nenhum (calmo)</button></div></div>
+    <div class="card"><h2><span class="c">~/</span>configurações deste computador</h2><div class="togg" style="margin:0"><span class="sub">efeitos:</span><button data-fxoff="0" aria-pressed="${!UI.fxOff}">os comprados</button><button data-fxoff="1" aria-pressed="${!!UI.fxOff}">nenhum (calmo)</button></div><div class="togg" style="margin:8px 0 0"><span class="sub">sons:</span><button data-somoff="0" aria-pressed="${!somOff()}">ligados</button><button data-somoff="1" aria-pressed="${somOff()}">mudo</button></div></div>
     <div class="card"><h2><span class="c">~/</span>backup</h2><p style="margin:0 0 10px;font-size:14px">Baixa um ZIP com todos os seus dados: tarefas, notas, plano de avaliação, loja e configurações. Guarde de vez em quando, ou use para levar o jogo para outro computador (é só descompactar na pasta de dados, <span class="mono">${esc((CTX.SRV && CTX.SRV.dados) || '~/.hunter-todo')}</span>).</p>${window.HJ_DEMO ? '<button class="btn" disabled>no modo demonstração não há dados para baixar</button>' : '<a class="btn v" href="/api/backup" download>baixar meus dados</a>'}</div>`;
 }
 /* ---------- Regras (o que o jogo considera) ---------- */
@@ -1972,7 +1981,7 @@ document.addEventListener('click', async e => {
   if(act === 'done'){ const antes = estado(), rr = b.getBoundingClientRect();
     try { await post('/api/act', {raw:t.raw, action:'done'}); await recarrega(); } catch(err){ toast('Não concluiu: ' + esc(err.message)); return; }
     const depois = estado(), dx = depois.total - antes.total; render();
-    floatAt(rr, `+${dx} XP`);
+    floatAt(rr, `+${dx} XP`); if(dx > 0 && window.HJ_FX) HJ_FX.tarefa(rr);
     if(depois.prepBonus > antes.prepBonus) toastUndo('Preparação completa! <small>+1 feitiço à escolha</small>');
     else if(depois.a.n > antes.a.n){ toastUndo(`▲ Andar ${depois.a.n} <small>a torre sobe</small>`); confete(); }
     else toastUndo(`+${dx} XP <small>+${fmt(dx*10)} J</small>`);
@@ -2016,14 +2025,15 @@ function render(){
 }
 function tab(t){
   if(!TABS.includes(t)) t = 'l'; cur = t;
-  TABS.forEach(k => document.getElementById('v-'+k).hidden = k !== t);
+  TABS.forEach(k => document.getElementById('v-'+k).hidden = k !== t); if(window.HJ_FX) HJ_FX.aba();
   try { history.replaceState(null,'','#'+t); } catch(e){}
   render(); try { window.scrollTo({top:0}); } catch(e){}
 }
 function toast(html){ const to = document.createElement('div'); to.className = 'toast'; to.innerHTML = html; document.body.appendChild(to); setTimeout(() => to.remove(), 2600); }
 function floatAt(r, txt){ const f = document.createElement('div'); f.className = 'float'; f.textContent = txt; f.style.left = (r.left + r.width/2)+'px'; f.style.top = (r.top - 6)+'px'; document.body.appendChild(f); setTimeout(() => f.remove(), 1200); }
-function confete(){
-  if(UI.fxOff || !UI.fx.includes('confete')) return;
+function confete(forcado){
+  if(!forcado && window.HJ_FX) HJ_FX.festa();
+  if(!forcado && (UI.fxOff || !UI.fx.includes('confete'))) return;
   try { if(matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch(e){}
   const cores = ['var(--volt)','var(--aura)','var(--amb)','var(--grn)','var(--red)'];
   for(let i=0;i<60;i++){ const c = document.createElement('i'); c.className = 'cf8'; c.style.left = Math.random()*100+'vw'; c.style.background = cores[i%5];
@@ -2074,6 +2084,7 @@ document.addEventListener('click', async e => {
     EST.usos = (EST.usos || []).concat(u); UI.como = ''; salvaUI();
     const msg = {ko:'a próxima tarefa vale XP ×2', acomp:'a próxima entrega vale XP ×2', zetsu:'+1 folga guardada no Ten', retorno:'ontem conta como meta do Codeforces', gyo:'missão da semana trocada', ken:'o prazo dessa tarefa ganhou 1 dia'}[ef];
     toast(`${spell(ef).n} usado <small>${msg}</small>`); render(); return; }
+  const so = q('[data-somoff]'); if(so){ try { localStorage.setItem('hj-somoff', so.dataset.somoff); } catch(err){} render(); return; }
   const fo = q('[data-fxoff]'); if(fo){ UI.fxOff = fo.dataset.fxoff === '1'; try { localStorage.setItem('hj-fxoff', UI.fxOff ? '1' : '0'); } catch(err){} render(); return; }
   if(q('[data-inbox]')){ const el = document.getElementById('inbox-txt'), t = el.value.trim(); if(!t){ toast('Escreva a mudança primeiro'); return; }
     try { await post('/api/jogo/ajuste', {texto:t}); await recarrega(); toast('Anotado <small>em ajustes.txt</small>'); render(); } catch(err){ toast('Não enviou: ' + esc(err.message)); } return; }
@@ -2096,7 +2107,7 @@ document.addEventListener('click', async e => {
   try { await post('/api/act', {raw:t.raw, action:'done'}); await recarrega(); } catch(err){ toast('Não concluiu: ' + esc(err.message)); return; }
   const depois = estado(), dx = depois.total - antes.total;
   render();
-  if(dx > 0){ floatAt(rr, `+${dx} XP`);
+  if(dx > 0){ floatAt(rr, `+${dx} XP`); if(window.HJ_FX) HJ_FX.tarefa(rr);
     if(depois.prepBonus > antes.prepBonus) toast('Preparação completa! <small>+1 feitiço à escolha</small>');
     else if(depois.a.n > antes.a.n){ toast(`▲ Andar ${depois.a.n} <small>a torre sobe</small>`); confete(); } }
 });
@@ -2114,4 +2125,5 @@ recarrega().then(() => tab((location.hash||'').slice(1))).catch(err => {
 <script src="conquistas.js"></script>
 <script src="novidades.js"></script>
 <script src="feedback.js"></script>
+<script src="efeitos.js"></script>
 </body></html>

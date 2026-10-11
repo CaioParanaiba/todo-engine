@@ -5,6 +5,15 @@
  * Carregado depois de conquistas.js: usa CTX, EST, UI, cur, tab, render, post, recarrega, esc, ic, toast, salvaUI, gnav, VERSAO_PAGINA.
  */
 window.HJ_NOVIDADES = /*NOVIDADES*/[
+  {"versao": "0.5.4", "nome": "atualização das conquistas", "data": "2026-10-11",
+   "resumo": "A Masadora ganhou 40 itens novos: animações ao concluir tarefas, sons, fontes e quatro temas completos.",
+   "itens": [
+     {"ic": "spider", "t": "Na hora da conquista", "d": "Efeitos que disparam ao concluir uma tarefa: Godspeed (um raio que corta a tela), Cartas do Hisoka, Jajanken (PEDRA!) e fogos de artifício no andar novo. O botão ▶ mostra cada um antes de comprar."},
+     {"ic": "antenna", "t": "Sons", "d": "Moeda, Golpe, Sino do templo e Fanfarra 8-bit tocam ao concluir uma tarefa e no andar novo. Dá para deixar mudo em Configurações."},
+     {"ic": "scroll", "t": "Fontes", "d": "Máquina de escrever, Mangá, Pixel e Arcade japonês mudam a letra dos títulos e dos números."},
+     {"ic": "coin", "t": "Mais aparência", "d": "Seis paletas (Pergaminho, Zoldyck, Genei Ryodan, Greed Island, Continente Negro e a Aurora), quatro texturas (teia, colmeia, fliperama, papel), Gyo, Poeira de Nen, Rastro de aura, Terminal vivo, Corrente de Kurapika, três molduras e títulos que só abrem com conquistas."},
+     {"ic": "tower", "t": "Temas completos", "d": "Genei Ryodan, Greed Island e Zoldyck, mais baratos que as peças separadas, e Ascensão, o tema lendário de 25.000 J, com uma aurora girando atrás da página inteira."}
+   ]},
   {"versao": "0.5.3", "nome": "atualização das conquistas", "data": "2026-10-10",
    "resumo": "O XP dos dias passados fica guardado, e corrigir uma nota não deixa mais a carteira negativa.",
    "itens": [

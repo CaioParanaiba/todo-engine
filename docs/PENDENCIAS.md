@@ -131,8 +131,15 @@ peso atual, caiu de 2502 para 1212 J. O gasto (`spent`) fica gravado; o ganho er
   carteira da Masadora).
 - **Servidor:** `notasJ`, `furias` e `acertos` aceitos no `POST /api/jogo/estado` e mesclados com o que já está gravado
   (uma aba antiga aberta não apaga recibos).
-- Ainda recalculado a cada abertura: XP das tarefas (apagar uma linha concluída tira XP), Codeforces (só as últimas 2000
-  submissões da API) e missão da semana. Uma nota corrigida para menos ainda pode deixar a carteira negativa.
+
+**v0.5.3** (10/10/2026): o resto da família.
+- **`xpDias`:** o XP de cada dia anterior a hoje (tarefas + Codeforces, depois dos multiplicadores) fica gravado e só
+  sobe: a conta usa o maior entre o gravado e o refeito. Linha concluída que some não tira XP do passado; "esqueci de
+  marcar ontem" e o bônus atrasado do Codeforces ainda somam. Hoje continua livre. Nen, heatmap de contagem e chefões
+  ainda saem das linhas. O servidor mescla `xpDias` pelo maior valor de cada dia.
+- **Nota corrigida para menos:** `recibos()` devolve `cortes`; se a correção deixaria a carteira negativa, o excedente
+  vira `acertos["nota:DISC:aval:dia"]`. Na Masadora a linha passou a se chamar "acertos".
+- Ainda recalculado: Codeforces além das últimas 2000 submissões (`cf.json` é trocado inteiro) e a missão da semana.
 
 ## Planejado para a v0.6
 

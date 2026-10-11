@@ -5,6 +5,12 @@
  * Carregado depois de conquistas.js: usa CTX, EST, UI, cur, tab, render, post, recarrega, esc, ic, toast, salvaUI, gnav, VERSAO_PAGINA.
  */
 window.HJ_NOVIDADES = /*NOVIDADES*/[
+  {"versao": "0.5.3", "nome": "atualização das conquistas", "data": "2026-10-10",
+   "resumo": "O XP dos dias passados fica guardado, e corrigir uma nota não deixa mais a carteira negativa.",
+   "itens": [
+     {"ic": "tower", "t": "Dias passados guardados", "d": "O XP de cada dia que já acabou fica guardado. Se uma tarefa concluída sumir do todo.txt ou do done.txt (uma IA reescrevendo os arquivos, um archive, uma linha apagada), o XP e a Jenny daquele dia continuam. Marcar algo que você esqueceu ontem ainda soma, e desmarcar uma tarefa de hoje ainda tira."},
+     {"ic": "coin", "t": "Nota corrigida sem dívida", "d": "Corrigir uma nota para menos tira o bônus de diferença só até zerar a carteira. O que passar disso é perdoado e aparece em acertos, na carteira da Masadora."}
+   ]},
   {"versao": "0.5.2", "nome": "atualização das conquistas", "data": "2026-10-10",
    "resumo": "A Jenny e o XP que você ganhou não somem mais quando o plano de avaliações muda.",
    "itens": [
